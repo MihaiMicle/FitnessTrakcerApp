@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from database import engine, get_db
+
 
 app = FastAPI(title="Fitness Tracker API")
 
@@ -20,6 +24,16 @@ app.add_middleware(
 def read_root():
     return {"status": "success", "message": "The Fitness Tracker backend is alive!"}
 
+# Database Connection Test Endpoint
+@app.get("/api/test-db")
+def test_db_connection(db: Session = Depends(get_db)):
+    try:
+        # We run a simple SQL query to check the connection
+        db.execute(text("SELECT 1"))
+        return {"status": "success", "message": "Successfully connected to Supabase PostgreSQL!"}
+    except Exception as e:
+        return {"status": "error", "message": f"Database connection failed: {str(e)}"}
+
 @app.get("/api/user/profile")
 def get_mock_profile():
     return {
@@ -27,3 +41,4 @@ def get_mock_profile():
         "height_cm": 180,
         "goal": "cutting"
     }
+
