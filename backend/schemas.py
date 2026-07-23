@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr, Field, model_validator
-from datetime import date
-from typing import Optional, Literal, Any
-from models import GoalEnum, ActivityLevelEnum, GenderEnum
+from pydantic import BaseModel, EmailStr, Field, model_validator, ConfigDict
+from datetime import date, datetime
+from typing import Optional, Literal, Any, List
+from models import GoalEnum, ActivityLevelEnum, GenderEnum, MealTypeEnum, ServingUnitEnum
 
 # Properties required from the frontend during onboarding
 class UserProfileCreate(BaseModel):
@@ -92,3 +92,59 @@ class UserProfileResponse(UserProfileCreate):
 
     class Config:
         from_attributes = True  # Allows Pydantic to read SQLAlchemy model objects
+
+
+class MealEntryCreate(BaseModel):
+    meal_type: MealTypeEnum
+    food_name: str
+    serving_size: float
+    serving_unit: ServingUnitEnum = ServingUnitEnum.GRAM
+    
+    # Pydantic will calculate and populate this field
+    quantity_g: Optional[float] = None
+    
+    calories: int
+    protein_g: float
+    carbs_g: float
+    fats_g: float
+
+    @model_validator(mode='after')
+    def convert_serving_to_grams(self) -> 'MealEntryCreate':
+        conversion_factors = {
+            ServingUnitEnum.GRAM: 1.0,
+            ServingUnitEnum.MILLILITER: 1.0,
+            ServingUnitEnum.OUNCE: 28.3495,
+            ServingUnitEnum.FLUID_OUNCE: 29.5735,
+            ServingUnitEnum.POUND: 453.592
+        }
+        multiplier = conversion_factors.get(self.serving_unit, 1.0)
+        self.quantity_g = round(self.serving_size * multiplier, 2)
+        return self
+
+class MealEntryResponse(BaseModel):
+    id: int
+    daily_log_id: int
+    meal_type: MealTypeEnum
+    food_name: str
+    quantity_g: float
+    calories: int
+    protein_g: float
+    carbs_g: float
+    fats_g: float
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class DailyLogSummaryResponse(BaseModel):
+    id: int
+    user_id: int
+    log_date: date
+    meals: List[MealEntryResponse] = []
+    
+    # Aggregated daily totals
+    total_calories: int = 0
+    total_protein_g: float = 0.0
+    total_carbs_g: float = 0.0
+    total_fats_g: float = 0.0
+
+    model_config = ConfigDict(from_attributes=True)

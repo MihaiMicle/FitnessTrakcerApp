@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 import models, schemas
 from database import engine, get_db
 from nutrition import calculate_macros
+from datetime import date
 
 
 # Create the database tables if they don't exist
@@ -136,3 +137,75 @@ def create_user(user: schemas.UserProfileCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     return new_user
+
+
+@app.post("/api/logs/{user_id}/meals/", response_model=schemas.MealEntryResponse, status_code=status.HTTP_201_CREATED)
+def log_meal_entry(
+    user_id: int, 
+    meal: schemas.MealEntryCreate, 
+    log_date: date = date.today(), 
+    db: Session = Depends(get_db)
+):
+    # Verify user profile exists
+    user = db.query(models.UserProfile).filter(models.UserProfile.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        
+    # Check if a daily log already exists for this date
+    daily_log = db.query(models.DailyLog).filter(
+        models.DailyLog.user_id == user_id,
+        models.DailyLog.log_date == log_date
+    ).first()
+    
+    if not daily_log:
+        daily_log = models.DailyLog(user_id=user_id, log_date=log_date)
+        db.add(daily_log)
+        db.commit()
+        db.refresh(daily_log)
+        
+    # Prepare meal data and strip frontend conversion fields
+    meal_data = meal.model_dump(exclude={"serving_size", "serving_unit"})
+    new_meal = models.MealEntry(**meal_data, daily_log_id=daily_log.id)
+    
+    db.add(new_meal)
+    db.commit()
+    db.refresh(new_meal)
+    
+    return new_meal
+
+
+@app.get("/api/logs/{user_id}/{log_date}/", response_model=schemas.DailyLogSummaryResponse)
+def get_daily_log(user_id: int, log_date: date, db: Session = Depends(get_db)):
+    daily_log = db.query(models.DailyLog).filter(
+        models.DailyLog.user_id == user_id,
+        models.DailyLog.log_date == log_date
+    ).first()
+    
+    if not daily_log:
+        # Return an empty summary skeleton if no meals have been logged yet
+        return schemas.DailyLogSummaryResponse(id=0, user_id=user_id, log_date=log_date, meals=[])
+        
+    # Aggregate macro totals across all meal entries for the day
+    total_cals = sum(m.calories for m in daily_log.meals)
+    total_prot = round(sum(m.protein_g for m in daily_log.meals), 1)
+    total_carbs = round(sum(m.carbs_g for m in daily_log.meals), 1)
+    total_fats = round(sum(m.fats_g for m in daily_log.meals), 1)
+    
+    response_data = schemas.DailyLogSummaryResponse.model_validate(daily_log)
+    response_data.total_calories = total_cals
+    response_data.total_protein_g = total_prot
+    response_data.total_carbs_g = total_carbs
+    response_data.total_fats_g = total_fats
+    
+    return response_data
+
+
+@app.delete("/api/meals/{meal_id}/", status_code=status.HTTP_204_NO_CONTENT)
+def delete_meal_entry(meal_id: int, db: Session = Depends(get_db)):
+    meal = db.query(models.MealEntry).filter(models.MealEntry.id == meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal entry not found")
+        
+    db.delete(meal)
+    db.commit()
+    return None
