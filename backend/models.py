@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, DateTime, Enum as SQLEnum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from database import Base
+from backend.core.database import Base
 import enum
 
 class GoalEnum(str, enum.Enum):
