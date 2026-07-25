@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { getDailyLog, logMeal, deleteMeal, DailySummary } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
+import PasswordField from "@/components/auth/passwordField";
 
 export default function Dashboard() {
   const [session, setSession] = useState<Session | null>(null);
@@ -109,17 +110,15 @@ export default function Dashboard() {
                 required
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="Enter your email"
                 className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
             <div>
               <label className="text-xs text-neutral-400 block mb-1">Password</label>
-              <input
-                type="password"
-                required
+              <PasswordField
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
             <button

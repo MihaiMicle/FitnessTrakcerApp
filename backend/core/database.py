@@ -1,25 +1,35 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
-# Load the secret variables from the .env file
+# Load environment variables from .env
 load_dotenv()
 
-# Get the database URL
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Create the engine that physically connects to Supabase
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set in your .env file!")
 
-# Create a session factory for our database operations
+# Create the SQLAlchemy Engine
+engine = create_engine(DATABASE_URL)
+
+# Create the SessionLocal class
+# Each request will get its own temporary database session from this factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# This Base class is what we will use to create our database models later
+# Create the Base class
+# All your models (in models/user.py and models/nutrition.py) will inherit from this
 Base = declarative_base()
 
-# Dependency to get a database session for each API request
+
+# The FastAPI Dependency
 def get_db():
+    """
+    Generates an independent database session for each API request 
+    and automatically closes it when the request finishes.
+    """
     db = SessionLocal()
     try:
         yield db

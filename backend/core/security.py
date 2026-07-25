@@ -5,18 +5,27 @@ import jwt
 from jwt import PyJWKClient
 from dotenv import load_dotenv
 
-# 1. Load environment variables from .env
+# Load environment variables from .env
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
-# 2. Initialize FastAPI Bearer scheme
+# Look for your Supabase API Key under common environment variable names
+SUPABASE_KEY = (
+    os.getenv("SUPABASE_KEY") or 
+    os.getenv("SUPABASE_ANON_KEY") or 
+    os.getenv("SUPABASE_PUBLISHABLE_KEY") or
+    os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+)
+
+# Initialize FastAPI Bearer scheme
 security = HTTPBearer()
 
-# 3. Initialize JWKS Client for ES256 (Supabase's modern asymmetric signing)
-jwks_url = f"{SUPABASE_URL}/auth/v1/jwks.json" if SUPABASE_URL else None
-jwks_client = PyJWKClient(jwks_url) if jwks_url else None
+# Initialize JWKS Client with required Supabase API Gateway headers and the correct .well-known endpoint
+jwks_headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"} if SUPABASE_KEY else {}
+jwks_url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json" if SUPABASE_URL else None
+jwks_client = PyJWKClient(jwks_url, headers=jwks_headers) if jwks_url else None
 
 
 def get_current_user(
@@ -35,6 +44,11 @@ def get_current_user(
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="SUPABASE_URL is not set in backend/.env for JWKS verification"
+                )
+            if not SUPABASE_KEY:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="SUPABASE_KEY (or SUPABASE_ANON_KEY) is missing in backend/.env! Required for ES256 JWKS verification."
                 )
             signing_key = jwks_client.get_signing_key_from_jwt(token)
             secret_or_key = signing_key.key
