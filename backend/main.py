@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 import models, schemas
 from database import engine, get_db
 from nutrition import calculate_macros
+from jwt import PyJWKClient
 
 # Create the database tables if they don't exist
 models.Base.metadata.create_all(bind=engine)  
@@ -33,6 +34,9 @@ app.add_middleware(
 security = HTTPBearer()
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
+jwks_url = f"{os.getenv('SUPABASE_URL')}/auth/v1/.well-known/jwks.json"
+jwks_client = PyJWKClient(jwks_url)
+
 def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> str:
     """Verifies the Supabase Bearer JWT and returns the user's UUID string."""
     token = credentials.credentials
@@ -43,11 +47,18 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         )
     try:
         # Decode the token using your Supabase project's JWT Secret
+        print("ACTUAL TOKEN ALGORITHM:", jwt.get_unverified_header(token).get("alg"))
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
         payload = jwt.decode(
             token,
-            os.getenv("SUPABASE_JWT_SECRET"),
-            algorithms=["HS256"],
-            audience="authenticated"  
+            signing_key.key,
+            algorithms=[
+                "ES256",
+                "HS256",
+            ],
+            audience="authenticated",
+            leeway=60  # Allow 60 seconds of clock skew
         )
         user_id: str = payload.get("sub")
         if not user_id:

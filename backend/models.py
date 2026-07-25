@@ -25,7 +25,7 @@ class GenderEnum(str, enum.Enum):
 class UserProfile(Base):
     __tablename__ = "user_profiles"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     
     # Onboarding stats for AI suggestions

@@ -50,7 +50,11 @@ async function getAuthHeaders() {
 export async function getDailyLog(date: string) {
   const headers = await getAuthHeaders();
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/logs/${date}`, { headers });
-  if (!res.ok) throw new Error("Failed to fetch logs");
+ if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    console.error("FastAPI Rejection Reason:", errorData);
+    throw new Error(`Failed to fetch logs: ${errorData.detail || res.statusText}`);
+  }
   return res.json();
 }
 
