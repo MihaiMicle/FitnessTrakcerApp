@@ -1,41 +1,7 @@
 import { supabase } from "./supabase";
+import { DailySummary, MealEntry, LogMealPayload } from "@/types/nutrition";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
-export interface MealEntry {
-  id: number;
-  daily_log_id: number;
-  meal_type: "breakfast" | "lunch" | "dinner" | "snack" | "pre_workout" | "post_workout";
-  food_name: string;
-  quantity_g: number;
-  calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fats_g: number;
-  created_at: string;
-}
-
-export interface DailySummary {
-  id: number;
-  user_id: number;
-  log_date: string;
-  meals: MealEntry[];
-  total_calories: number;
-  total_protein_g: number;
-  total_carbs_g: number;
-  total_fats_g: number;
-}
-
-export interface LogMealPayload {
-  meal_type: string;
-  food_name: string;
-  serving_size: number;
-  serving_unit: "g" | "oz" | "lb" | "ml" | "fl_oz";
-  calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fats_g: number;
-}
 
 // Helper to get authorization headers
 async function getAuthHeaders() {
@@ -47,10 +13,10 @@ async function getAuthHeaders() {
 }
 
 // Fetch daily summary and aggregated macros
-export async function getDailyLog(date: string) {
+export async function getDailyLog(date: string): Promise<DailySummary> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/logs/${date}`, { headers });
- if (!res.ok) {
+  const res = await fetch(`${BASE_URL}/logs/${date}`, { headers });
+  if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     console.error("FastAPI Rejection Reason:", errorData);
     throw new Error(`Failed to fetch logs: ${errorData.detail || res.statusText}`);
@@ -59,9 +25,9 @@ export async function getDailyLog(date: string) {
 }
 
 // Post a new meal entry (automatically converts imperial units on the backend)
-export async function logMeal(payload: any) {
+export async function logMeal(payload: LogMealPayload): Promise<MealEntry> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/meals`, {
+  const res = await fetch(`${BASE_URL}/meals`, {
     method: "POST",
     headers,
     body: JSON.stringify(payload),
@@ -73,10 +39,10 @@ export async function logMeal(payload: any) {
   return res.json();
 }
 
-// Delete a logged meal entry by its ID
-export async function deleteMeal(mealId: number) {
+// Delete a logged meal entry by its ID (Updated parameter to string for UUIDs)
+export async function deleteMeal(mealId: string): Promise<any> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/meals/${mealId}`, {
+  const res = await fetch(`${BASE_URL}/meals/${mealId}`, {
     method: "DELETE",
     headers,
   });
