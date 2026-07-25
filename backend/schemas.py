@@ -137,7 +137,7 @@ class MealEntryResponse(BaseModel):
 
 class DailyLogSummaryResponse(BaseModel):
     id: int
-    user_id: int
+    user_id: str
     log_date: date
     meals: List[MealEntryResponse] = []
     

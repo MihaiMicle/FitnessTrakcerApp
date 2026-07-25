@@ -56,7 +56,7 @@ class DailyLog(Base):
     __tablename__ = "daily_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
     log_date = Column(Date, nullable=False, index=True)
     
     # Relationships

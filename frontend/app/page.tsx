@@ -2,8 +2,14 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { getDailyLog, logMeal, deleteMeal, DailySummary } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
+import { Session } from "@supabase/supabase-js";
 
 export default function Dashboard() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,7 +27,6 @@ export default function Dashboard() {
     fats_g: "",
   });
 
-  const USER_ID = 7;
   const TODAY = new Date().toISOString().split("T")[0];
 
   const TARGETS = {
@@ -31,9 +36,27 @@ export default function Dashboard() {
     fats: 70,
   };
 
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+
   const refreshData = async () => {
+    if (!session) return;
     try {
-      const data = await getDailyLog(USER_ID, TODAY);
+      setLoading(true);
+      const data = await getDailyLog(TODAY); // No more hardcoded USER_ID = 7!
       setSummary(data);
     } catch (err) {
       console.error("Error fetching summary:", err);
@@ -43,8 +66,83 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    refreshData();
-  }, [TODAY]);
+    if (session) refreshData();
+  }, [session, TODAY]);
+
+
+  // Auth Handlers
+  const handleAuth = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+        if (error) throw error;
+        alert("Check your email for the confirmation link!");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      alert(err.message || "Authentication error");
+    }
+  };
+
+
+  if (loading) return <div className="p-8 text-white font-mono">Loading nutrition engine...</div>;
+
+
+  // Render Login Screen if not authenticated
+  if (!session) {
+    return (
+      <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-6">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-8 max-w-sm w-full space-y-6 shadow-2xl">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight">Fitness Tracker</h1>
+            <p className="text-neutral-400 text-xs mt-1">Sign in to access your daily dashboard</p>
+          </div>
+
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div>
+              <label className="text-xs text-neutral-400 block mb-1">Email</label>
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-neutral-400 block mb-1">Password</label>
+              <input
+                type="password"
+                required
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition-colors mt-2"
+            >
+              {isSignUp ? "Create Account" : "Sign In"}
+            </button>
+          </form>
+
+          <div className="text-center">
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-xs text-neutral-400 hover:text-white underline transition-colors"
+            >
+              {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
 
   const handleDeleteMeal = async (mealId: number) => {
     try {
@@ -62,7 +160,6 @@ export default function Dashboard() {
       // Attach user_id and date explicitly to satisfy relational Pydantic schemas
       const cleanPayload = {
         ...formData,
-        user_id: USER_ID,
         date: TODAY,
         serving_size: Number(formData.serving_size) || 0,
         calories: Number(formData.calories) || 0,
@@ -71,7 +168,7 @@ export default function Dashboard() {
         fats_g: Number(formData.fats_g) || 0,
       };
 
-      await logMeal(USER_ID, cleanPayload as any);
+      await logMeal(cleanPayload as any);
       setIsModalOpen(false);
       
       // Reset form back to clean empty inputs
@@ -155,7 +252,15 @@ export default function Dashboard() {
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="border-b border-neutral-800 pb-6 flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Daily Nutrition Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">Daily Nutrition Dashboard</h1>
+              <button 
+                onClick={() => supabase.auth.signOut()} 
+                className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
             <p className="text-neutral-400 text-sm mt-1">Date: {TODAY}</p>
           </div>
           <button
