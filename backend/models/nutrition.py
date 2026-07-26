@@ -28,6 +28,8 @@ class Meal(Base):
     protein_g = Column(Float, default=0.0)
     carbs_g = Column(Float, default=0.0)
     fats_g = Column(Float, default=0.0)
+    serving_size = Column(Float, default=0.0)
+    serving_unit = Column(String, default="g")
 
     # Relationship back to the daily log
     daily_log = relationship("DailyLog", backref="meals")

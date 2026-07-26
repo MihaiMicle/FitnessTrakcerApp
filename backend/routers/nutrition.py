@@ -130,6 +130,7 @@ def create_meal(
             total_protein_g=0,
             total_carbs_g=0,
             total_fats_g=0
+
         )
         db.add(daily_log)
         db.commit()
@@ -137,13 +138,8 @@ def create_meal(
 
     # Create the Meal entry linked to that DailyLog
     new_meal = Meal(
-        daily_log_id=daily_log.id,
-        name=meal.name,
-        meal_type=meal.meal_type,
-        calories=meal.calories,
-        protein_g=meal.protein_g,
-        carbs_g=meal.carbs_g,
-        fats_g=meal.fats_g
+        **meal.dict(exclude={"date"}),
+        daily_log_id=daily_log.id
     )
     db.add(new_meal)
 

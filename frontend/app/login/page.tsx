@@ -10,15 +10,30 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if the user is already authenticated
+    // Check if the user is already logged in on initial page load
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // If they are already logged in, redirect them to the dashboard!
         router.replace("/");
+        router.refresh();
       } else {
         setLoading(false);
       }
     });
+
+    // Actively listen for sign-in events triggered inside <LoginForm />
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          router.replace("/");
+          router.refresh(); // Crucial: forces Next.js App Router to clear its cached layouts!
+        }
+      }
+    );
+
+    // Clean up the listener when the component unmounts
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   if (loading) {

@@ -35,7 +35,7 @@ export default function MealItem({ meal, onDelete }: MealItemProps) {
           {meal.food_name || meal.name || (meal as any).foodName}
         </h4>
         <p className="text-xs text-neutral-400 font-mono mt-0.5">
-          {servingSize}{servingUnit} serving
+          {servingSize} {servingUnit} serving
         </p>
       </div>
 

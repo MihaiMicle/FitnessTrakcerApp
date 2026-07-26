@@ -38,6 +38,8 @@ class MealCreate(BaseModel):
     protein_g: float = Field(0.0, validation_alias=AliasChoices("protein_g", "proteinG", "protein"))
     carbs_g: float = Field(0.0, validation_alias=AliasChoices("carbs_g", "carbsG", "carbs"))
     fats_g: float = Field(0.0, validation_alias=AliasChoices("fats_g", "fatsG", "fats", "fat"))
+    serving_size: Optional[float] = Field(0.0, validation_alias=AliasChoices("serving_size", "servingSize", "size"))
+    serving_unit: Optional[str] = Field("g", validation_alias=AliasChoices("serving_unit", "servingUnit", "unit"))
 
     class Config:
         populate_by_name = True
@@ -47,6 +49,8 @@ class MealResponse(MealCreate):
     id: UUID
     daily_log_id: int
     date: Optional[date] = None  
+    serving_size: Optional[float] = 0.0
+    serving_unit: Optional[str] = "g"
 
     # Automatically send "food_name" and "foodName" in the JSON response to Next.js
     @computed_field
