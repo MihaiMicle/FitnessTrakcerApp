@@ -3,11 +3,11 @@ export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export type ServingUnit = "g" | "oz" | "lb" | "ml" | "fl_oz";
 
 export interface MealEntry {
-  id: string; 
+  id: string;
   daily_log_id: number;
   meal_type: MealType;
   food_name: string;
-  name?: string;     // Fallback for Pydantic base field
+  name?: string; // Fallback for Pydantic base field
   foodName?: string; // Fallback for Pydantic camelCase computed field
   quantity_g?: number;
   calories: number;

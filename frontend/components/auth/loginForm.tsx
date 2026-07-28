@@ -13,11 +13,17 @@ export default function LoginForm() {
     e.preventDefault();
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+        const { error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+        });
         if (error) throw error;
         alert("Check your email for the confirmation link!");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
         if (error) throw error;
       }
     } catch (err: any) {
@@ -30,7 +36,9 @@ export default function LoginForm() {
       <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-8 max-w-sm w-full space-y-6 shadow-2xl">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">Fitness Tracker</h1>
-          <p className="text-neutral-400 text-xs mt-1">Sign in to access your daily dashboard</p>
+          <p className="text-neutral-400 text-xs mt-1">
+            Sign in to access your daily dashboard
+          </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
@@ -46,7 +54,9 @@ export default function LoginForm() {
             />
           </div>
           <div>
-            <label className="text-xs text-neutral-400 block mb-1">Password</label>
+            <label className="text-xs text-neutral-400 block mb-1">
+              Password
+            </label>
             <PasswordField
               value={authPassword}
               onChange={(e) => setAuthPassword(e.target.value)}
@@ -65,7 +75,9 @@ export default function LoginForm() {
             onClick={() => setIsSignUp(!isSignUp)}
             className="text-xs text-neutral-400 hover:text-white underline transition-colors"
           >
-            {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
+            {isSignUp
+              ? "Already have an account? Sign In"
+              : "Need an account? Sign Up"}
           </button>
         </div>
       </div>

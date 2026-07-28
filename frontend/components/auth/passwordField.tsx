@@ -7,7 +7,11 @@ interface PasswordFieldProps {
   placeholder?: string;
 }
 
-export default function PasswordField({ value, onChange, placeholder = "Enter your password" }: PasswordFieldProps) {
+export default function PasswordField({
+  value,
+  onChange,
+  placeholder = "Enter your password",
+}: PasswordFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -19,7 +23,7 @@ export default function PasswordField({ value, onChange, placeholder = "Enter yo
         placeholder={placeholder}
         className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500"
       />
-      
+
       <button
         type="button"
         onClick={() => setShowPassword(!showPassword)}

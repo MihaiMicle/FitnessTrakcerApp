@@ -21,14 +21,14 @@ export default function LoginPage() {
     });
 
     // Actively listen for sign-in events triggered inside <LoginForm />
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "SIGNED_IN" && session) {
-          router.replace("/");
-          router.refresh(); // Crucial: forces Next.js App Router to clear its cached layouts!
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        router.replace("/");
+        router.refresh(); // Crucial: forces Next.js App Router to clear its cached layouts!
       }
-    );
+    });
 
     // Clean up the listener when the component unmounts
     return () => {
@@ -39,7 +39,9 @@ export default function LoginPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-6">
-        <div className="font-mono text-sm text-neutral-400">Checking session...</div>
+        <div className="font-mono text-sm text-neutral-400">
+          Checking session...
+        </div>
       </main>
     );
   }

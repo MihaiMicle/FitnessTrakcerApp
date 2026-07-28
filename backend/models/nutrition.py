@@ -4,13 +4,14 @@ from sqlalchemy.orm import relationship
 import uuid
 from core.database import Base
 
+
 class DailyLog(Base):
     __tablename__ = "daily_logs"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
+    user_id = Column(String, ForeignKey("user_profiles.id"), nullable=False)
     date = Column(Date, nullable=False)
-    
+
     total_calories = Column(Integer, default=0)
     total_protein_g = Column(Integer, default=0)
     total_carbs_g = Column(Integer, default=0)
@@ -21,7 +22,9 @@ class Meal(Base):
     __tablename__ = "meals"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    daily_log_id = Column(Integer, ForeignKey("daily_logs.id", ondelete="CASCADE"), nullable=False)
+    daily_log_id = Column(
+        Integer, ForeignKey("daily_logs.id", ondelete="CASCADE"), nullable=False
+    )
     name = Column(String, nullable=False)
     meal_type = Column(String, nullable=False)
     calories = Column(Integer, default=0)

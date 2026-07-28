@@ -41,7 +41,7 @@ export default function LogMealModal({ isOpen, onClose, onAddMeal }: LogMealModa
       };
 
       await onAddMeal(cleanPayload);
-      
+
       // Reset form
       setFormData({
         meal_type: "lunch",
@@ -53,7 +53,7 @@ export default function LogMealModal({ isOpen, onClose, onAddMeal }: LogMealModa
         carbs_g: "",
         fats_g: "",
       });
-      
+
       onClose();
     } catch (err: any) {
       console.error("FastAPI Error:", err);

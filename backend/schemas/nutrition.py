@@ -12,6 +12,10 @@ class DailyLogCreate(BaseModel):
     total_carbs_g: Optional[float] = 0.0
     total_fats_g: Optional[float] = 0.0
 
+    target_calories: Optional[int] = 2500
+    target_protein_g: Optional[float] = 180
+    target_carbs_g: Optional[float] = 300
+    target_fats_g: Optional[float] = 70
 
 class DailyLogResponse(DailyLogCreate):
     id: int  # Postgres integer ID
@@ -27,19 +31,30 @@ class MealCreate(BaseModel):
     date: date
     # Automatically accept name, food_name, foodName, meal_name, or food from the frontend
     name: str = Field(
-        ..., 
-        validation_alias=AliasChoices("name", "food_name", "foodName", "meal_name", "food", "title")
+        ...,
+        validation_alias=AliasChoices(
+            "name", "food_name", "foodName", "meal_name", "food", "title"
+        ),
     )
     meal_type: str = Field(
-        ..., 
-        validation_alias=AliasChoices("meal_type", "mealType", "type")
+        ..., validation_alias=AliasChoices("meal_type", "mealType", "type")
     )
     calories: int = 0
-    protein_g: float = Field(0.0, validation_alias=AliasChoices("protein_g", "proteinG", "protein"))
-    carbs_g: float = Field(0.0, validation_alias=AliasChoices("carbs_g", "carbsG", "carbs"))
-    fats_g: float = Field(0.0, validation_alias=AliasChoices("fats_g", "fatsG", "fats", "fat"))
-    serving_size: Optional[float] = Field(0.0, validation_alias=AliasChoices("serving_size", "servingSize", "size"))
-    serving_unit: Optional[str] = Field("g", validation_alias=AliasChoices("serving_unit", "servingUnit", "unit"))
+    protein_g: float = Field(
+        0.0, validation_alias=AliasChoices("protein_g", "proteinG", "protein")
+    )
+    carbs_g: float = Field(
+        0.0, validation_alias=AliasChoices("carbs_g", "carbsG", "carbs")
+    )
+    fats_g: float = Field(
+        0.0, validation_alias=AliasChoices("fats_g", "fatsG", "fats", "fat")
+    )
+    serving_size: Optional[float] = Field(
+        0.0, validation_alias=AliasChoices("serving_size", "servingSize", "size")
+    )
+    serving_unit: Optional[str] = Field(
+        "g", validation_alias=AliasChoices("serving_unit", "servingUnit", "unit")
+    )
 
     class Config:
         populate_by_name = True
@@ -48,7 +63,7 @@ class MealCreate(BaseModel):
 class MealResponse(MealCreate):
     id: UUID
     daily_log_id: int
-    date: Optional[date] = None  
+    date: Optional[date] = None
     serving_size: Optional[float] = 0.0
     serving_unit: Optional[str] = "g"
 

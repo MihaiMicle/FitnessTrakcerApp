@@ -27,7 +27,7 @@ Base = declarative_base()
 # The FastAPI Dependency
 def get_db():
     """
-    Generates an independent database session for each API request 
+    Generates an independent database session for each API request
     and automatically closes it when the request finishes.
     """
     db = SessionLocal()

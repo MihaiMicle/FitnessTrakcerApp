@@ -2,12 +2,7 @@
 import { MealType, ServingUnit } from "@/types/nutrition";
 
 // Updated to match the lowercase union types in types/nutrition.ts
-export const MEAL_TYPES: MealType[] = [
-  "breakfast",
-  "lunch",
-  "dinner",
-  "snack",
-];
+export const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 // Helper to display clean, formatted names in your UI dropdowns and dashboard headers
 export const MEAL_TYPE_LABELS: Record<MealType, string> = {

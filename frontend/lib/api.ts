@@ -1,3 +1,4 @@
+import { UserProfileData } from "@/types/profile";
 import { supabase } from "./supabase";
 import { DailySummary, MealEntry, LogMealPayload } from "@/types/nutrition";
 
@@ -5,10 +6,14 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 // Helper to get authorization headers
 async function getAuthHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return {
     "Content-Type": "application/json",
-    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    ...(session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {}),
   };
 }
 
@@ -19,7 +24,9 @@ export async function getDailyLog(date: string): Promise<DailySummary> {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     console.error("FastAPI Rejection Reason:", errorData);
-    throw new Error(`Failed to fetch logs: ${errorData.detail || res.statusText}`);
+    throw new Error(
+      `Failed to fetch logs: ${errorData.detail || res.statusText}`,
+    );
   }
   return res.json();
 }
@@ -47,5 +54,51 @@ export async function deleteMeal(mealId: string): Promise<any> {
     headers,
   });
   if (!res.ok) throw new Error("Failed to delete meal");
+  return res.json();
+}
+
+export async function getProfile(): Promise<UserProfileData> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/profile/me`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch profile");
+  return res.json();
+}
+
+export async function updateProfile(
+  token: string,
+  profileData: UserProfileData,
+) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(profileData),
+  });
+
+  if (!res.ok) {
+    const errorDetails = await res.json().catch(() => ({}));
+    console.error("FastAPI Rejection Details:", errorDetails);
+    throw new Error(
+      `Failed to update profile: ${res.status} ${res.statusText}`,
+    );
+  }
+
+  return res.json();
+}
+
+export async function recalculateGoals(token: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    // Tell the backend to run your Mifflin-St Jeor formula and commit the new targets
+    body: JSON.stringify({ auto_calculate: true }),
+  });
+
+  if (!res.ok) throw new Error("Failed to recalculate goals");
   return res.json();
 }

@@ -12,21 +12,18 @@ export default function MealItem({ meal, onDelete }: MealItemProps) {
   console.log("Logged meal object:", meal);
 
   // Exhaustive check for any property name your backend might be using for the weight/serving
-  const servingSize = 
-    meal.serving_size || 
-    (meal as any).servingSize || 
-    meal.quantity_g || 
-    (meal as any).quantity || 
-    (meal as any).grams || 
-    (meal as any).amount || 
-    (meal as any).weight || 
+  const servingSize =
+    meal.serving_size ||
+    (meal as any).servingSize ||
+    meal.quantity_g ||
+    (meal as any).quantity ||
+    (meal as any).grams ||
+    (meal as any).amount ||
+    (meal as any).weight ||
     0;
 
-  const servingUnit = 
-    meal.serving_unit || 
-    (meal as any).servingUnit || 
-    (meal as any).unit || 
-    "g";
+  const servingUnit =
+    meal.serving_unit || (meal as any).servingUnit || (meal as any).unit || "g";
 
   return (
     <div className="py-4 flex justify-between items-center group">

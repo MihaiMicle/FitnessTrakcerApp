@@ -9,7 +9,11 @@ interface MealGroupProps {
   onDeleteMeal: (id: string) => void;
 }
 
-export default function MealGroup({ label, meals, onDeleteMeal }: MealGroupProps) {
+export default function MealGroup({
+  label,
+  meals,
+  onDeleteMeal,
+}: MealGroupProps) {
   const totalCalories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
   const totalProtein = meals.reduce((sum, m) => sum + (m.protein_g || 0), 0);
   const totalCarbs = meals.reduce((sum, m) => sum + (m.carbs_g || 0), 0);
@@ -24,23 +28,40 @@ export default function MealGroup({ label, meals, onDeleteMeal }: MealGroupProps
             {meals.length} {meals.length === 1 ? "item" : "items"}
           </span>
         </div>
-        
+
         {meals.length > 0 && (
           <div className="flex items-center gap-3 text-xs font-mono text-neutral-400 mt-2 sm:mt-0">
-            <span><strong className="text-white">{totalCalories}</strong> kcal</span>
+            <span>
+              <strong className="text-white">{totalCalories}</strong> kcal
+            </span>
             <span>•</span>
             {/* Changed from emerald to blue to match Protein goal */}
-            <span><strong className="text-blue-500">{totalProtein.toFixed(1)}g</strong> P</span>
+            <span>
+              <strong className="text-blue-500">
+                {totalProtein.toFixed(1)}g
+              </strong>{" "}
+              P
+            </span>
             {/* Changed from blue to amber to match Carbs goal */}
-            <span><strong className="text-amber-500">{totalCarbs.toFixed(1)}g</strong> C</span>
+            <span>
+              <strong className="text-amber-500">
+                {totalCarbs.toFixed(1)}g
+              </strong>{" "}
+              C
+            </span>
             {/* Kept rose to match Fats goal */}
-            <span><strong className="text-rose-500">{totalFats.toFixed(1)}g</strong> F</span>
+            <span>
+              <strong className="text-rose-500">{totalFats.toFixed(1)}g</strong>{" "}
+              F
+            </span>
           </div>
         )}
       </div>
 
       {meals.length === 0 ? (
-        <p className="text-sm text-neutral-600 italic py-2">No foods logged for {label.toLowerCase()} yet.</p>
+        <p className="text-sm text-neutral-600 italic py-2">
+          No foods logged for {label.toLowerCase()} yet.
+        </p>
       ) : (
         <div className="divide-y divide-neutral-800">
           {meals.map((meal) => (
