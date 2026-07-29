@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, AliasChoices, computed_field
+from pydantic import BaseModel, Field, AliasChoices, computed_field, ConfigDict
 from typing import Optional, List
 from datetime import date
 from uuid import UUID
@@ -17,14 +17,24 @@ class DailyLogCreate(BaseModel):
     target_carbs_g: Optional[float] = 300
     target_fats_g: Optional[float] = 70
 
-class DailyLogResponse(DailyLogCreate):
-    id: int  # Postgres integer ID
-    user_id: UUID
+
+class DailyLogResponse(BaseModel):
+    id: int
+    user_id: UUID  
+    date: date
+    total_calories: int
+    total_protein_g: float
+    total_carbs_g: float
+    total_fats_g: float
+    
+    target_calories: int = 0
+    target_protein_g: float = 0.0
+    target_carbs_g: float = 0.0
+    target_fats_g: float = 0.0
+    
     meals: List["MealResponse"] = []
 
-    class Config:
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)
 
 # Meal Schemas
 class MealCreate(BaseModel):
@@ -78,6 +88,4 @@ class MealResponse(MealCreate):
     def foodName(self) -> str:
         return self.name
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

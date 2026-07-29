@@ -8,7 +8,7 @@ interface MacroGoalsProps {
 }
 
 export default function MacroGoals({ summary }: MacroGoalsProps) {
-  // 1. Extract dynamic targets from the API, falling back to defaults if missing
+  // Extract dynamic targets from the API, falling back to defaults if missing
   const targetCalories =
     summary?.target_calories || DEFAULT_MACRO_TARGETS.calories;
   const targetProtein =
@@ -16,7 +16,7 @@ export default function MacroGoals({ summary }: MacroGoalsProps) {
   const targetCarbs = summary?.target_carbs_g || DEFAULT_MACRO_TARGETS.carbs;
   const targetFats = summary?.target_fats_g || DEFAULT_MACRO_TARGETS.fats;
 
-  // 2. Calculate progress bars using the dynamic targets
+  // Calculate progress bars using the dynamic targets
   const calProgress = Math.min(
     ((summary?.total_calories || 0) / targetCalories) * 100,
     100,

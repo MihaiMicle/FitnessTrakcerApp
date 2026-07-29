@@ -26,6 +26,10 @@ export interface DailySummary {
   total_protein_g: number;
   total_carbs_g: number;
   total_fats_g: number;
+  target_calories?: number;
+  target_protein_g?: number;
+  target_carbs_g?: number;
+  target_fats_g?: number;
 }
 
 export interface LogMealPayload {
@@ -38,4 +42,5 @@ export interface LogMealPayload {
   carbs_g: number;
   fats_g: number;
   date?: string;
+
 }

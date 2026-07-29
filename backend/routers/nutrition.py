@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import date
 from typing import List, Optional
 from uuid import UUID
@@ -14,9 +14,6 @@ router = APIRouter(tags=["Nutrition"])
 
 
 # Daily Log Endpoints
-# Make sure to import your profile model at the top of the file!
-# e.g., from models.user import UserProfile 
-
 @router.get("/logs/{log_date}", response_model=DailyLogResponse)
 def get_log_by_date(
     log_date: date,
@@ -29,7 +26,7 @@ def get_log_by_date(
     """
     user_uuid = UUID(current_user_id)
 
-    # 1. Fetch the user's saved targets from their profile
+    # Fetch the user's saved targets from their profile
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_uuid).first()
 
     # Set fallback defaults just in case a new user has no profile yet
@@ -38,18 +35,19 @@ def get_log_by_date(
     t_carbs = profile.target_carbs_g if profile and profile.target_carbs_g else 300
     t_fats = profile.target_fats_g if profile and profile.target_fats_g else 70
 
-    # 2. Fetch today's log entry
+    # Fetch today's log entry
     log_entry = (
-        db.query(DailyLog)
-        .filter(DailyLog.user_id == user_uuid, DailyLog.date == log_date)
-        .first()
+    db.query(DailyLog)
+    .options(joinedload(DailyLog.meals))
+    .filter(DailyLog.date == log_date, DailyLog.user_id == user_uuid)
+    .first()
     )
 
-    # 3. If no log exists for today, return clean 0 defaults WITH the targets
+    # If no log exists for today, return clean 0 defaults WITH the targets
     if not log_entry:
         return DailyLogResponse(
             id=0,
-            user_id=user_uuid,
+            user_id=str(user_uuid),
             date=log_date,
             total_calories=0,
             total_protein_g=0,
@@ -61,21 +59,14 @@ def get_log_by_date(
             target_fats_g=t_fats,
         )
 
-    # 4. If the log exists, return an explicit Pydantic response WITH the targets
-    return DailyLogResponse(
-        id=log_entry.id,
-        user_id=log_entry.user_id,
-        date=log_entry.date,
-        total_calories=log_entry.total_calories,
-        total_protein_g=log_entry.total_protein_g,
-        total_carbs_g=log_entry.total_carbs_g,
-        total_fats_g=log_entry.total_fats_g,
-        target_calories=t_cals,
-        target_protein_g=t_prot,
-        target_carbs_g=t_carbs,
-        target_fats_g=t_fats,
-    )
-
+    response = DailyLogResponse.model_validate(log_entry)
+    
+    response.target_calories = t_cals
+    response.target_protein_g = t_prot
+    response.target_carbs_g = t_carbs
+    response.target_fats_g = t_fats
+    
+    return response
 
 @router.post("/log", response_model=DailyLogResponse)
 @router.post("/logs", response_model=DailyLogResponse)
