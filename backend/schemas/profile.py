@@ -20,6 +20,8 @@ class ProfileUpdateRequest(BaseModel):
     target_fats_g: Optional[int] = Field(None, gt=0, lt=500)
 
     auto_calculate: bool = False
+    
+    avatar_url: Optional[str] = None
 
 
 class UserProfileResponse(BaseModel):

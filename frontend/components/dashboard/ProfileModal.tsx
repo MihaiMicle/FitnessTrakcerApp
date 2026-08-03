@@ -1,560 +1,339 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import {
-  getProfile,
-  updateProfile,
-  recalculateGoals,
-  UserProfileData,
-} from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpdateSuccess?: () => void;
 }
 
-export default function ProfileModal({
-  isOpen,
-  onClose,
-  onUpdateSuccess,
-}: ProfileModalProps) {
-  const [profile, setProfile] = useState<UserProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
+  const router = useRouter();
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [weightKg, setWeightKg] = useState<number | "">("");
+  const [heightCm, setHeightCm] = useState<number | "">("");
+  const [birthDate, setBirthDate] = useState<Date | "">("");
+  const [gender, setGender] = useState<"male" | "female">("male");
+  const [activityLevel, setActivityLevel] = useState<number>(1.2);
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   useEffect(() => {
     if (isOpen) {
-      setLoading(true);
-      getProfile().then((data) => {
-        setProfile(data);
-        setLoading(false);
-      });
+      const fetchProfile = async () => {
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/profile/me`,
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setFirstName(data.first_name || "");
+            setLastName(data.last_name || "");
+            setWeightKg(data.weight_kg || "");
+            setHeightCm(data.height_cm || "");
+            setBirthDate(data.birth_date || "");
+            if (data.gender) setGender(data.gender);
+            if (data.activity_level) setActivityLevel(data.activity_level);
+          }
+        } catch (error) {
+          console.error("Failed to load profile", error);
+        }
+      };
+      fetchProfile();
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
-  const handleChange = (
-    field: keyof UserProfileData,
-    value: string | number,
+  const handleAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    if (!profile) return;
-    setProfile({ ...profile, [field]: value } as any);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile) return;
-
     try {
-      setSaving(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        console.error("No active authentication token found!");
+      if (!event.target.files || event.target.files.length === 0) {
         return;
       }
 
-      const sanitizedProfile = {
-        ...profile,
-        weight_kg: Number(profile.weight_kg) || 0,
-        height_cm: Number(profile.height_cm) || 0,
-        age: Number(profile.age) || 0,
-        target_calories: Number(profile.target_calories) || 0,
-        target_protein_g: Number(profile.target_protein_g) || 0,
-        target_carbs_g: Number(profile.target_carbs_g) || 0,
-        target_fats_g: Number(profile.target_fats_g) || 0,
-        activity_level: Number(profile.activity_level) || 1.2,
-      };
+      const file = event.target.files[0];
+      const fileExt = file.name.split(".").pop();
 
-      await updateProfile(token, sanitizedProfile);
+      // Create a unique file name to prevent overwriting
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `public/${fileName}`;
 
-      if (onUpdateSuccess) onUpdateSuccess();
-      onClose();
+      // Upload the image to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars") // Bucket name
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get the public URL of the uploaded image
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+      // Update the local React state so the image renders immediately in the UI
+      setAvatarUrl(publicUrl);
+
+      // Send the new URL to your FastAPI backend so it persists
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_url: publicUrl }),
+      });
     } catch (error) {
-      console.error("Failed to update profile:", error);
-      alert("Failed to save profile. Please check your inputs and try again.");
-    } finally {
-      setSaving(false);
+      console.error("Error uploading avatar:", error);
+      toast.error("Could not upload image. Please try again.");
     }
   };
 
-  const handleRecalculate = async () => {
-  if (!profile) return;
+  // Single Save Function for everything
+  const handleSave = async (autoCalculate: boolean) => {
+    try {
+      const payload = {
+        first_name: firstName,
+        last_name: lastName,
+        weight_kg: Number(weightKg),
+        height_cm: Number(heightCm),
+        birth_date: birthDate,
+        gender: gender,
+        activity_level: activityLevel,
+        auto_calculate: autoCalculate,
+        avatar_url: avatarUrl,
+      };
 
-  try {
-    setSaving(true);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    if (!token) {
-      console.error("No active authentication token found!");
-      return;
+      if (res.ok) {
+        toast.success("Profile saved successfully!");
+        onClose();
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      toast.error("Failed to save profile. Please try again.");
     }
+  };
 
-    const sanitizedProfile = {
-      ...profile,
-      weight_kg: Number(profile.weight_kg) || 0,
-      height_cm: Number(profile.height_cm) || 0,
-      age: Number(profile.age) || 0,
-      target_calories: Number(profile.target_calories) || 0,
-      target_protein_g: Number(profile.target_protein_g) || 0,
-      target_carbs_g: Number(profile.target_carbs_g) || 0,
-      target_fats_g: Number(profile.target_fats_g) || 0,
-      activity_level: Number(profile.activity_level) || 1.2,
-    };
-
-    await updateProfile(token, sanitizedProfile);
-
-    const updated = await recalculateGoals(token);
-
-    setProfile(updated);
-    if (onUpdateSuccess) onUpdateSuccess();
-  } catch (error) {
-    console.error("Failed to auto-calculate and save:", error);
-    alert("Failed to recalculate. Please check your inputs.");
-  } finally {
-    setSaving(false);
-  }
-};
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-2xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
-        {/* Header & Close Button */}
-        <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
-          <h2 className="text-lg font-bold font-mono tracking-wider">GOALS</h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+        {/* Modal Header */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h1 className="text-xl font-bold text-gray-800">Profile Settings</h1>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-sm px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition"
+            className="text-gray-500 hover:text-gray-800 transition-colors"
           >
-            ✕ ESC
+            <svg
+              width="24"
+              height="24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
-        {loading || !profile ? (
-          <div className="py-12 text-center text-neutral-400 font-mono text-sm">
-            Loading metrics...
-          </div>
-        ) : (
-          <form
-            onSubmit={handleSave}
-            className="space-y-6 max-h-[70vh] overflow-y-auto pr-2"
-          >
-            {/* Physical Measures Section */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-                Physical Measures
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Weight (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={profile.weight_kg ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "weight_kg",
-                        e.target.value === "" ? "" : parseFloat(e.target.value)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Height (cm)
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.height_cm ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "height_cm",
-                        e.target.value === "" ? "" : parseFloat(e.target.value)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Age
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.age ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "age",
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Gender
-                  </label>
-                  <select
-                    value={profile.gender}
-                    onChange={(e) => handleChange("gender", e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-              </div>
+        {/* Scrollable Content Area */}
+        <div className="p-6 overflow-y-auto space-y-8">
+          {/* Personal Details */}
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider border-b pb-2">
+              Personal Details
+            </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Activity Level
-                  </label>
-                  <select
-                    value={profile.activity_level}
-                    onChange={(e) =>
-                      handleChange("activity_level", parseFloat(e.target.value))
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  >
-                    <option value={1.2}>Sedentary (Little workout)</option>
-                    <option value={1.375}>
-                      Lightly Active (1-3 days/week)
-                    </option>
-                    <option value={1.55}>
-                      Moderately Active (3-5 days/week)
-                    </option>
-                    <option value={1.725}>
-                      Very Active (6-7 days hard training)
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Current Goal
-                  </label>
-                  <select
-                    value={profile.goal_type}
-                    onChange={(e) => handleChange("goal_type", e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  >
-                    <option value="cut">Cut (-300 kcal deficit)</option>
-                    <option value="maintain">Maintain (TDEE)</option>
-                    <option value="bulk">Bulk (+300 kcal surplus)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Macro Targets Section */}
-            <div className="space-y-3 pt-2 border-t border-neutral-800">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-                  Daily Targets
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleRecalculate}
-                  disabled={saving}
-                  className="text-xs font-mono bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-3 py-1 rounded transition border border-neutral-700 disabled:opacity-50"
-                >
-                  Auto-Calculate
-                </button>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-mono text-neutral-300 mb-1">
-                    Calories
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.target_calories ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "target_calories",
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold text-white focus:outline-none focus:border-neutral-600"
+            {/* Profile Photo */}
+            <div className="flex items-center gap-4 py-2">
+              <div className="h-16 w-16 rounded-full bg-gray-200 border border-gray-300 flex items-center justify-center overflow-hidden relative group cursor-pointer">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="object-cover w-full h-full"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono mb-1">
-                    Protein (g)
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.target_protein_g ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "target_protein_g",
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono mb-1">
-                    Carbs (g)
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.target_carbs_g ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "target_carbs_g",
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono mb-1">
-                    Fats (g)
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.target_fats_g ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "target_fats_g",
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-rose-500"
-                  />
-                </div>
-              </div>
-              <details className="mt-2.5 text-xs text-neutral-400 group">
-                <summary className="cursor-pointer leading-relaxed hover:text-neutral-300 transition-colors list-none [&::-webkit-details-marker]:hidden flex items-start justify-between gap-2 select-none">
-                  <span>
-                    Macronutrient Calorie Conversions: 1g of protein = 4 kcal,
-                    1g of carbs = 4 kcal, 1g of fat = 9 kcal. Adjust your macro
-                    targets accordingly to ensure they align with your total
-                    calorie goal.
+                ) : (
+                  <span className="text-gray-500 text-sm font-medium">Img</span>
+                )}
+                <div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center transition-all">
+                  <span className="text-white text-xs font-semibold">
+                    Upload
                   </span>
-
-                  {/* Animated chevron arrow that rotates when clicked */}
-                  <svg
-                    className="w-4 h-4 text-neutral-500 group-open:rotate-180 transition-transform duration-200 shrink-0 mt-0.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </summary>
-
-                {/* The expandable details section */}
-                <div className="mt-2 pt-2 border-t border-neutral-800/80 text-neutral-300 leading-relaxed max-h-64 overflow-y-auto pr-2 space-y-4 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
-                  {/* 1. Sedentary Adults */}
-                  <div>
-                    <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Sedentary Adults (Low Activity / Desk Job)
-                    </h4>
-                    <p className="text-neutral-400 italic mb-1">
-                      Focus: Meeting baseline physiological needs without
-                      gaining unwanted fat.
-                    </p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 text-neutral-300">
-                      <li>
-                        <span className="text-white font-medium">Protein:</span>{" "}
-                        0.8 to 1.2 g/kg of body weight (20% of daily calories).
-                        Supports cellular repair and prevents muscle loss.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">Fats:</span>{" "}
-                        0.4 to 0.7 g/kg of body weight (20% to 25% of daily
-                        calories). Essential for standard hormone balance and
-                        absorbing vitamins.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">
-                          Carbohydrates:
-                        </span>{" "}
-                        40% of daily calories (remaining balance). Scaled down
-                        to prevent excess energy from storing as fat.
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* 2. Fitness Enthusiasts */}
-                  <div>
-                    <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Fitness Enthusiasts (Moderate Exercise, 3–5
-                      days/week)
-                    </h4>
-                    <p className="text-neutral-400 italic mb-1">
-                      Focus: General fitness improvement, moderate weight
-                      lifting, or light running.
-                    </p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 text-neutral-300">
-                      <li>
-                        <span className="text-white font-medium">Protein:</span>{" "}
-                        1.2 to 1.6 g/kg of body weight (20% to 25% of daily
-                        calories). Helps repair muscle tissues broken down
-                        during workouts.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">Fats:</span>{" "}
-                        0.7 to 1.0 g/kg of body weight (25% to 30% of daily
-                        calories). Provides sustained baseline energy.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">
-                          Carbohydrates:
-                        </span>{" "}
-                        45% to 50% of daily calories (remaining balance).
-                        Recharges muscle glycogen stores used during your
-                        sessions.
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* 3. Strength Athletes & Bodybuilders */}
-                  <div>
-                    <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Strength Athletes & Bodybuilders (High
-                      Intensity / Muscle Gain)
-                    </h4>
-                    <p className="text-neutral-400 italic mb-1">
-                      Focus: Maximizing muscle hypertrophy, power, and
-                      high-intensity resistance recovery.
-                    </p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 text-neutral-300">
-                      <li>
-                        <span className="text-white font-medium">Protein:</span>{" "}
-                        1.6 to 2.5 g/kg of body weight (25% to 30% of daily
-                        calories). Optimizes muscle protein synthesis and
-                        recovery.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">Fats:</span>{" "}
-                        0.8 to 1.2 g/kg of body weight (20% to 30% of daily
-                        calories). Regulates crucial muscle-building hormones
-                        like testosterone.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">
-                          Carbohydrates:
-                        </span>{" "}
-                        40% to 50% of daily calories (remaining balance). Fuels
-                        explosive power output during heavy lifts.
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* 4. Endurance Athletes */}
-                  <div>
-                    <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Endurance Athletes (Runners, Cyclists,
-                      Triathletes)
-                    </h4>
-                    <p className="text-neutral-400 italic mb-1">
-                      Focus: Sustaining long-duration cardiovascular output and
-                      preventing performance crashes.
-                    </p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 text-neutral-300">
-                      <li>
-                        <span className="text-white font-medium">Protein:</span>{" "}
-                        1.2 to 1.4 g/kg of body weight (20% of daily calories).
-                        Prevents muscle wasting during extreme mileage.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">Fats:</span>{" "}
-                        1.0 to 1.4 g/kg of body weight (30% to 35% of daily
-                        calories). Helps the body tap into efficient,
-                        long-lasting fuel reserves.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">
-                          Carbohydrates:
-                        </span>{" "}
-                        55% to 60% of daily calories (remaining balance).
-                        Maximum allowable percentage to ensure glycogen stores
-                        never hit zero.
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* 5. Fat Loss Phase */}
-                  <div>
-                    <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> 5. Individuals in a Fat Loss Phase (Calorie
-                      Deficit)
-                    </h4>
-                    <p className="text-neutral-400 italic mb-1">
-                      Focus: Preserving lean muscle tissue while maximizing fat
-                      burning.
-                    </p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 text-neutral-300">
-                      <li>
-                        <span className="text-white font-medium">Protein:</span>{" "}
-                        2.0 to 2.5 g/kg of body weight (30% of daily calories).
-                        Highly satiating to keep hunger low and prevent muscle
-                        loss.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">Fats:</span>{" "}
-                        0.4 to 0.6 g/kg of body weight (20% of daily calories).
-                        Kept at the lower end of the spectrum to minimize total
-                        daily calorie intake.
-                      </li>
-                      <li>
-                        <span className="text-white font-medium">
-                          Carbohydrates:
-                        </span>{" "}
-                        40% to 50% of daily calories (remaining balance). Kept
-                        structured enough to support training intensity so your
-                        workout quality does not suffer.
-                      </li>
-                    </ul>
-                  </div>
                 </div>
-              </details>
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/webp"
+                  onChange={handleAvatarUpload}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+              <div className="text-sm text-gray-600">
+                <p className="font-medium text-gray-800">Profile Photo</p>
+                <p>Click to upload a new avatar</p>
+              </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-800">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 rounded font-mono text-xs bg-white hover:bg-neutral-200 text-black font-bold transition disabled:opacity-50"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
             </div>
-          </form>
-        )}
+
+            <div className="flex flex-col">
+              <label className="text-sm text-gray-600 mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+            </div>
+          </section>
+
+          {/* Physical Metrics */}
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider border-b pb-2">
+              Physical Metrics
+            </h2>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">
+                  Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  value={weightKg}
+                  onChange={(e) => setWeightKg(Number(e.target.value))}
+                  placeholder="0"
+                  className="border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">
+                  Height (cm)
+                </label>
+                <input
+                  type="number"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(Number(e.target.value))}
+                  placeholder="0"
+                  className="border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">Age</label>
+                <input
+                  type="number"
+                  value={
+                    birthDate
+                      ? new Date().getFullYear() - birthDate.getFullYear()
+                      : ""
+                  }
+                  onChange={(e) => setBirthDate(new Date(e.target.value))}
+                  placeholder="0"
+                  className="border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">Sex</label>
+                <select
+                  value={gender}
+                  onChange={(e) =>
+                    setGender(e.target.value as "male" | "female")
+                  }
+                  className="border border-gray-300 p-2 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500 outline-none"
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Static Units Display */}
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md border border-gray-200 mt-2">
+              <span className="text-sm text-gray-600 font-medium">
+                Preferred Units
+              </span>
+              <span className="text-sm text-gray-500">kg, cm, cal, km, ml</span>
+            </div>
+          </section>
+
+          {/* Goals & Activity */}
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider border-b pb-2">
+              Goals & Activity
+            </h2>
+
+            <div className="flex flex-col">
+              <label className="text-sm text-gray-600 mb-1">
+                Activity Level
+              </label>
+              <select
+                value={activityLevel}
+                onChange={(e) => setActivityLevel(Number(e.target.value))}
+                className="border border-gray-300 p-2 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500 outline-none"
+              >
+                <option value={1.2}>Sedentary (Little to no exercise)</option>
+                <option value={1.375}>Lightly Active (1-3 days/week)</option>
+                <option value={1.55}>Moderately Active (3-5 days/week)</option>
+                <option value={1.725}>Very Active (6-7 days/week)</option>
+              </select>
+            </div>
+          </section>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="border-t border-gray-200 p-4 bg-gray-50 flex justify-end gap-3 shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => handleSave(false)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium shadow-sm"
+          >
+            Save Changes
+          </button>
+          <button
+            onClick={() => handleSave(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium shadow-sm"
+          >
+            Auto-Calculate Goals
+          </button>
+        </div>
       </div>
     </div>
   );

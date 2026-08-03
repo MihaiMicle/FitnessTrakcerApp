@@ -9,14 +9,14 @@ import { MEAL_TYPES, MEAL_TYPE_LABELS } from "@/lib/constants";
 import MacroGoals from "@/components/dashboard/MacroGoals";
 import MealGroup from "@/components/dashboard/MealGroup";
 import LogMealModal from "@/components/meals/LogMealModal";
-import ProfileModal from "@/components/dashboard/ProfileModal";
+import GoalsModal from "@/components/dashboard/GoalsModal";
 
 export default function Dashboard() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // <-- 1. Added Profile Modal State
+  const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
 
   const TODAY = new Date().toISOString().split("T")[0];
 
@@ -82,7 +82,7 @@ export default function Dashboard() {
 
               {/* Goals Trigger Button */}
               <button
-                onClick={() => setIsProfileModalOpen(true)}
+                onClick={() => setIsGoalsModalOpen(true)}
                 className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
               >
                 Goals
@@ -130,10 +130,10 @@ export default function Dashboard() {
         onAddMeal={addMeal}
       />
 
-      {/* Rendered the Profile Modal */}
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
+      {/* Rendered the Goals Modal */}
+      <GoalsModal
+        isOpen={isGoalsModalOpen}
+        onClose={() => setIsGoalsModalOpen(false)}
         onUpdateSuccess={() => {
           if (refreshLog) refreshLog();
         }}
