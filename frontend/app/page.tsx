@@ -10,6 +10,7 @@ import MacroGoals from "@/components/dashboard/MacroGoals";
 import MealGroup from "@/components/dashboard/MealGroup";
 import LogMealModal from "@/components/meals/LogMealModal";
 import GoalsModal from "@/components/dashboard/GoalsModal";
+import ProfileModal from "@/components/dashboard/ProfileModal";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -17,7 +18,8 @@ export default function Dashboard() {
   const [authLoading, setAuthLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
-
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
   const TODAY = new Date().toISOString().split("T")[0];
 
   // If session is null, pass "" so useDailyLog stays dormant until authenticated!
@@ -30,16 +32,35 @@ export default function Dashboard() {
   } = useDailyLog(session ? TODAY : "");
 
   useEffect(() => {
+    // Create a helper to fetch the profile on load
+    const fetchDashboardProfile = async (token: string) => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.avatar_url) setAvatarUrl(data.avatar_url);
+        }
+      } catch (err) {
+        console.error("Failed to load initial avatar", err);
+      }
+    };
+
+    // Call it when session initializes
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
+      if (session) fetchDashboardProfile(session.access_token);
     });
 
+    // Call it on auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setAuthLoading(false);
+      if (session) fetchDashboardProfile(session.access_token);
     });
 
     return () => subscription.unsubscribe();
@@ -68,43 +89,66 @@ export default function Dashboard() {
     );
   }
 
-  console.log("Current Daily Log Payload:", dailyLog);
-
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100 p-6 md:p-12 relative">
       <div className="max-w-4xl mx-auto space-y-8">
-        <header className="border-b border-neutral-800 pb-6 flex justify-between items-end">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">
-                Daily Nutrition Dashboard
-              </h1>
+        
+        {/* HEADER SECTION */}
+        <header className="border-b border-neutral-800 pb-6 flex justify-between items-center">
+          
+          {/* Avatar + Title block */}
+          <div className="flex items-center gap-4">
+            
+            {/* Profile Button */}
+            <button 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="flex-shrink-0 w-12 h-12 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 overflow-hidden shadow-md"
+              title="Open Profile Settings"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <svg className="w-6 h-6 text-neutral-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
 
-              {/* Goals Trigger Button */}
-              <button
-                onClick={() => setIsGoalsModalOpen(true)}
-                className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
-              >
-                Goals
-              </button>
+            {/* Title & Secondary Buttons */}
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-3xl font-bold tracking-tight">
+                  Daily Nutrition Dashboard
+                </h1>
 
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
-              >
-                Sign Out
-              </button>
+                <button
+                  onClick={() => setIsGoalsModalOpen(true)}
+                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
+                >
+                  Goals
+                </button>
+
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+              <p className="text-neutral-400 text-sm">Date: {TODAY}</p>
             </div>
-            <p className="text-neutral-400 text-sm mt-1">Date: {TODAY}</p>
           </div>
+
+          {/* Log Meal */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm h-fit"
           >
             <span>+</span> Log Meal
           </button>
         </header>
 
+        {/* DASHBOARD CONTENT */}
         <MacroGoals summary={dailyLog} />
 
         <div className="space-y-6 mt-8">
@@ -124,19 +168,25 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* MODALS */}
       <LogMealModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddMeal={addMeal}
       />
 
-      {/* Rendered the Goals Modal */}
       <GoalsModal
         isOpen={isGoalsModalOpen}
         onClose={() => setIsGoalsModalOpen(false)}
         onUpdateSuccess={() => {
           if (refreshLog) refreshLog();
         }}
+      />
+
+      <ProfileModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)}
+        onProfileUpdate={(newUrl) => setAvatarUrl(newUrl)} 
       />
     </main>
   );

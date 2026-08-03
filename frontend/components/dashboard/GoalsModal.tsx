@@ -61,16 +61,14 @@ export default function GoalsModal({
         return;
       }
 
+      // We only explicitly sanitize the targets here, as physical metrics 
+      // are handled and sanitized exclusively by the ProfileModal.
       const sanitizedProfile = {
         ...profile,
-        weight_kg: Number(profile.weight_kg) || 0,
-        height_cm: Number(profile.height_cm) || 0,
-        age: Number(profile.age) || 0,
         target_calories: Number(profile.target_calories) || 0,
         target_protein_g: Number(profile.target_protein_g) || 0,
         target_carbs_g: Number(profile.target_carbs_g) || 0,
         target_fats_g: Number(profile.target_fats_g) || 0,
-        activity_level: Number(profile.activity_level) || 1.2,
       };
 
       await updateProfile(token, sanitizedProfile);
@@ -86,50 +84,51 @@ export default function GoalsModal({
   };
 
   const handleRecalculate = async () => {
-  if (!profile) return;
+    if (!profile) return;
 
-  try {
-    setSaving(true);
+    try {
+      setSaving(true);
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const token = session?.access_token;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-    if (!token) {
-      console.error("No active authentication token found!");
-      return;
+      if (!token) {
+        console.error("No active authentication token found!");
+        return;
+      }
+
+      // Save the current state (specifically the goal_type) before calculating
+      // so the backend knows whether to calculate a bulk, cut, or maintenance.
+      const sanitizedProfile = {
+        ...profile,
+        target_calories: Number(profile.target_calories) || 0,
+        target_protein_g: Number(profile.target_protein_g) || 0,
+        target_carbs_g: Number(profile.target_carbs_g) || 0,
+        target_fats_g: Number(profile.target_fats_g) || 0,
+      };
+
+      await updateProfile(token, sanitizedProfile);
+
+      // Trigger the backend auto-calculate function. 
+      // It will pull weight/height/activity directly from the DB.
+      const updated = await recalculateGoals(token);
+
+      setProfile(updated);
+      if (onUpdateSuccess) onUpdateSuccess();
+    } catch (error) {
+      console.error("Failed to auto-calculate and save:", error);
+      alert("Failed to recalculate. Ensure your physical metrics are filled out in the Profile Settings.");
+    } finally {
+      setSaving(false);
     }
-
-    const sanitizedProfile = {
-      ...profile,
-      weight_kg: Number(profile.weight_kg) || 0,
-      height_cm: Number(profile.height_cm) || 0,
-      age: Number(profile.age) || 0,
-      target_calories: Number(profile.target_calories) || 0,
-      target_protein_g: Number(profile.target_protein_g) || 0,
-      target_carbs_g: Number(profile.target_carbs_g) || 0,
-      target_fats_g: Number(profile.target_fats_g) || 0,
-      activity_level: Number(profile.activity_level) || 1.2,
-    };
-
-    await updateProfile(token, sanitizedProfile);
-
-    const updated = await recalculateGoals(token);
-
-    setProfile(updated);
-    if (onUpdateSuccess) onUpdateSuccess();
-  } catch (error) {
-    console.error("Failed to auto-calculate and save:", error);
-    alert("Failed to recalculate. Please check your inputs.");
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-2xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
+        
         {/* Header & Close Button */}
         <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
           <h2 className="text-lg font-bold font-mono tracking-wider">GOALS</h2>
@@ -137,7 +136,7 @@ export default function GoalsModal({
             onClick={onClose}
             className="text-neutral-400 hover:text-white font-mono text-sm px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition"
           >
-            ✕ ESC
+            ✕
           </button>
         </div>
 
@@ -148,116 +147,27 @@ export default function GoalsModal({
         ) : (
           <form
             onSubmit={handleSave}
-            className="space-y-6 max-h-[70vh] overflow-y-auto pr-2"
+            className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar"
           >
-            {/* Physical Measures Section */}
+            {/* Strategy Section */}
             <div className="space-y-3">
               <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-                Physical Measures
+                Strategy
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Weight (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={profile.weight_kg ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "weight_kg",
-                        e.target.value === "" ? "" : parseFloat(e.target.value)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Height (cm)
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.height_cm ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "height_cm",
-                        e.target.value === "" ? "" : parseFloat(e.target.value)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Age
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.age ?? ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "age",
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Gender
-                  </label>
-                  <select
-                    value={profile.gender}
-                    onChange={(e) => handleChange("gender", e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Activity Level
-                  </label>
-                  <select
-                    value={profile.activity_level}
-                    onChange={(e) =>
-                      handleChange("activity_level", parseFloat(e.target.value))
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  >
-                    <option value={1.2}>Sedentary (Little workout)</option>
-                    <option value={1.375}>
-                      Lightly Active (1-3 days/week)
-                    </option>
-                    <option value={1.55}>
-                      Moderately Active (3-5 days/week)
-                    </option>
-                    <option value={1.725}>
-                      Very Active (6-7 days hard training)
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Current Goal
-                  </label>
-                  <select
-                    value={profile.goal_type}
-                    onChange={(e) => handleChange("goal_type", e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600"
-                  >
-                    <option value="cut">Cut (-300 kcal deficit)</option>
-                    <option value="maintain">Maintain (TDEE)</option>
-                    <option value="bulk">Bulk (+300 kcal surplus)</option>
-                  </select>
-                </div>
+              
+              <div>
+                <label className="block text-xs font-mono text-neutral-400 mb-1">
+                  Current Goal
+                </label>
+                <select
+                  value={profile.goal_type || "maintain"}
+                  onChange={(e) => handleChange("goal_type", e.target.value)}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white"
+                >
+                  <option value="cut">Cut (-300 kcal deficit)</option>
+                  <option value="maintain">Maintain</option>
+                  <option value="bulk">Bulk (+300 kcal surplus)</option>
+                </select>
               </div>
             </div>
 
@@ -306,7 +216,7 @@ export default function GoalsModal({
                         e.target.value === "" ? "" : parseInt(e.target.value, 10)
                       )
                     }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-blue-500"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-blue-500 text-white"
                   />
                 </div>
                 <div>
@@ -322,7 +232,7 @@ export default function GoalsModal({
                         e.target.value === "" ? "" : parseInt(e.target.value, 10)
                       )
                     }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-amber-500 text-white"
                   />
                 </div>
                 <div>
@@ -338,10 +248,11 @@ export default function GoalsModal({
                         e.target.value === "" ? "" : parseInt(e.target.value, 10)
                       )
                     }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-rose-500"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-rose-500 text-white"
                   />
                 </div>
               </div>
+              
               <details className="mt-2.5 text-xs text-neutral-400 group">
                 <summary className="cursor-pointer leading-relaxed hover:text-neutral-300 transition-colors list-none [&::-webkit-details-marker]:hidden flex items-start justify-between gap-2 select-none">
                   <span>
@@ -372,7 +283,7 @@ export default function GoalsModal({
                   {/* 1. Sedentary Adults */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Sedentary Adults (Low Activity / Desk Job)
+                      Sedentary Adults (Low Activity / Desk Job)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
                       Focus: Meeting baseline physiological needs without
@@ -403,7 +314,7 @@ export default function GoalsModal({
                   {/* 2. Fitness Enthusiasts */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Fitness Enthusiasts (Moderate Exercise, 3–5
+                      Fitness Enthusiasts (Moderate Exercise, 3–5
                       days/week)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
@@ -436,7 +347,7 @@ export default function GoalsModal({
                   {/* 3. Strength Athletes & Bodybuilders */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Strength Athletes & Bodybuilders (High
+                      Strength Athletes & Bodybuilders (High
                       Intensity / Muscle Gain)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
@@ -469,7 +380,7 @@ export default function GoalsModal({
                   {/* 4. Endurance Athletes */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> Endurance Athletes (Runners, Cyclists,
+                      Endurance Athletes (Runners, Cyclists,
                       Triathletes)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
@@ -502,7 +413,7 @@ export default function GoalsModal({
                   {/* 5. Fat Loss Phase */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      <span></span> 5. Individuals in a Fat Loss Phase (Calorie
+                      5. Individuals in a Fat Loss Phase (Calorie
                       Deficit)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
@@ -548,7 +459,7 @@ export default function GoalsModal({
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 rounded font-mono text-xs bg-white hover:bg-neutral-200 text-black font-bold transition disabled:opacity-50"
+                className="px-4 py-2 rounded font-mono text-xs bg-white hover:bg-neutral-200 text-black font-bold transition disabled:opacity-50 shadow-[0_0_15px_rgba(255,255,255,0.1)]"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </button>

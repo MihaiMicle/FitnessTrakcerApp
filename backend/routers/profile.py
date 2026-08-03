@@ -96,6 +96,8 @@ def update_my_profile(
         "last_name",
         "gender",
         "age",
+        "birth_date",
+        "avatar_url",
         "height_cm",
         "weight_kg",
         "activity_level",

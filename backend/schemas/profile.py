@@ -1,3 +1,4 @@
+from datetime import date
 from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
@@ -8,6 +9,7 @@ class ProfileUpdateRequest(BaseModel):
     last_name: Optional[str] = None
     gender: Optional[str] = Field(None, pattern="^(male|female)$")
     age: Optional[int] = Field(None, gt=0, lt=120)
+    birth_date: Optional[date] = None
     height_cm: Optional[float] = Field(None, gt=50, lt=300)
     weight_kg: Optional[float] = Field(None, gt=20, lt=400)
     activity_level: Optional[float] = Field(None, ge=1.0, le=3.0)
@@ -20,7 +22,7 @@ class ProfileUpdateRequest(BaseModel):
     target_fats_g: Optional[int] = Field(None, gt=0, lt=500)
 
     auto_calculate: bool = False
-    
+
     avatar_url: Optional[str] = None
 
 
@@ -31,10 +33,12 @@ class UserProfileResponse(BaseModel):
     last_name: Optional[str] = None
     gender: Optional[str] = None
     age: Optional[int] = None
+    birth_date: Optional[date] = None
     height_cm: Optional[float] = None
     weight_kg: Optional[float] = None
     activity_level: Optional[float] = None
     goal_type: Optional[str] = None
+    avatar_url: Optional[str] = None
 
     target_calories: Optional[int] = None
     target_protein_g: Optional[int] = None

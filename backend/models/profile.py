@@ -23,6 +23,7 @@ class UserProfile(Base):
     gender = Column(String, default="male")
     activity_level = Column(Float, default=1.2)
     goal_type = Column("primary_goal", String, default="maintain")
+    avatar_url = Column(String, nullable=True, default="")
 
     target_calories = Column(Integer, default=2500)
     target_protein_g = Column(Integer, default=165)
