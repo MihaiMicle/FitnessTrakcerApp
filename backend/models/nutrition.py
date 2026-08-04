@@ -13,9 +13,14 @@ class DailyLog(Base):
     date = Column(Date, nullable=False)
 
     total_calories = Column(Integer, default=0)
-    total_protein_g = Column(Integer, default=0)
-    total_carbs_g = Column(Integer, default=0)
-    total_fats_g = Column(Integer, default=0)
+    total_protein_g = Column(Float, default=0.0)
+    total_carbs_g = Column(Float, default=0.0)
+    total_fats_g = Column(Float, default=0.0)
+    total_saturated_fats_g = Column(Float, default=0.0)
+    total_fiber_g = Column(Float, default=0.0)
+    total_sugar_g = Column(Float, default=0.0)
+    total_potassium_mg = Column(Float, default=0.0)
+    total_sodium_mg = Column(Float, default=0.0)
 
 
 class Meal(Base):
@@ -31,6 +36,11 @@ class Meal(Base):
     protein_g = Column(Float, default=0.0)
     carbs_g = Column(Float, default=0.0)
     fats_g = Column(Float, default=0.0)
+    saturated_fats_g = Column(Float, default=0.0)
+    fiber_g = Column(Float, default=0.0)
+    sugar_g = Column(Float, default=0.0)
+    potassium_mg = Column(Float, default=0.0)
+    sodium_mg = Column(Float, default=0.0)
     serving_size = Column(Float, default=0.0)
     serving_unit = Column(String, default="g")
 

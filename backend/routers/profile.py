@@ -54,8 +54,17 @@ def calculate_mifflin_st_jeor(
     # Carbs: Remainder of calories (4 kcal per gram)
     remaining_calories = target_calories - ((target_protein * 4) + (target_fats * 9))
     target_carbs = max(int(remaining_calories / 4), 0)
+    target_sugar=round(target_carbs * 0.10, 1) # ~10% of carbs from sugar
+    target_fiber=round(target_carbs * 0.14, 1) # ~14% of carbs from fiber
+    target_saturated_fats=round(target_fats * 0.25, 1) # max ~25% of fats from saturated fats
+    if activity_level >= 1.55:
+        target_sodium = 3500.0     # Active / Heavy Training Target
+        target_potassium = 4500.0  # Active / Heavy Training Target
+    else:
+        target_sodium = 2300.0     # Daily Baseline Target
+        target_potassium = 4000.0  # Daily Baseline Target
 
-    return target_calories, target_protein, target_carbs, target_fats
+    return target_calories, target_protein, target_carbs, target_fats, target_saturated_fats, target_fiber, target_sugar, target_potassium, target_sodium
 
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -122,8 +131,8 @@ def update_my_profile(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot auto-calculate: missing physical metrics (weight, height, age, gender, activity, or goal).",
             )
-
-        cals, p, c, f = calculate_mifflin_st_jeor(
+            
+        cals, p, c, f, sugar, fiber, sat_fats, potassium, sodium = calculate_mifflin_st_jeor(
             profile.weight_kg,
             profile.height_cm,
             profile.age,
@@ -135,16 +144,33 @@ def update_my_profile(
         profile.target_protein_g = p
         profile.target_carbs_g = c
         profile.target_fats_g = f
+        
+        profile.target_sugar_g = sugar
+        profile.target_fiber_g = fiber
+        profile.target_saturated_fats_g = sat_fats
+
+        profile.target_potassium_mg = potassium
+        profile.target_sodium_mg = sodium
+
+
+
     else:
         # Manual overrides take precedence when auto_calculate is False
         if payload.target_calories is not None:
             profile.target_calories = payload.target_calories
         if payload.target_protein_g is not None:
             profile.target_protein_g = payload.target_protein_g
+            
         if payload.target_carbs_g is not None:
             profile.target_carbs_g = payload.target_carbs_g
+            # Automatically adjust sugar and fiber based on manual carbs
+            profile.target_sugar_g = round(payload.target_carbs_g * 0.10, 1)
+            profile.target_fiber_g = round(payload.target_carbs_g * 0.14, 1)
+            
         if payload.target_fats_g is not None:
             profile.target_fats_g = payload.target_fats_g
+            # Automatically adjust saturated fats based on manual fats
+            profile.target_saturated_fats_g = round(payload.target_fats_g * 0.25, 1)
 
     db.commit()
     db.refresh(profile)

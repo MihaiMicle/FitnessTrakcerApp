@@ -26,10 +26,20 @@ export interface DailySummary {
   total_protein_g: number;
   total_carbs_g: number;
   total_fats_g: number;
+  total_saturated_fats_g?: number;
+  total_fiber_g?: number;
+  total_sugar_g?: number;
+  total_potassium_mg?: number;
+  total_sodium_mg?: number;
   target_calories?: number;
   target_protein_g?: number;
   target_carbs_g?: number;
   target_fats_g?: number;
+  target_saturated_fats_g?: number;
+  target_fiber_g?: number;
+  target_sugar_g?: number;
+  target_potassium_mg?: number;
+  target_sodium_mg?: number;
 }
 
 export interface LogMealPayload {

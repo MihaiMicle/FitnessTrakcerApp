@@ -34,6 +34,11 @@ def get_log_by_date(
     t_prot = profile.target_protein_g if profile and profile.target_protein_g else 180
     t_carbs = profile.target_carbs_g if profile and profile.target_carbs_g else 300
     t_fats = profile.target_fats_g if profile and profile.target_fats_g else 70
+    t_sat_fats = profile.target_saturated_fats_g if profile and profile.target_saturated_fats_g else 20
+    t_fiber = profile.target_fiber_g if profile and profile.target_fiber_g else 30
+    t_sugar = profile.target_sugar_g if profile and profile.target_sugar_g else 50
+    t_potassium = profile.target_potassium_mg if profile and profile.target_potassium_mg else 3500
+    t_sodium = profile.target_sodium_mg if profile and profile.target_sodium_mg else 2300
 
     # Fetch today's log entry
     log_entry = (
@@ -53,10 +58,20 @@ def get_log_by_date(
             total_protein_g=0,
             total_carbs_g=0,
             total_fats_g=0,
+            total_saturated_fats_g=0,
+            total_fiber_g=0,
+            total_sugar_g=0,
+            total_potassium_mg=0,
+            total_sodium_mg=0,
             target_calories=t_cals,
             target_protein_g=t_prot,
             target_carbs_g=t_carbs,
             target_fats_g=t_fats,
+            target_saturated_fats_g=t_sat_fats,
+            target_fiber_g=t_fiber,
+            target_sugar_g=t_sugar,
+            target_potassium_mg=t_potassium,
+            target_sodium_mg=t_sodium,
         )
 
     response = DailyLogResponse.model_validate(log_entry)
@@ -65,6 +80,11 @@ def get_log_by_date(
     response.target_protein_g = t_prot
     response.target_carbs_g = t_carbs
     response.target_fats_g = t_fats
+    response.target_saturated_fats_g = t_sat_fats
+    response.target_fiber_g = t_fiber
+    response.target_sugar_g = t_sugar
+    response.target_potassium_mg = t_potassium
+    response.target_sodium_mg = t_sodium
     
     return response
 
@@ -97,6 +117,16 @@ def log_daily_nutrition(
         if payload.total_fats_g is not None:
             existing_log.total_fats_g = payload.total_fats_g
         log_entry = existing_log
+        if payload.total_saturated_fats_g is not None:
+            existing_log.total_saturated_fats_g = payload.total_saturated_fats_g
+        if payload.total_fiber_g is not None:
+            existing_log.total_fiber_g = payload.total_fiber_g
+        if payload.total_sugar_g is not None:
+            existing_log.total_sugar_g = payload.total_sugar_g
+        if payload.total_potassium_mg is not None:
+            existing_log.total_potassium_mg = payload.total_potassium_mg
+        if payload.total_sodium_mg is not None:
+            existing_log.total_sodium_mg = payload.total_sodium_mg
     else:
         log_entry = DailyLog(
             user_id=user_uuid,
@@ -105,6 +135,11 @@ def log_daily_nutrition(
             total_protein_g=payload.total_protein_g or 0,
             total_carbs_g=payload.total_carbs_g or 0,
             total_fats_g=payload.total_fats_g or 0,
+            total_saturated_fats_g=payload.total_saturated_fats_g or 0,
+            total_fiber_g=payload.total_fiber_g or 0,
+            total_sugar_g=payload.total_sugar_g or 0,
+            total_potassium_mg=payload.total_potassium_mg or 0,
+            total_sodium_mg=payload.total_sodium_mg or 0,
         )
         db.add(log_entry)
 
@@ -160,6 +195,11 @@ def create_meal(
             total_protein_g=0,
             total_carbs_g=0,
             total_fats_g=0,
+            total_saturated_fats_g=0,
+            total_fiber_g=0,
+            total_sugar_g=0,
+            total_potassium_mg=0,
+            total_sodium_mg=0,
         )
         db.add(daily_log)
         db.commit()
@@ -174,6 +214,11 @@ def create_meal(
     daily_log.total_protein_g += meal.protein_g
     daily_log.total_carbs_g += meal.carbs_g
     daily_log.total_fats_g += meal.fats_g
+    daily_log.total_saturated_fats_g += meal.saturated_fats_g
+    daily_log.total_fiber_g += meal.fiber_g
+    daily_log.total_sugar_g += meal.sugar_g
+    daily_log.total_potassium_mg += meal.potassium_mg
+    daily_log.total_sodium_mg += meal.sodium_mg
 
     db.commit()
     db.refresh(new_meal)
@@ -218,6 +263,11 @@ def delete_meal(
         log.total_protein_g = max(0.0, log.total_protein_g - meal.protein_g)
         log.total_carbs_g = max(0.0, log.total_carbs_g - meal.carbs_g)
         log.total_fats_g = max(0.0, log.total_fats_g - meal.fats_g)
+        log.total_saturated_fats_g = max(0.0, log.total_saturated_fats_g - meal.saturated_fats_g)
+        log.total_fiber_g = max(0.0, log.total_fiber_g - meal.fiber_g)
+        log.total_sugar_g = max(0.0, log.total_sugar_g - meal.sugar_g)
+        log.total_potassium_mg = max(0.0, log.total_potassium_mg - meal.potassium_mg)
+        log.total_sodium_mg = max(0.0, log.total_sodium_mg - meal.sodium_mg)
 
     # Delete from database and save changes
     db.delete(meal)

@@ -164,9 +164,9 @@ export default function GoalsModal({
                   onChange={(e) => handleChange("goal_type", e.target.value)}
                   className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white"
                 >
-                  <option value="cut">Cut (-300 kcal deficit)</option>
+                  <option value="cut">Fat loss (-300 kcal deficit)</option>
                   <option value="maintain">Maintain</option>
-                  <option value="bulk">Bulk (+300 kcal surplus)</option>
+                  <option value="bulk">Muscle gain (+300 kcal surplus)</option>
                 </select>
               </div>
             </div>

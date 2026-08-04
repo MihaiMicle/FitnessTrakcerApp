@@ -29,6 +29,11 @@ class UserProfile(Base):
     target_protein_g = Column(Integer, default=165)
     target_carbs_g = Column(Integer, default=300)
     target_fats_g = Column(Integer, default=70)
+    target_saturated_fats_g = Column(Integer, default=20)
+    target_fiber_g = Column(Integer, default=30)
+    target_sugar_g = Column(Integer, default=50)
+    target_potassium_mg = Column(Integer, default=3500)
+    target_sodium_mg = Column(Integer, default=2300)
 
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
