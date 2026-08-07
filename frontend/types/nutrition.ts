@@ -14,6 +14,17 @@ export interface MealEntry {
   protein_g: number;
   carbs_g: number;
   fats_g: number;
+  saturated_fats_g?: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  potassium_mg?: number;
+  sodium_mg?: number;
+  iron_mg?: number;
+  vitamin_d_mcg?: number;
+  zinc_mg?: number;
+  magnesium_mg?: number;
+  calcium_mg?: number;
+  cholesterol_mg?: number;
   created_at?: string;
 }
 
@@ -40,6 +51,12 @@ export interface DailySummary {
   target_sugar_g?: number;
   target_potassium_mg?: number;
   target_sodium_mg?: number;
+  target_iron_mg?: number;
+  target_vitamin_d_mcg?: number;
+  target_zinc_mg?: number;
+  target_magnesium_mg?: number;
+  target_calcium_mg?: number;
+  target_cholesterol_mg?: number;
 }
 
 export interface LogMealPayload {
@@ -51,6 +68,41 @@ export interface LogMealPayload {
   protein_g: number;
   carbs_g: number;
   fats_g: number;
+  saturated_fats_g?: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  potassium_mg?: number;
+  sodium_mg?: number;
+  iron_mg?: number;
+  vitamin_d_mcg?: number;
+  zinc_mg?: number;
+  magnesium_mg?: number;
+  calcium_mg?: number;
+  cholesterol_mg?: number;
   date?: string;
+}
 
+export interface CustomFood {
+  id: string;
+  user_id: string | null;
+  name: string;
+  brand?: string;
+  serving_size: number;
+  serving_unit: string;
+  custom_servings?: CustomServing[];
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fats_g: number;
+  saturated_fats_g: number;
+  fiber_g: number;
+  sugar_g: number;
+  potassium_mg: number;
+  sodium_mg: number;
+  iron_mg: number;
+  vitamin_d_mcg: number;
+  zinc_mg: number;
+  magnesium_mg: number;
+  calcium_mg: number;
+  cholesterol_mg: number;
 }

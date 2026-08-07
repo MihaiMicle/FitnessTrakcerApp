@@ -21,6 +21,12 @@ class DailyLog(Base):
     total_sugar_g = Column(Float, default=0.0)
     total_potassium_mg = Column(Float, default=0.0)
     total_sodium_mg = Column(Float, default=0.0)
+    total_iron_mg = Column(Float, default=0.0)
+    total_vitamin_d_mcg = Column(Float, default=0.0)
+    total_zinc_mg = Column(Float, default=0.0)
+    total_magnesium_mg = Column(Float, default=0.0)
+    total_calcium_mg = Column(Float, default=0.0)
+    total_cholesterol_mg = Column(Float, default=0.0)
 
 
 class Meal(Base):
@@ -41,6 +47,12 @@ class Meal(Base):
     sugar_g = Column(Float, default=0.0)
     potassium_mg = Column(Float, default=0.0)
     sodium_mg = Column(Float, default=0.0)
+    iron_mg = Column(Float, default=0.0)
+    vitamin_d_mcg = Column(Float, default=0.0)
+    zinc_mg = Column(Float, default=0.0)
+    magnesium_mg = Column(Float, default=0.0)
+    calcium_mg = Column(Float, default=0.0)
+    cholesterol_mg = Column(Float, default=0.0)
     serving_size = Column(Float, default=0.0)
     serving_unit = Column(String, default="g")
 

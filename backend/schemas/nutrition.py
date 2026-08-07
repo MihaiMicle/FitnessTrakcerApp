@@ -16,6 +16,12 @@ class DailyLogCreate(BaseModel):
     total_sugar_g: Optional[float] = 0.0
     total_potassium_mg: Optional[float] = 0.0
     total_sodium_mg: Optional[float] = 0.0
+    total_iron_mg: Optional[float] = 0.0
+    total_vitamin_d_mcg: Optional[float] = 0.0
+    total_zinc_mg: Optional[float] = 0.0
+    total_magnesium_mg: Optional[float] = 0.0
+    total_calcium_mg: Optional[float] = 0.0
+    total_cholesterol_mg: Optional[float] = 0.0
 
     target_calories: Optional[int] = 2500
     target_protein_g: Optional[float] = 180
@@ -26,6 +32,12 @@ class DailyLogCreate(BaseModel):
     target_sugar_g: Optional[float] = 50
     target_potassium_mg: Optional[float] = 3500
     target_sodium_mg: Optional[float] = 2300
+    target_iron_mg: Optional[float] = 18
+    target_vitamin_d_mcg: Optional[float] = 20
+    target_zinc_mg: Optional[float] = 11
+    target_magnesium_mg: Optional[float] = 400
+    target_calcium_mg: Optional[float] = 1000
+    target_cholesterol_mg: Optional[float] = 300
 
 
 class DailyLogResponse(BaseModel):
@@ -51,6 +63,12 @@ class DailyLogResponse(BaseModel):
     target_sugar_g: float = 0.0
     target_potassium_mg: float = 0.0
     target_sodium_mg: float = 0.0
+    target_iron_mg: float = 0.0
+    target_vitamin_d_mcg: float = 0.0
+    target_zinc_mg: float = 0.0
+    target_magnesium_mg: float = 0.0
+    target_calcium_mg: float = 0.0
+    target_cholesterol_mg: float = 0.0
 
     meals: List["MealResponse"] = []
 
@@ -94,7 +112,24 @@ class MealCreate(BaseModel):
     sodium_mg: float = Field(
         0.0, validation_alias=AliasChoices("sodium_mg", "sodiumMg", "sodium")
     )
-
+    iron_mg: float = Field(
+        0.0, validation_alias=AliasChoices("iron_mg", "ironMg", "iron")
+    )
+    vitamin_d_mcg: float = Field(
+        0.0, validation_alias=AliasChoices("vitamin_d_mcg", "vitaminDmcg", "vitaminD")
+    )
+    zinc_mg: float = Field(
+        0.0, validation_alias=AliasChoices("zinc_mg", "zincMg", "zinc")
+    )
+    magnesium_mg: float = Field(
+        0.0, validation_alias=AliasChoices("magnesium_mg", "magnesiumMg", "magnesium")
+    )
+    calcium_mg: float = Field(
+        0.0, validation_alias=AliasChoices("calcium_mg", "calciumMg", "calcium")
+    )
+    cholesterol_mg: float = Field(
+        0.0, validation_alias=AliasChoices("cholesterol_mg", "cholesterolMg", "cholesterol")
+    )
     serving_size: Optional[float] = Field(
         0.0, validation_alias=AliasChoices("serving_size", "servingSize", "size")
     )

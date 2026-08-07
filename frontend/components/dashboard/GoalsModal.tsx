@@ -132,12 +132,7 @@ export default function GoalsModal({
         {/* Header & Close Button */}
         <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
           <h2 className="text-lg font-bold font-mono tracking-wider">GOALS</h2>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-sm px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="text-neutral-400 hover:text-white font-mono text-sm">✕</button>
         </div>
 
         {loading || !profile ? (

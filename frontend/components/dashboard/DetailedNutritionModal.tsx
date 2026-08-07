@@ -48,12 +48,7 @@ export default function DetailedNutritionModal({
           <h2 className="text-lg font-bold font-mono tracking-wider">
             NUTRITION DETAILS
           </h2>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-sm px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="text-neutral-400 hover:text-white font-mono text-sm">✕</button>
         </div>
 
         {/* Detailed Metrics Grid */}

@@ -280,12 +280,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           <h2 className="text-lg font-bold font-mono tracking-wider">
             PROFILE SETTINGS
           </h2>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-sm px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 transition"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="text-neutral-400 hover:text-white font-mono text-sm">✕</button>
         </div>
 
         {/* Scrollable Content Area */}

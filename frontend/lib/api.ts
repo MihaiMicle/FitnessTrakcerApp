@@ -102,3 +102,55 @@ export async function recalculateGoals(token: string) {
   if (!res.ok) throw new Error("Failed to recalculate goals");
   return res.json();
 }
+
+export async function getCustomFoods(token: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/foods/custom`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch custom foods");
+  return res.json();
+}
+
+export async function getRecentFoods(token: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/foods/recent`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch recent foods");
+  return res.json();
+}
+
+export async function createCustomFood(token: string, payload: any) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/foods/custom`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to save custom food");
+  return res.json();
+}
+
+export async function deleteCustomFood(token: string, foodId: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/foods/custom/${foodId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to delete custom food");
+  return true;
+}
+
+export async function updateCustomFood(token: string, foodId: string, payload: any) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/foods/custom/${foodId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to update custom food");
+  return res.json();
+}

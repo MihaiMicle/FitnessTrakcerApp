@@ -39,6 +39,12 @@ def get_log_by_date(
     t_sugar = profile.target_sugar_g if profile and profile.target_sugar_g else 50
     t_potassium = profile.target_potassium_mg if profile and profile.target_potassium_mg else 3500
     t_sodium = profile.target_sodium_mg if profile and profile.target_sodium_mg else 2300
+    t_iron = profile.target_iron_mg if profile and profile.target_iron_mg else 18
+    t_vitamin_d = profile.target_vitamin_d_mcg if profile and profile.target_vitamin_d_mcg else 20
+    t_zinc = profile.target_zinc_mg if profile and profile.target_zinc_mg else 11
+    t_magnesium = profile.target_magnesium_mg if profile and profile.target_magnesium_mg else 400
+    t_calcium = profile.target_calcium_mg if profile and profile.target_calcium_mg else 1000
+    t_cholesterol = profile.target_cholesterol_mg if profile and profile.target_cholesterol_mg else 300
 
     # Fetch today's log entry
     log_entry = (
@@ -72,6 +78,11 @@ def get_log_by_date(
             target_sugar_g=t_sugar,
             target_potassium_mg=t_potassium,
             target_sodium_mg=t_sodium,
+            target_iron_mg=t_iron,
+            target_vitamin_d_mcg=t_vitamin_d,
+            target_zinc_mg=t_zinc,
+            target_magnesium_mg=t_magnesium,
+            
         )
 
     response = DailyLogResponse.model_validate(log_entry)
@@ -85,7 +96,13 @@ def get_log_by_date(
     response.target_sugar_g = t_sugar
     response.target_potassium_mg = t_potassium
     response.target_sodium_mg = t_sodium
-    
+    response.target_iron_mg = t_iron
+    response.target_vitamin_d_mcg = t_vitamin_d
+    response.target_zinc_mg = t_zinc
+    response.target_magnesium_mg = t_magnesium
+    response.target_calcium_mg = t_calcium
+    response.target_cholesterol_mg = t_cholesterol
+
     return response
 
 @router.post("/log", response_model=DailyLogResponse)
@@ -127,6 +144,18 @@ def log_daily_nutrition(
             existing_log.total_potassium_mg = payload.total_potassium_mg
         if payload.total_sodium_mg is not None:
             existing_log.total_sodium_mg = payload.total_sodium_mg
+        if payload.total_iron_mg is not None:
+            existing_log.total_iron_mg = payload.total_iron_mg
+        if payload.total_vitamin_d_mcg is not None:
+            existing_log.total_vitamin_d_mcg = payload.total_vitamin_d_mcg
+        if payload.total_zinc_mg is not None:
+            existing_log.total_zinc_mg = payload.total_zinc_mg
+        if payload.total_magnesium_mg is not None:
+            existing_log.total_magnesium_mg = payload.total_magnesium_mg
+        if payload.total_calcium_mg is not None:
+            existing_log.total_calcium_mg = payload.total_calcium_mg
+        if payload.total_cholesterol_mg is not None:
+            existing_log.total_cholesterol_mg = payload.total_cholesterol_mg
     else:
         log_entry = DailyLog(
             user_id=user_uuid,
@@ -140,6 +169,12 @@ def log_daily_nutrition(
             total_sugar_g=payload.total_sugar_g or 0,
             total_potassium_mg=payload.total_potassium_mg or 0,
             total_sodium_mg=payload.total_sodium_mg or 0,
+            total_iron_mg=payload.total_iron_mg or 0,
+            total_vitamin_d_mcg=payload.total_vitamin_d_mcg or 0,
+            total_zinc_mg=payload.total_zinc_mg or 0,
+            total_magnesium_mg=payload.total_magnesium_mg or 0,
+            total_calcium_mg=payload.total_calcium_mg or 0,
+            total_cholesterol_mg=payload.total_cholesterol_mg or 0,
         )
         db.add(log_entry)
 
@@ -200,6 +235,12 @@ def create_meal(
             total_sugar_g=0,
             total_potassium_mg=0,
             total_sodium_mg=0,
+            total_iron_mg=0,
+            total_vitamin_d_mcg=0,
+            total_zinc_mg=0,
+            total_magnesium_mg=0,
+            total_calcium_mg=0,
+            total_cholesterol_mg=0,
         )
         db.add(daily_log)
         db.commit()
@@ -219,6 +260,12 @@ def create_meal(
     daily_log.total_sugar_g += meal.sugar_g
     daily_log.total_potassium_mg += meal.potassium_mg
     daily_log.total_sodium_mg += meal.sodium_mg
+    daily_log.total_iron_mg += meal.iron_mg
+    daily_log.total_vitamin_d_mcg += meal.vitamin_d_mcg
+    daily_log.total_zinc_mg += meal.zinc_mg
+    daily_log.total_magnesium_mg += meal.magnesium_mg
+    daily_log.total_calcium_mg += meal.calcium_mg
+    daily_log.total_cholesterol_mg += meal.cholesterol_mg
 
     db.commit()
     db.refresh(new_meal)
@@ -268,6 +315,12 @@ def delete_meal(
         log.total_sugar_g = max(0.0, log.total_sugar_g - meal.sugar_g)
         log.total_potassium_mg = max(0.0, log.total_potassium_mg - meal.potassium_mg)
         log.total_sodium_mg = max(0.0, log.total_sodium_mg - meal.sodium_mg)
+        log.total_iron_mg = max(0.0, log.total_iron_mg - meal.iron_mg)
+        log.total_vitamin_d_mcg = max(0.0, log.total_vitamin_d_mcg - meal.vitamin_d_mcg)
+        log.total_zinc_mg = max(0.0, log.total_zinc_mg - meal.zinc_mg)
+        log.total_magnesium_mg = max(0.0, log.total_magnesium_mg - meal.magnesium_mg)
+        log.total_calcium_mg = max(0.0, log.total_calcium_mg - meal.calcium_mg)
+        log.total_cholesterol_mg = max(0.0, log.total_cholesterol_mg - meal.cholesterol_mg)
 
     # Delete from database and save changes
     db.delete(meal)
