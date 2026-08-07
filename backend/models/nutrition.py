@@ -2,8 +2,8 @@ from sqlalchemy import Column, Integer, Float, String, Date, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
-from core.database import Base
 
+from core.database import Base
 
 class DailyLog(Base):
     __tablename__ = "daily_logs"
@@ -28,7 +28,6 @@ class DailyLog(Base):
     total_calcium_mg = Column(Float, default=0.0)
     total_cholesterol_mg = Column(Float, default=0.0)
 
-
 class Meal(Base):
     __tablename__ = "meals"
 
@@ -36,8 +35,10 @@ class Meal(Base):
     daily_log_id = Column(
         Integer, ForeignKey("daily_logs.id", ondelete="CASCADE"), nullable=False
     )
+
     name = Column(String, nullable=False)
     meal_type = Column(String, nullable=False)
+
     calories = Column(Integer, default=0)
     protein_g = Column(Float, default=0.0)
     carbs_g = Column(Float, default=0.0)
@@ -53,6 +54,7 @@ class Meal(Base):
     magnesium_mg = Column(Float, default=0.0)
     calcium_mg = Column(Float, default=0.0)
     cholesterol_mg = Column(Float, default=0.0)
+    
     serving_size = Column(Float, default=0.0)
     serving_unit = Column(String, default="g")
 

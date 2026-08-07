@@ -4,7 +4,6 @@ from sqlalchemy import or_
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List
 from uuid import UUID
-
 from core.database import get_db
 from core.security import get_current_user
 from models.foods import CustomFood
@@ -34,15 +33,12 @@ def create_custom_food(
     db: Session = Depends(get_db),
 ):
     user_uuid = UUID(current_user_id)
-    
-    # Check if the template already exists in your personal database
     existing_food = db.query(CustomFood).filter(
         CustomFood.user_id == user_uuid,
         CustomFood.name.ilike(food.name)
     ).first()
     
     if existing_food:
-        # Merge the new custom units into the existing list
         existing_servings = existing_food.custom_servings if existing_food.custom_servings else []
         new_servings = food.custom_servings if food.custom_servings else []
         
@@ -51,16 +47,11 @@ def create_custom_food(
             merged_dict[s["description"].lower()] = s
             
         existing_food.custom_servings = list(merged_dict.values())
-        
-        from sqlalchemy.orm.attributes import flag_modified
         flag_modified(existing_food, "custom_servings")
-        
         db.commit()
         db.refresh(existing_food)
         return existing_food
-    
     else:
-        # If it's a brand new food, save it exactly as submitted
         new_food = CustomFood(**food.model_dump(), user_id=user_uuid)
         db.add(new_food)
         db.commit()
@@ -75,7 +66,6 @@ def update_custom_food(
     db: Session = Depends(get_db),
 ):
     user_uuid = UUID(current_user_id)
-    
     existing_food = db.query(CustomFood).filter(
         CustomFood.id == food_id, 
         CustomFood.user_id == user_uuid
@@ -92,8 +82,8 @@ def update_custom_food(
         merged_dict[s["description"].lower()] = s
         
     existing_food.custom_servings = list(merged_dict.values())
-    flag_modified(existing_food, "custom_servings") # Force PostgreSQL to save JSON array
-        
+    flag_modified(existing_food, "custom_servings")
+    
     existing_food.name = food.name
     existing_food.serving_size = food.serving_size
     existing_food.serving_unit = food.serving_unit
@@ -112,7 +102,6 @@ def update_custom_food(
     existing_food.magnesium_mg = food.magnesium_mg
     existing_food.calcium_mg = food.calcium_mg
     existing_food.cholesterol_mg = food.cholesterol_mg
-    
     
     db.commit()
     db.refresh(existing_food)

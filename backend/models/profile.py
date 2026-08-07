@@ -3,10 +3,8 @@ from sqlalchemy import Column, Float, Integer, String, DateTime, Date
 from sqlalchemy.sql import func
 from core.database import Base
 
-
 class UserProfile(Base):
     __tablename__ = "user_profiles"
-
     user_id = Column("id", String, primary_key=True, index=True)
 
     @property
@@ -34,6 +32,12 @@ class UserProfile(Base):
     target_sugar_g = Column(Integer, default=50)
     target_potassium_mg = Column(Integer, default=3500)
     target_sodium_mg = Column(Integer, default=2300)
+    target_iron_mg = Column(Float, default=8.0)
+    target_vitamin_d_mcg = Column(Float, default=25.0)
+    target_zinc_mg = Column(Float, default=11.0)
+    target_magnesium_mg = Column(Float, default=400.0)
+    target_calcium_mg = Column(Float, default=1200.0)
+    target_cholesterol_mg = Column(Float, default=300.0)
 
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()

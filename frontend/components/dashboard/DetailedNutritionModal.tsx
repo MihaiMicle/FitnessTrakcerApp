@@ -24,6 +24,12 @@ export default function DetailedNutritionModal({
     sugar: dailyLog?.total_sugar_g || 0,
     potassium: dailyLog?.total_potassium_mg || 0,
     sodium: dailyLog?.total_sodium_mg || 0,
+    iron: dailyLog?.total_iron_mg || 0,
+    zinc: dailyLog?.total_zinc_mg || 0,
+    magnesium: dailyLog?.total_magnesium_mg || 0,
+    calcium: dailyLog?.total_calcium_mg || 0,
+    vitamin_d: dailyLog?.total_vitamin_d_mcg || 0,
+    cholesterol: dailyLog?.total_cholesterol_mg || 0,
   };
 
   // Extract daily targets
@@ -37,6 +43,12 @@ export default function DetailedNutritionModal({
     sugar: dailyLog?.target_sugar_g || 0,
     potassium: dailyLog?.target_potassium_mg || 0,
     sodium: dailyLog?.target_sodium_mg || 0,
+    iron: dailyLog?.target_iron_mg || 0,
+    zinc: dailyLog?.target_zinc_mg || 0,
+    magnesium: dailyLog?.target_magnesium_mg || 0,
+    calcium: dailyLog?.target_calcium_mg || 0,
+    vitamin_d: dailyLog?.target_vitamin_d_mcg || 0,
+    cholesterol: dailyLog?.target_cholesterol_mg || 0,
   };
 
   return (
@@ -138,8 +150,57 @@ export default function DetailedNutritionModal({
                 <span className="text-neutral-500"> / {targets.sodium}mg</span>
               </div>
             </div>
-          </div>
-        </div>
+
+            <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
+              <span className="text-sm font-mono text-neutral-300">Iron</span>
+              <div className="text-sm font-mono">
+                <span className="font-bold text-red-400">{details.iron}mg</span>
+                <span className="text-neutral-500"> / {targets.iron}mg</span>
+              </div>
+            </div>
+
+            <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
+              <span className="text-sm font-mono text-neutral-300">Zinc</span>
+              <div className="text-sm font-mono">
+                <span className="font-bold text-yellow-400">{details.zinc}mg</span>
+                <span className="text-neutral-500"> / {targets.zinc}mg</span>
+              </div>
+            </div>
+
+            <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
+              <span className="text-sm font-mono text-neutral-300">Magnesium</span>
+              <div className="text-sm font-mono">
+                <span className="font-bold text-green-400">{details.magnesium}mg</span>
+                <span className="text-neutral-500"> / {targets.magnesium}mg</span>
+              </div>
+            </div>
+
+            <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
+              <span className="text-sm font-mono text-neutral-300">Calcium</span>
+              <div className="text-sm font-mono">
+                <span className="font-bold text-cyan-400">{details.calcium}mg</span>
+                <span className="text-neutral-500"> / {targets.calcium}mg</span>
+              </div>
+            </div>
+
+            <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
+              <span className="text-sm font-mono text-neutral-300">Vitamin D</span>
+              <div className="text-sm font-mono">
+                <span className="font-bold text-indigo-400">{details.vitamin_d}mcg</span>
+                <span className="text-neutral-500"> / {targets.vitamin_d}mcg</span>
+              </div>
+            </div>
+
+            <div className="bg-neutral-95₀ border border-neutral-8₀ rounded p-3 flex justify-between items-center">
+              <span className="text-sm font-mono text-neutral-3₀">Cholesterol</ span >
+              < div className = "text-sm font-mono" >
+                < span className = "font-bold text-pink -4  ₀" >{details.cholesterol}mg</ span >
+                < span className = "text-neutr al -5  ₀" > / {targets.cholesterol}mg</ span >
+              </ div >
+            </ div >
+
+          </ div >
+        </ div >
 
         {/* Action Button */}
         <div className="mt-6 flex justify-end">
