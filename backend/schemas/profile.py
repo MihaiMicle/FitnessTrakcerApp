@@ -14,12 +14,13 @@ class ProfileUpdateRequest(BaseModel):
     activity_level: Optional[float] = Field(None, ge=1.0, le=3.0)
     goal_type: Optional[str] = Field(None, pattern="^(cut|maintain|bulk)$")
     
-    # Custom Macro Target Overrides
+    # Custom Macro Target Overrides (These remain editable)
     target_calories: Optional[int] = Field(None, gt=500, lt=10000)
     target_protein_g: Optional[int] = Field(None, gt=0, lt=1000)
     target_carbs_g: Optional[int] = Field(None, gt=0, lt=1500)
     target_fats_g: Optional[int] = Field(None, gt=0, lt=500)
-
+    target_water_ml: Optional[int] = Field(None, ge=0)
+    
     auto_calculate: bool = False
     avatar_url: Optional[str] = None
 
@@ -52,6 +53,7 @@ class UserProfileResponse(BaseModel):
     target_magnesium_mg: Optional[float] = None
     target_calcium_mg: Optional[float] = None
     target_cholesterol_mg: Optional[float] = None
+    target_water_ml: Optional[int] = None
 
     class Config:
         from_attributes = True

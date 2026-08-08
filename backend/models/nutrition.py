@@ -27,6 +27,7 @@ class DailyLog(Base):
     total_magnesium_mg = Column(Float, default=0.0)
     total_calcium_mg = Column(Float, default=0.0)
     total_cholesterol_mg = Column(Float, default=0.0)
+    total_water_ml = Column(Integer, default=0)
 
 class Meal(Base):
     __tablename__ = "meals"

@@ -60,12 +60,16 @@ def calculate_mifflin_st_jeor(
     target_sugar = round(target_carbs * 0.10, 1) # ~10% of carbs from sugar
     target_fiber = round(target_carbs * 0.14, 1) # ~14% of carbs from fiber
     target_saturated_fats = round(target_fats * 0.25, 1) # max ~25% of fats from saturated fats
-
+    
+    # App-Calculated Micro Baselines
     target_iron = 8.0
     target_zinc = 11.0
     target_calcium = 1200.0
     target_vitamin_d = 25.0
     target_cholesterol = 300.0
+    
+    # Dynamic Water Calculation (Bodyweight in kg x 35ml)
+    target_water = int(weight_kg * 35)
     
     if activity_level >= 1.55:
         target_sodium = 3500.0     # Active / Heavy Training Target
@@ -75,12 +79,12 @@ def calculate_mifflin_st_jeor(
         target_sodium = 2300.0     # Daily Baseline Target
         target_potassium = 4000.0  # Daily Baseline Target
         target_magnesium = 350.0   # Daily Baseline Target
-
+        
     return (
         target_calories, target_protein, target_carbs, target_fats, 
         target_saturated_fats, target_fiber, target_sugar, 
         target_potassium, target_sodium, target_iron, target_zinc, 
-        target_magnesium, target_calcium, target_vitamin_d, target_cholesterol
+        target_magnesium, target_calcium, target_vitamin_d, target_cholesterol, target_water
     )
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -135,7 +139,7 @@ def update_my_profile(
                 detail="Cannot auto-calculate: missing physical metrics (weight, height, age, gender, activity, or goal).",
             )
             
-        cals, p, c, f, sugar, fiber, sat_fats, potassium, sodium, iron, zinc, magnesium, calcium, vitamin_d, cholesterol = calculate_mifflin_st_jeor(
+        cals, p, c, f, sat_fats, fiber, sugar, potassium, sodium, iron, zinc, mag, calcium, vit_d, chol, water = calculate_mifflin_st_jeor(
             profile.weight_kg, profile.height_cm, profile.age,
             profile.gender, profile.activity_level, profile.goal_type,
         )
@@ -151,10 +155,11 @@ def update_my_profile(
         profile.target_sodium_mg = sodium
         profile.target_iron_mg = iron
         profile.target_zinc_mg = zinc
-        profile.target_magnesium_mg = magnesium
+        profile.target_magnesium_mg = mag
         profile.target_calcium_mg = calcium
-        profile.target_vitamin_d_mcg = vitamin_d
-        profile.target_cholesterol_mg = cholesterol
+        profile.target_vitamin_d_mcg = vit_d
+        profile.target_cholesterol_mg = chol
+        profile.target_water_ml = water
     else:
         # Manual overrides take precedence when auto_calculate is False
         if payload.target_calories is not None: 
@@ -170,6 +175,8 @@ def update_my_profile(
             profile.target_fats_g = payload.target_fats_g
             # Automatically adjust saturated fats based on manual fats
             profile.target_saturated_fats_g = round(payload.target_fats_g * 0.25, 1)
+        if payload.target_water_ml is not None:
+            profile.target_water_ml = payload.target_water_ml
             
     db.commit()
     db.refresh(profile)

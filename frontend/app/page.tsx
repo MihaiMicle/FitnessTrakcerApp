@@ -6,11 +6,13 @@ import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import { useDailyLog } from "@/hooks/useDailyLog";
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from "@/lib/constants";
+
 import MacroGoals from "@/components/dashboard/MacroGoals";
 import MealGroup from "@/components/dashboard/MealGroup";
 import LogMealModal from "@/components/meals/LogMealModal";
 import GoalsModal from "@/components/dashboard/GoalsModal";
 import ProfileModal from "@/components/dashboard/ProfileModal";
+import WaterTracker from "@/components/dashboard/WaterTracker";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Dashboard() {
@@ -21,6 +23,7 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
   const [avatarUrl, setAvatarUrl] = useState("");
 
   // Initialize today's date in state instead of a constant
@@ -97,6 +100,7 @@ export default function Dashboard() {
   if (authLoading) {
     return <div className="p-8 text-white font-mono">Checking session...</div>;
   }
+
   if (!session) {
     return null;
   }
@@ -111,7 +115,7 @@ export default function Dashboard() {
             {/* Profile Button */}
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              className="flex-shrink-0 w-12 h-12 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 overflow-hidden shadow-md mt-1"
+              className="flex-shrink-0 w-12 h-12 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center hover:bg-emerald-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 overflow-hidden shadow-md mt-1"
               title="Open Profile Settings"
             >
               {avatarUrl ? (
@@ -143,13 +147,13 @@ export default function Dashboard() {
                 </h1>
                 <button
                   onClick={() => setIsGoalsModalOpen(true)}
-                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
+                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-emerald-500 px-2.5 py-1 rounded transition-colors"
                 >
                   Goals
                 </button>
                 <button
                   onClick={() => supabase.auth.signOut()}
-                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-2.5 py-1 rounded transition-colors"
+                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-emerald-500 px-2.5 py-1 rounded transition-colors"
                 >
                   Sign Out
                 </button>
@@ -160,28 +164,26 @@ export default function Dashboard() {
                 <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-lg p-0.5 shadow-sm">
                   <button
                     onClick={handlePrevDay}
-                    className="text-neutral-500 hover:text-white p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
+                    className="text-neutral-500 hover:text-emerald-400 p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
                     title="Previous Day"
                   >
                     <ChevronLeft size={18} strokeWidth={2.5} />
                   </button>
-
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-transparent border-none px-2 py-1 text-sm text-neutral-300 font-mono focus:outline-none focus:ring-0 [color-scheme:dark] cursor-pointer hover:text-white transition-colors"
+                    className="bg-transparent border-none px-2 py-1 text-sm text-neutral-300 font-mono focus:outline-none focus:ring-0 [color-scheme:dark] cursor-pointer hover:text-emerald-500 transition-colors"
                   />
-
                   <button
                     onClick={handleNextDay}
-                    className="text-neutral-500 hover:text-white p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
+                    className="text-neutral-500 hover:text-emerald-400 p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
                     title="Next Day"
                   >
                     <ChevronRight size={18} strokeWidth={2.5} />
                   </button>
                 </div>
-                
+
                 {selectedDate !== getTodayString() && (
                   <button
                     onClick={handleJumpToToday}
@@ -203,16 +205,25 @@ export default function Dashboard() {
           </button>
         </header>
 
-        {/* DASHBOARD CONTENT */}
+        {/* Dashboard Content */}
         {logLoading ? (
           <div className="py-12 text-center text-neutral-400 font-mono text-sm animate-pulse">
             Loading nutrition data for {selectedDate}...
           </div>
         ) : (
           <>
-            <MacroGoals summary={dailyLog} />
+            <section className="mb-8">
+              <MacroGoals summary={dailyLog} />
 
-            <div className="space-y-6 mt-8">
+              <WaterTracker
+                summary={dailyLog}
+                onWaterUpdated={(updatedLog) => {
+                  refreshLog();
+                }}
+              />
+            </section>
+
+            <section className="space-y-6">
               {MEAL_TYPES.map((type) => {
                 const mealsForCategory = (dailyLog?.meals || []).filter(
                   (m: any) => m.meal_type?.toLowerCase() === type,
@@ -226,18 +237,17 @@ export default function Dashboard() {
                   />
                 );
               })}
-            </div>
+            </section>
           </>
         )}
       </div>
 
-      {/* MODALS */}
+      {/* Modals */}
       <LogMealModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddMeal={addMeal}
       />
-
       <GoalsModal
         isOpen={isGoalsModalOpen}
         onClose={() => setIsGoalsModalOpen(false)}
@@ -245,7 +255,6 @@ export default function Dashboard() {
           if (refreshLog) refreshLog();
         }}
       />
-
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}

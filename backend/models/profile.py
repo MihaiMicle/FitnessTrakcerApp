@@ -38,6 +38,7 @@ class UserProfile(Base):
     target_magnesium_mg = Column(Float, default=400.0)
     target_calcium_mg = Column(Float, default=1200.0)
     target_cholesterol_mg = Column(Float, default=300.0)
+    target_water_ml = Column(Integer, default=3000)
 
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()

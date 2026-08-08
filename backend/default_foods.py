@@ -1780,34 +1780,30 @@ DEFAULT_FOODS = [
     }
 ]
 
-def seed_database():
+def seed_global_foods():
     db = SessionLocal()
     try:
-        print(f"Injecting {len(DEFAULT_FOODS)} global system foods...")
-
-        for food_data in DEFAULT_FOODS:
-            # Check if global food already exists
-            exists = db.query(CustomFood).filter(
-                CustomFood.user_id.is_(None),
-                CustomFood.name == food_data["name"]
-            ).first()
-            
-            if not exists:
-                # Insert without a user_id
-                new_food = CustomFood(**food_data)
-                db.add(new_food)
-                print(f"  [+] Added Global Food: {food_data['name']}")
-            else:
-                print(f"  [-] Skipped: {food_data['name']} (Already exists)")
-        
+        # 1. Safely delete ONLY global foods (where user_id is None)
+        print("Deleting old global foods...")
+        db.query(CustomFood).filter(CustomFood.user_id.is_(None)).delete(synchronize_session=False)
         db.commit()
-        print("\nSuccess! Global foods are now available for all users.")
+
+        # 2. Insert the new master list
+        print(f"Inserting {len(DEFAULT_FOODS)} new global foods...")
+        new_records = []
+        for food_data in DEFAULT_FOODS:
+            new_food = CustomFood(**food_data, user_id=None)
+            new_records.append(new_food)
+            
+        db.add_all(new_records)
+        db.commit()
+        print("Database successfully seeded!")
         
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Error seeding database: {e}")
         db.rollback()
     finally:
         db.close()
 
 if __name__ == "__main__":
-    seed_database()
+    seed_global_foods()

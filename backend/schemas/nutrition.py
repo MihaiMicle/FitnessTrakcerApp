@@ -3,6 +3,10 @@ from typing import Optional, List
 from datetime import date
 from uuid import UUID
 
+class WaterLogRequest(BaseModel):
+    date: date
+    amount_ml: int
+
 # Daily Log Schemas
 class DailyLogCreate(BaseModel):
     date: date
@@ -21,7 +25,8 @@ class DailyLogCreate(BaseModel):
     total_magnesium_mg: Optional[float] = 0.0
     total_calcium_mg: Optional[float] = 0.0
     total_cholesterol_mg: Optional[float] = 0.0
-
+    total_water_ml: Optional[int] = 0
+    
     target_calories: Optional[int] = 2500
     target_protein_g: Optional[float] = 180
     target_carbs_g: Optional[float] = 300
@@ -37,6 +42,7 @@ class DailyLogCreate(BaseModel):
     target_magnesium_mg: Optional[float] = 400.0
     target_calcium_mg: Optional[float] = 1200.0
     target_cholesterol_mg: Optional[float] = 300.0
+    target_water_ml: Optional[int] = 3000
 
 class DailyLogResponse(BaseModel):
     id: int
@@ -57,6 +63,7 @@ class DailyLogResponse(BaseModel):
     total_magnesium_mg: float
     total_calcium_mg: float
     total_cholesterol_mg: float
+    total_water_ml: int
     
     target_calories: int = 0
     target_protein_g: float = 0.0
@@ -73,62 +80,33 @@ class DailyLogResponse(BaseModel):
     target_magnesium_mg: float = 400.0
     target_calcium_mg: float = 1200.0
     target_cholesterol_mg: float = 300.0
-
+    target_water_ml: int = 3000
+    
     meals: List["MealResponse"] = []
     model_config = ConfigDict(from_attributes=True)
 
 # Meal Schemas
 class MealCreate(BaseModel):
     date: date
-    # Automatically accept name, food_name, foodName, meal_name, or food from the frontend
-    name: str = Field(
-        ...,
-        validation_alias=AliasChoices(
-            "name", "food_name", "foodName", "meal_name", "food", "title"
-        ),
-    )
-    meal_type: str = Field(
-        ..., validation_alias=AliasChoices("meal_type", "mealType", "type")
-    )
-
+    name: str = Field(..., validation_alias=AliasChoices("name", "food_name", "foodName", "meal_name", "food", "title"))
+    meal_type: str = Field(..., validation_alias=AliasChoices("meal_type", "mealType", "type"))
     calories: int = 0
-    protein_g: float = Field(
-        0.0, validation_alias=AliasChoices("protein_g", "proteinG", "protein")
-    )
-    carbs_g: float = Field(
-        0.0, validation_alias=AliasChoices("carbs_g", "carbsG", "carbs")
-    )
-    fats_g: float = Field(
-        0.0, validation_alias=AliasChoices("fats_g", "fatsG", "fats", "fat")
-    )
-    saturated_fats_g: float = Field(
-        0.0, validation_alias=AliasChoices("saturated_fats_g", "saturatedFatsG", "saturatedFats")
-    )
-    fiber_g: float = Field(
-        0.0, validation_alias=AliasChoices("fiber_g", "fiberG", "fiber")
-    )
-    sugar_g: float = Field(
-        0.0, validation_alias=AliasChoices("sugar_g", "sugarG", "sugar")
-    )
-    potassium_mg: float = Field(
-        0.0, validation_alias=AliasChoices("potassium_mg", "potassiumMg", "potassium")
-    )
-    sodium_mg: float = Field(
-        0.0, validation_alias=AliasChoices("sodium_mg", "sodiumMg", "sodium")
-    )
+    protein_g: float = Field(0.0, validation_alias=AliasChoices("protein_g", "proteinG", "protein"))
+    carbs_g: float = Field(0.0, validation_alias=AliasChoices("carbs_g", "carbsG", "carbs"))
+    fats_g: float = Field(0.0, validation_alias=AliasChoices("fats_g", "fatsG", "fats", "fat"))
+    saturated_fats_g: float = Field(0.0, validation_alias=AliasChoices("saturated_fats_g", "saturatedFatsG", "saturatedFats"))
+    fiber_g: float = Field(0.0, validation_alias=AliasChoices("fiber_g", "fiberG", "fiber"))
+    sugar_g: float = Field(0.0, validation_alias=AliasChoices("sugar_g", "sugarG", "sugar"))
+    potassium_mg: float = Field(0.0, validation_alias=AliasChoices("potassium_mg", "potassiumMg", "potassium"))
+    sodium_mg: float = Field(0.0, validation_alias=AliasChoices("sodium_mg", "sodiumMg", "sodium"))
     iron_mg: float = 0.0
     vitamin_d_mcg: float = 0.0
     zinc_mg: float = 0.0
     magnesium_mg: float = 0.0
     calcium_mg: float = 0.0
     cholesterol_mg: float = 0.0
-
-    serving_size: Optional[float] = Field(
-        0.0, validation_alias=AliasChoices("serving_size", "servingSize", "size")
-    )
-    serving_unit: Optional[str] = Field(
-        "g", validation_alias=AliasChoices("serving_unit", "servingUnit", "unit")
-    )
+    serving_size: Optional[float] = Field(0.0, validation_alias=AliasChoices("serving_size", "servingSize", "size"))
+    serving_unit: Optional[str] = Field("g", validation_alias=AliasChoices("serving_unit", "servingUnit", "unit"))
 
     class Config:
         populate_by_name = True
@@ -139,7 +117,7 @@ class MealResponse(MealCreate):
     date: Optional[date] = None
     serving_size: Optional[float] = 0.0
     serving_unit: Optional[str] = "g"
-
+    
     @computed_field
     @property
     def food_name(self) -> str:

@@ -41,7 +41,7 @@ export default function MacroGoals({ summary }: MacroGoalsProps) {
   return (
     <>
       <div
-        className="grid grid-cols-1 md:grid-cols-2 gap-4 cursor-pointer hover:ring-1 hover:ring-neutral-700 transition-all rounded-xl"
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 cursor-pointer hover:ring-1 hover:ring-emerald-700 transition-all rounded-xl"
         onClick={() => setIsDetailedModalOpen(true)}
       >
         <div className="bg-neutral-900 p-6 rounded-xl border border-neutral-800 space-y-3">

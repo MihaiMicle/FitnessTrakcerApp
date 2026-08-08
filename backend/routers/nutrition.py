@@ -7,7 +7,7 @@ from uuid import UUID
 from core.database import get_db
 from core.security import get_current_user
 from models.nutrition import DailyLog, Meal
-from schemas.nutrition import DailyLogCreate, DailyLogResponse, MealCreate, MealResponse
+from schemas.nutrition import DailyLogCreate, DailyLogResponse, MealCreate, MealResponse, WaterLogRequest
 from models.profile import UserProfile
 
 router = APIRouter(tags=["Nutrition"])
@@ -36,7 +36,7 @@ def get_log_by_date(
     t_sat_fats = profile.target_saturated_fats_g if profile and profile.target_saturated_fats_g else 20
     t_fiber = profile.target_fiber_g if profile and profile.target_fiber_g else 30
     t_sugar = profile.target_sugar_g if profile and profile.target_sugar_g else 50
-    t_potassium = profile.target_potassium_mg if profile and profile.target_potassium_mg else 3500
+    t_potassium = profile.target_potassium_mg if profile and profile.target_potassium_mg else 4000
     t_sodium = profile.target_sodium_mg if profile and profile.target_sodium_mg else 2300
     t_iron = profile.target_iron_mg if profile and profile.target_iron_mg else 8.0
     t_vitamin_d = profile.target_vitamin_d_mcg if profile and profile.target_vitamin_d_mcg else 25.0
@@ -44,6 +44,7 @@ def get_log_by_date(
     t_magnesium = profile.target_magnesium_mg if profile and profile.target_magnesium_mg else 400.0
     t_calcium = profile.target_calcium_mg if profile and profile.target_calcium_mg else 1200.0
     t_cholesterol = profile.target_cholesterol_mg if profile and profile.target_cholesterol_mg else 300.0
+    t_water = profile.target_water_ml if profile and profile.target_water_ml else 3000
 
     # Fetch today's log entry
     log_entry = (
@@ -57,7 +58,7 @@ def get_log_by_date(
     if not log_entry:
         return DailyLogResponse(
             id=0,
-            user_id=str(user_uuid),
+            user_id=user_uuid,
             date=log_date,
             total_calories=0,
             total_protein_g=0,
@@ -74,6 +75,7 @@ def get_log_by_date(
             total_magnesium_mg=0,
             total_calcium_mg=0,
             total_cholesterol_mg=0,
+            total_water_ml=0,
             target_calories=t_cals,
             target_protein_g=t_prot,
             target_carbs_g=t_carbs,
@@ -88,7 +90,9 @@ def get_log_by_date(
             target_zinc_mg=t_zinc,
             target_magnesium_mg=t_magnesium,
             target_calcium_mg=t_calcium,
-            target_cholesterol_mg=t_cholesterol
+            target_cholesterol_mg=t_cholesterol,
+            target_water_ml=t_water,
+            meals=[]
         )
 
     response = DailyLogResponse.model_validate(log_entry)
@@ -108,6 +112,7 @@ def get_log_by_date(
     response.target_magnesium_mg = t_magnesium
     response.target_calcium_mg = t_calcium
     response.target_cholesterol_mg = t_cholesterol
+    response.target_water_ml = t_water
     
     return response
 
@@ -130,36 +135,22 @@ def log_daily_nutrition(
     )
 
     if existing_log:
-        if payload.total_calories is not None:
-            existing_log.total_calories = payload.total_calories
-        if payload.total_protein_g is not None:
-            existing_log.total_protein_g = payload.total_protein_g
-        if payload.total_carbs_g is not None:
-            existing_log.total_carbs_g = payload.total_carbs_g
-        if payload.total_fats_g is not None:
-            existing_log.total_fats_g = payload.total_fats_g
-        if payload.total_saturated_fats_g is not None:
-            existing_log.total_saturated_fats_g = payload.total_saturated_fats_g
-        if payload.total_fiber_g is not None:
-            existing_log.total_fiber_g = payload.total_fiber_g
-        if payload.total_sugar_g is not None:
-            existing_log.total_sugar_g = payload.total_sugar_g
-        if payload.total_potassium_mg is not None:
-            existing_log.total_potassium_mg = payload.total_potassium_mg
-        if payload.total_sodium_mg is not None:
-            existing_log.total_sodium_mg = payload.total_sodium_mg
-        if payload.total_iron_mg is not None:
-            existing_log.total_iron_mg = payload.total_iron_mg
-        if payload.total_vitamin_d_mcg is not None:
-            existing_log.total_vitamin_d_mcg = payload.total_vitamin_d_mcg
-        if payload.total_zinc_mg is not None:
-            existing_log.total_zinc_mg = payload.total_zinc_mg
-        if payload.total_magnesium_mg is not None:
-            existing_log.total_magnesium_mg = payload.total_magnesium_mg
-        if payload.total_calcium_mg is not None:
-            existing_log.total_calcium_mg = payload.total_calcium_mg
-        if payload.total_cholesterol_mg is not None:
-            existing_log.total_cholesterol_mg = payload.total_cholesterol_mg
+        if payload.total_calories is not None: existing_log.total_calories = payload.total_calories
+        if payload.total_protein_g is not None: existing_log.total_protein_g = payload.total_protein_g
+        if payload.total_carbs_g is not None: existing_log.total_carbs_g = payload.total_carbs_g
+        if payload.total_fats_g is not None: existing_log.total_fats_g = payload.total_fats_g
+        if payload.total_saturated_fats_g is not None: existing_log.total_saturated_fats_g = payload.total_saturated_fats_g
+        if payload.total_fiber_g is not None: existing_log.total_fiber_g = payload.total_fiber_g
+        if payload.total_sugar_g is not None: existing_log.total_sugar_g = payload.total_sugar_g
+        if payload.total_potassium_mg is not None: existing_log.total_potassium_mg = payload.total_potassium_mg
+        if payload.total_sodium_mg is not None: existing_log.total_sodium_mg = payload.total_sodium_mg
+        if payload.total_iron_mg is not None: existing_log.total_iron_mg = payload.total_iron_mg
+        if payload.total_vitamin_d_mcg is not None: existing_log.total_vitamin_d_mcg = payload.total_vitamin_d_mcg
+        if payload.total_zinc_mg is not None: existing_log.total_zinc_mg = payload.total_zinc_mg
+        if payload.total_magnesium_mg is not None: existing_log.total_magnesium_mg = payload.total_magnesium_mg
+        if payload.total_calcium_mg is not None: existing_log.total_calcium_mg = payload.total_calcium_mg
+        if payload.total_cholesterol_mg is not None: existing_log.total_cholesterol_mg = payload.total_cholesterol_mg
+        if payload.total_water_ml is not None: existing_log.total_water_ml = payload.total_water_ml
             
         log_entry = existing_log
     else:
@@ -181,12 +172,45 @@ def log_daily_nutrition(
             total_magnesium_mg=payload.total_magnesium_mg or 0,
             total_calcium_mg=payload.total_calcium_mg or 0,
             total_cholesterol_mg=payload.total_cholesterol_mg or 0,
+            total_water_ml=payload.total_water_ml or 0,
         )
         db.add(log_entry)
         
     db.commit()
     db.refresh(log_entry)
     return log_entry
+
+@router.post("/water", response_model=DailyLogResponse)
+def log_water_intake(
+    payload: WaterLogRequest,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Safely increments the daily water total without touching food macros."""
+    user_uuid = UUID(current_user_id)
+    
+    log_entry = db.query(DailyLog).filter(DailyLog.user_id == user_uuid, DailyLog.date == payload.date).first()
+    
+    if log_entry:
+        log_entry.total_water_ml += payload.amount_ml
+    else:
+        log_entry = DailyLog(
+            user_id=user_uuid,
+            date=payload.date,
+            total_water_ml=payload.amount_ml
+        )
+        db.add(log_entry)
+        
+    db.commit()
+    db.refresh(log_entry)
+    
+    # We still need to attach the target to the response
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_uuid).first()
+    t_water = profile.target_water_ml if profile and profile.target_water_ml else 3000
+    
+    response = DailyLogResponse.model_validate(log_entry)
+    response.target_water_ml = t_water
+    return response
 
 @router.get("/logs", response_model=List[DailyLogResponse])
 def get_nutrition_logs(
@@ -244,6 +268,7 @@ def create_meal(
             total_magnesium_mg=0,
             total_calcium_mg=0,
             total_cholesterol_mg=0,
+            total_water_ml=0,
         )
         db.add(daily_log)
         db.commit()
