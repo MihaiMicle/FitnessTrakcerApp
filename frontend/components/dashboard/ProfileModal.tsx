@@ -6,9 +6,14 @@ import toast from "react-hot-toast";
 interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onProfileUpdate?: (avatarUrl: string) => void;
 }
 
-export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
+export default function ProfileModal({
+  isOpen,
+  onClose,
+  onProfileUpdate,
+}: ProfileModalProps) {
   const router = useRouter();
 
   const [firstName, setFirstName] = useState("");
@@ -23,7 +28,11 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [height, setHeight] = useState<number | "">("");
   const [birthDate, setBirthDate] = useState<string>("");
   const [gender, setGender] = useState<"male" | "female">("male");
+  const [bodyFat, setBodyFat] = useState<number | "">(""); // New Body Fat State
+
   const [activityLevel, setActivityLevel] = useState<number>(1.2);
+  const [goalType, setGoalType] = useState<string>("maintain");
+
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [unitSystem, setUnitSystem] = useState<"metric" | "imperial">("metric");
@@ -42,7 +51,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             setOriginalEmail(session.user.email);
           }
 
-          console.log("Attempting to fetch from:", process.env.NEXT_PUBLIC_API_URL);
           const res = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/profile/me`,
             {
@@ -54,18 +62,16 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
           if (res.ok) {
             const data = await res.json();
-            console.log("Fetched Profile Data:", data); // Check your console to verify the backend payload!
 
             setFirstName(data.first_name || "");
             setLastName(data.last_name || "");
             setWeight(data.weight_kg || "");
             setHeight(data.height_cm || "");
+            if (data.body_fat_percentage) setBodyFat(data.body_fat_percentage);
 
-            // STRICT DATE FORMATTING FOR HTML INPUT
             if (data.birth_date) {
               const dateString = data.birth_date.toString();
               const match = dateString.match(/(\d{4}-\d{2}-\d{2})/);
-
               if (match) {
                 setBirthDate(match[0]);
               } else {
@@ -75,17 +81,12 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   const mm = String(d.getMonth() + 1).padStart(2, "0");
                   const dd = String(d.getDate()).padStart(2, "0");
                   setBirthDate(`${yyyy}-${mm}-${dd}`);
-                } else {
-                  console.error(
-                    "Could not parse birth_date from backend:",
-                    dateString,
-                  );
                 }
               }
             }
-
             if (data.gender) setGender(data.gender);
             if (data.activity_level) setActivityLevel(data.activity_level);
+            if (data.goal_type) setGoalType(data.goal_type);
             if (data.avatar_url) setAvatarUrl(data.avatar_url);
 
             setUnitSystem("metric");
@@ -95,6 +96,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           console.error("Failed to load profile", error);
         }
       };
+
       fetchProfile();
     }
   }, [isOpen]);
@@ -106,7 +108,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       if (!event.target.files || event.target.files.length === 0) {
         return;
       }
-
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -119,7 +120,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `public/${fileName}`;
-
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file);
@@ -129,7 +129,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
       setAvatarUrl(publicUrl);
 
       if (onProfileUpdate) {
@@ -152,7 +151,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
   const handleUnitToggle = (newUnit: "metric" | "imperial") => {
     if (newUnit === unitSystem) return;
-
     if (newUnit === "imperial") {
       setWeight((w) =>
         w === "" ? "" : Number((Number(w) * 2.20462).toFixed(1)),
@@ -182,7 +180,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const handleSave = async () => {
     try {
       setSaving(true);
-
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -197,19 +194,14 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         const authUpdates: { email?: string; password?: string } = {};
         if (email !== originalEmail) authUpdates.email = email;
         if (newPassword) authUpdates.password = newPassword;
-
         const { error: authError } =
           await supabase.auth.updateUser(authUpdates);
-
         if (authError) {
           toast.error(authError.message);
           setSaving(false);
           return;
         }
-
-        // Force UI to grab the newest session data
         await supabase.auth.refreshSession();
-
         if (email !== originalEmail) {
           requireEmailConfirm = true;
         }
@@ -234,7 +226,9 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         age: birthDate ? calculateAge(birthDate) : null,
         gender: gender,
         activity_level: activityLevel,
+        goal_type: goalType,
         avatar_url: avatarUrl,
+        body_fat_percentage: bodyFat === "" ? null : Number(bodyFat), // Sent directly to backend API
       };
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
@@ -256,7 +250,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         } else {
           toast.success("Profile saved successfully!");
         }
-
         onClose();
         router.refresh();
       } else {
@@ -280,7 +273,12 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           <h2 className="text-lg font-bold font-mono tracking-wider">
             PROFILE SETTINGS
           </h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-white font-mono text-sm">✕</button>
+          <button
+            onClick={onClose}
+            className="text-neutral-400 hover:text-white font-mono text-sm"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Scrollable Content Area */}
@@ -336,7 +334,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
                 />
               </div>
               <div>
@@ -347,7 +345,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
                 />
               </div>
             </div>
@@ -361,7 +359,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
                 />
               </div>
               <div>
@@ -373,7 +371,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Leave blank to keep current"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors placeholder:text-neutral-600"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
                 />
               </div>
             </div>
@@ -385,7 +383,8 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               Physical Metrics
             </h3>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Added Body Fat Field to Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-mono text-neutral-400 mb-1">
                   Weight ({unitSystem === "metric" ? "kg" : "lbs"})
@@ -399,7 +398,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
                 />
               </div>
               <div>
@@ -415,7 +414,25 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-neutral-400 mb-1 flex justify-between">
+                  <span>Body Fat %</span>
+                  <span className="text-neutral-500">Optional</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={bodyFat}
+                  onChange={(e) =>
+                    setBodyFat(
+                      e.target.value === "" ? "" : Number(e.target.value),
+                    )
+                  }
+                  placeholder="e.g. 15"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
                 />
               </div>
               <div>
@@ -431,7 +448,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   type="date"
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors [color-scheme:dark]"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors [color-scheme:dark]"
                 />
               </div>
               <div>
@@ -443,7 +460,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   onChange={(e) =>
                     setGender(e.target.value as "male" | "female")
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -478,7 +495,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
               Goals & Activity
             </h3>
-
             <div>
               <label className="block text-xs font-mono text-neutral-400 mb-1">
                 Activity Level
@@ -486,13 +502,37 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               <select
                 value={activityLevel}
                 onChange={(e) => setActivityLevel(Number(e.target.value))}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white transition-colors"
+                className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
               >
                 <option value={1.2}>Sedentary (Little to no exercise)</option>
                 <option value={1.375}>Lightly Active (1-3 days/week)</option>
                 <option value={1.55}>Moderately Active (3-5 days/week)</option>
                 <option value={1.725}>Very Active (6-7 days/week)</option>
               </select>
+
+              {/* Safety Measure for Muscle Gain + Sedentary */}
+              {activityLevel === 1.2 && goalType === "bulk" && (
+                <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-2 text-amber-400 text-xs font-mono animate-in fade-in">
+                  <svg
+                    className="w-4 h-4 shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p>
+                    <strong>Tip:</strong> Your current goal is{" "}
+                    <strong>Muscle Gain</strong>. A sedentary activity level may
+                    lead to excess fat gain instead of muscle.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -505,11 +545,10 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           >
             Cancel
           </button>
-
           <button
             onClick={() => handleSave()}
             disabled={saving}
-            className="px-4 py-2 rounded font-mono text-xs bg-white hover:bg-neutral-200 text-black font-bold transition disabled:opacity-50 text-center shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+            className="px-4 py-2 rounded font-mono text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50 text-center"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>

@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 
+
 class ProfileUpdateRequest(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -13,16 +14,17 @@ class ProfileUpdateRequest(BaseModel):
     weight_kg: Optional[float] = Field(None, gt=20, lt=400)
     activity_level: Optional[float] = Field(None, ge=1.0, le=3.0)
     goal_type: Optional[str] = Field(None, pattern="^(cut|maintain|bulk)$")
-    
-    # Custom Macro Target Overrides (These remain editable)
+    body_fat_percentage: Optional[float] = Field(None, ge=1, le=80)
+
     target_calories: Optional[int] = Field(None, gt=500, lt=10000)
     target_protein_g: Optional[int] = Field(None, gt=0, lt=1000)
     target_carbs_g: Optional[int] = Field(None, gt=0, lt=1500)
     target_fats_g: Optional[int] = Field(None, gt=0, lt=500)
     target_water_ml: Optional[int] = Field(None, ge=0)
-    
+
     auto_calculate: bool = False
     avatar_url: Optional[str] = None
+
 
 class UserProfileResponse(BaseModel):
     id: UUID
@@ -37,7 +39,7 @@ class UserProfileResponse(BaseModel):
     activity_level: Optional[float] = None
     goal_type: Optional[str] = None
     avatar_url: Optional[str] = None
-    
+    body_fat_percentage: Optional[float] = None
     target_calories: Optional[int] = None
     target_protein_g: Optional[int] = None
     target_carbs_g: Optional[int] = None
@@ -54,6 +56,19 @@ class UserProfileResponse(BaseModel):
     target_calcium_mg: Optional[float] = None
     target_cholesterol_mg: Optional[float] = None
     target_water_ml: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class WeightLogCreate(BaseModel):
+    date: date
+    weight_kg: float
+    photo_url: Optional[str] = None
+
+
+class WeightLogResponse(WeightLogCreate):
+    id: UUID
 
     class Config:
         from_attributes = True

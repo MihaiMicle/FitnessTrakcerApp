@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Fitness Tracker | Daily Nutrition Dashboard",
-  description: "Track daily macros, calories, and meal logs powered by FastAPI and Next.js",
+  description:
+    "Track daily macros, calories, and meal logs powered by FastAPI and Next.js",
 };
 
 export default function RootLayout({

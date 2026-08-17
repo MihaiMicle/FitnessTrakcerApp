@@ -50,7 +50,6 @@ export default function GoalsModal({
 
     try {
       setSaving(true);
-
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -61,19 +60,16 @@ export default function GoalsModal({
         return;
       }
 
-      // We only explicitly sanitize the targets here, as physical metrics
-      // are handled and sanitized exclusively by the ProfileModal.
       const sanitizedProfile = {
         ...profile,
         target_calories: Number(profile.target_calories) || 0,
         target_protein_g: Number(profile.target_protein_g) || 0,
         target_carbs_g: Number(profile.target_carbs_g) || 0,
         target_fats_g: Number(profile.target_fats_g) || 0,
-        target_water_ml: Number(profile.target_water_ml) || 3000,
+        target_water_ml: Number(profile.target_water_ml) || 3000, 
       };
 
       await updateProfile(token, sanitizedProfile);
-
       if (onUpdateSuccess) onUpdateSuccess();
       onClose();
     } catch (error) {
@@ -86,10 +82,8 @@ export default function GoalsModal({
 
   const handleRecalculate = async () => {
     if (!profile) return;
-
     try {
       setSaving(true);
-
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -100,29 +94,22 @@ export default function GoalsModal({
         return;
       }
 
-      // Save the current state (specifically the goal_type) before calculating
-      // so the backend knows whether to calculate a bulk, cut, or maintenance.
       const sanitizedProfile = {
         ...profile,
         target_calories: Number(profile.target_calories) || 0,
         target_protein_g: Number(profile.target_protein_g) || 0,
         target_carbs_g: Number(profile.target_carbs_g) || 0,
         target_fats_g: Number(profile.target_fats_g) || 0,
+        target_water_ml: Number(profile.target_water_ml) || 3000,
       };
-
       await updateProfile(token, sanitizedProfile);
-
-      // Trigger the backend auto-calculate function.
-      // It will pull weight/height/activity directly from the DB.
+      
       const updated = await recalculateGoals(token);
-
       setProfile(updated);
       if (onUpdateSuccess) onUpdateSuccess();
     } catch (error) {
       console.error("Failed to auto-calculate and save:", error);
-      alert(
-        "Failed to recalculate. Ensure your physical metrics are filled out in the Profile Settings.",
-      );
+      alert("Failed to recalculate. Ensure your physical metrics are filled out in the Profile Settings.");
     } finally {
       setSaving(false);
     }
@@ -131,15 +118,11 @@ export default function GoalsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-2xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
+        
         {/* Header & Close Button */}
         <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
           <h2 className="text-lg font-bold font-mono tracking-wider">GOALS</h2>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-sm"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="text-neutral-400 hover:text-white font-mono text-sm">✕</button>
         </div>
 
         {loading || !profile ? (
@@ -156,7 +139,7 @@ export default function GoalsModal({
               <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
                 Strategy
               </h3>
-
+              
               <div>
                 <label className="block text-xs font-mono text-neutral-400 mb-1">
                   Current Goal
@@ -166,10 +149,22 @@ export default function GoalsModal({
                   onChange={(e) => handleChange("goal_type", e.target.value)}
                   className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-neutral-600 text-white"
                 >
-                  <option value="cut">Fat loss (-300 kcal deficit)</option>
+                  <option value="cut">Fat loss (-500 kcal deficit)</option>
                   <option value="maintain">Maintain</option>
                   <option value="bulk">Muscle gain (+300 kcal surplus)</option>
                 </select>
+
+                {/* Safety Measure for Muscle Gain + Sedentary */}
+                {profile.goal_type === "bulk" && profile.activity_level === 1.2 && (
+                   <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-2 text-amber-400 text-xs font-mono animate-in fade-in">
+                     <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                     </svg>
+                     <p>
+                       <strong>Tip:</strong> You have selected <strong>Muscle Gain</strong> but your activity level is currently <strong>Sedentary</strong>. We suggest increasing your activity level to avoid gaining only fat.
+                     </p>
+                   </div>
+                )}
               </div>
             </div>
 
@@ -188,6 +183,7 @@ export default function GoalsModal({
                   Auto-Calculate
                 </button>
               </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-mono text-neutral-300 mb-1">
@@ -199,9 +195,7 @@ export default function GoalsModal({
                     onChange={(e) =>
                       handleChange(
                         "target_calories",
-                        e.target.value === ""
-                          ? ""
-                          : parseInt(e.target.value, 10),
+                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
                       )
                     }
                     className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold text-white focus:outline-none focus:border-neutral-600"
@@ -217,9 +211,7 @@ export default function GoalsModal({
                     onChange={(e) =>
                       handleChange(
                         "target_protein_g",
-                        e.target.value === ""
-                          ? ""
-                          : parseInt(e.target.value, 10),
+                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
                       )
                     }
                     className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-blue-500 text-white"
@@ -235,9 +227,7 @@ export default function GoalsModal({
                     onChange={(e) =>
                       handleChange(
                         "target_carbs_g",
-                        e.target.value === ""
-                          ? ""
-                          : parseInt(e.target.value, 10),
+                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
                       )
                     }
                     className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-amber-500 text-white"
@@ -253,33 +243,29 @@ export default function GoalsModal({
                     onChange={(e) =>
                       handleChange(
                         "target_fats_g",
-                        e.target.value === ""
-                          ? ""
-                          : parseInt(e.target.value, 10),
+                        e.target.value === "" ? "" : parseInt(e.target.value, 10)
                       )
                     }
                     className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold focus:outline-none focus:border-rose-500 text-white"
                   />
                 </div>
-
-                <div className="pt-4 border-t border-neutral-800">
-                  <label className="block text-xs font-mono text-neutral-300 mb-1">
-                    Water Target (ml)
-                  </label>
-                  <input
-                    type="number"
-                    value={profile.target_water_ml ?? 3000}
-                    onChange={(e) =>
-                      handleChange(
-                        "target_water_ml",
-                        e.target.value === ""
-                          ? ""
-                          : parseInt(e.target.value, 10),
-                      )
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold text-cyan-400 focus:outline-none focus:border-cyan-600"
-                  />
-                </div>
+              </div>
+              
+              <div className="pt-2 border-t border-neutral-800/50 mt-4">
+                <label className="block text-xs font-mono text-neutral-300 mb-1">
+                  Water Target (ml)
+                </label>
+                <input
+                  type="number"
+                  value={profile.target_water_ml ?? 3000}
+                  onChange={(e) =>
+                    handleChange(
+                      "target_water_ml",
+                      e.target.value === "" ? "" : parseInt(e.target.value, 10)
+                    )
+                  }
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm font-bold text-white focus:outline-none focus:border-cyan-600"
+                />
               </div>
 
               <details className="mt-2.5 text-xs text-neutral-400 group">
@@ -290,8 +276,6 @@ export default function GoalsModal({
                     targets accordingly to ensure they align with your total
                     calorie goal.
                   </span>
-
-                  {/* Animated chevron arrow that rotates when clicked */}
                   <svg
                     className="w-4 h-4 text-neutral-500 group-open:rotate-180 transition-transform duration-200 shrink-0 mt-0.5"
                     fill="none"
@@ -306,8 +290,6 @@ export default function GoalsModal({
                     />
                   </svg>
                 </summary>
-
-                {/* The expandable details section */}
                 <div className="mt-2 pt-2 border-t border-neutral-800/80 text-neutral-300 leading-relaxed max-h-64 overflow-y-auto pr-2 space-y-4 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
                   {/* 1. Sedentary Adults */}
                   <div>
@@ -343,7 +325,8 @@ export default function GoalsModal({
                   {/* 2. Fitness Enthusiasts */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      Fitness Enthusiasts (Moderate Exercise, 3–5 days/week)
+                      Fitness Enthusiasts (Moderate Exercise, 3
+                      days/week)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
                       Focus: General fitness improvement, moderate weight
@@ -375,8 +358,8 @@ export default function GoalsModal({
                   {/* 3. Strength Athletes & Bodybuilders */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      Strength Athletes & Bodybuilders (High Intensity / Muscle
-                      Gain)
+                      Strength Athletes & Bodybuilders (High
+                      Intensity / Muscle Gain)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
                       Focus: Maximizing muscle hypertrophy, power, and
@@ -408,7 +391,8 @@ export default function GoalsModal({
                   {/* 4. Endurance Athletes */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      Endurance Athletes (Runners, Cyclists, Triathletes)
+                      Endurance Athletes (Runners, Cyclists,
+                      Triathletes)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
                       Focus: Sustaining long-duration cardiovascular output and
@@ -440,7 +424,8 @@ export default function GoalsModal({
                   {/* 5. Fat Loss Phase */}
                   <div>
                     <h4 className="font-semibold text-neutral-100 flex items-center gap-1.5">
-                      5. Individuals in a Fat Loss Phase (Calorie Deficit)
+                      5. Individuals in a Fat Loss Phase (Calorie
+                      Deficit)
                     </h4>
                     <p className="text-neutral-400 italic mb-1">
                       Focus: Preserving lean muscle tissue while maximizing fat

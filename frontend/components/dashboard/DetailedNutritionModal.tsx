@@ -58,13 +58,17 @@ export default function DetailedNutritionModal({
         Restored to max-w-md (original size), kept flex-col and max-h-[85vh] to enable scrolling.
       */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-md w-full p-6 text-white font-sans relative shadow-2xl flex flex-col max-h-[85vh]">
-        
         {/* HEADER: shrink-0 keeps it pinned to the top */}
         <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4 shrink-0">
           <h2 className="text-lg font-bold font-mono tracking-wider">
             NUTRITION DETAILS
           </h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-white font-mono text-sm">✕</button>
+          <button
+            onClick={onClose}
+            className="text-neutral-400 hover:text-white font-mono text-sm"
+          >
+            ✕
+          </button>
         </div>
 
         {/* 
@@ -72,32 +76,49 @@ export default function DetailedNutritionModal({
           flex-1 allows it to fill space, overflow-y-auto guarantees the scrollbar 
         */}
         <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 space-y-4">
-          
           <div>
             <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider mb-3">
               Primary Macros
             </h3>
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Calories</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Calories
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-emerald-500">{details.calories} kcal</span>
-                  <span className="text-neutral-500"> / {targets.calories} kcal</span>
-                </div>
-              </div>
-              
-              <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Protein</span>
-                <div className="text-sm font-mono">
-                  <span className="font-bold text-blue-500">{details.protein}g</span>
-                  <span className="text-neutral-500"> / {targets.protein}g</span>
+                  <span className="font-bold text-emerald-500">
+                    {details.calories} kcal
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.calories} kcal
+                  </span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Carbs</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Protein
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-amber-500">{details.carbs}g</span>
+                  <span className="font-bold text-blue-500">
+                    {details.protein}g
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.protein}g
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
+                <span className="text-sm font-mono text-neutral-300">
+                  Carbs
+                </span>
+                <div className="text-sm font-mono">
+                  <span className="font-bold text-amber-500">
+                    {details.carbs}g
+                  </span>
                   <span className="text-neutral-500"> / {targets.carbs}g</span>
                 </div>
               </div>
@@ -105,7 +126,9 @@ export default function DetailedNutritionModal({
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
                 <span className="text-sm font-mono text-neutral-300">Fats</span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-rose-500">{details.fats}g</span>
+                  <span className="font-bold text-rose-500">
+                    {details.fats}g
+                  </span>
                   <span className="text-neutral-500"> / {targets.fats}g</span>
                 </div>
               </div>
@@ -120,49 +143,77 @@ export default function DetailedNutritionModal({
             </h3>
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Saturated Fat</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Saturated Fat
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-red-500">{details.satFat}g</span>
+                  <span className="font-bold text-red-500">
+                    {details.satFat}g
+                  </span>
                   <span className="text-neutral-500"> / {targets.satFat}g</span>
                 </div>
               </div>
-              
+
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Fiber</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Fiber
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-emerald-500">{details.fiber}g</span>
+                  <span className="font-bold text-emerald-500">
+                    {details.fiber}g
+                  </span>
                   <span className="text-neutral-500"> / {targets.fiber}g</span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Sugar</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Sugar
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-purple-500">{details.sugar}g</span>
+                  <span className="font-bold text-purple-500">
+                    {details.sugar}g
+                  </span>
                   <span className="text-neutral-500"> / {targets.sugar}g</span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Potassium</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Potassium
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-blue-500">{details.potassium}mg</span>
-                  <span className="text-neutral-500"> / {targets.potassium}mg</span>
+                  <span className="font-bold text-blue-500">
+                    {details.potassium}mg
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.potassium}mg
+                  </span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Sodium</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Sodium
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-orange-500">{details.sodium}mg</span>
-                  <span className="text-neutral-500"> / {targets.sodium}mg</span>
+                  <span className="font-bold text-orange-500">
+                    {details.sodium}mg
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.sodium}mg
+                  </span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
                 <span className="text-sm font-mono text-neutral-300">Iron</span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-rose-500">{details.iron}mg</span>
+                  <span className="font-bold text-rose-500">
+                    {details.iron}mg
+                  </span>
                   <span className="text-neutral-500"> / {targets.iron}mg</span>
                 </div>
               </div>
@@ -170,40 +221,70 @@ export default function DetailedNutritionModal({
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
                 <span className="text-sm font-mono text-neutral-300">Zinc</span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-yellow-400">{details.zinc}mg</span>
+                  <span className="font-bold text-yellow-400">
+                    {details.zinc}mg
+                  </span>
                   <span className="text-neutral-500"> / {targets.zinc}mg</span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Magnesium</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Magnesium
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-emerald-400">{details.magnesium}mg</span>
-                  <span className="text-neutral-500"> / {targets.magnesium}mg</span>
+                  <span className="font-bold text-emerald-400">
+                    {details.magnesium}mg
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.magnesium}mg
+                  </span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Calcium</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Calcium
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-cyan-400">{details.calcium}mg</span>
-                  <span className="text-neutral-500"> / {targets.calcium}mg</span>
+                  <span className="font-bold text-cyan-400">
+                    {details.calcium}mg
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.calcium}mg
+                  </span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Vitamin D</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Vitamin D
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-indigo-400">{details.vitaminD}mcg</span>
-                  <span className="text-neutral-500"> / {targets.vitaminD}mcg</span>
+                  <span className="font-bold text-indigo-400">
+                    {details.vitaminD}mcg
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.vitaminD}mcg
+                  </span>
                 </div>
               </div>
 
               <div className="bg-neutral-950 border border-neutral-800 rounded p-3 flex justify-between items-center">
-                <span className="text-sm font-mono text-neutral-300">Cholesterol</span>
+                <span className="text-sm font-mono text-neutral-300">
+                  Cholesterol
+                </span>
                 <div className="text-sm font-mono">
-                  <span className="font-bold text-neutral-200">{details.cholesterol}mg</span>
-                  <span className="text-neutral-500"> / {targets.cholesterol}mg</span>
+                  <span className="font-bold text-neutral-200">
+                    {details.cholesterol}mg
+                  </span>
+                  <span className="text-neutral-500">
+                    {" "}
+                    / {targets.cholesterol}mg
+                  </span>
                 </div>
               </div>
             </div>

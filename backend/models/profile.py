@@ -1,7 +1,10 @@
 from datetime import date
-from sqlalchemy import Column, Float, Integer, String, DateTime, Date
+from sqlalchemy import Column, Float, Integer, String, DateTime, Date, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
+import uuid
 from core.database import Base
+
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
@@ -15,12 +18,16 @@ class UserProfile(Base):
     last_name = Column(String, nullable=True, default="")
     birth_date = Column(Date, nullable=True, default=date(2000, 1, 1))
     email = Column(String, nullable=True, default="")
+
     weight_kg = Column(Float, default=75.0)
     height_cm = Column(Float, default=175.0)
     age = Column(Integer, default=20)
     gender = Column(String, default="male")
     activity_level = Column(Float, default=1.2)
     goal_type = Column("primary_goal", String, default="maintain")
+
+    body_fat_percentage = Column(Float, nullable=True, default=None)
+
     avatar_url = Column(String, nullable=True, default="")
 
     target_calories = Column(Integer, default=2500)
@@ -43,3 +50,15 @@ class UserProfile(Base):
     updated_at = Column(
         DateTime(timezone=True), default=func.now(), onupdate=func.now()
     )
+
+
+class WeightLog(Base):
+    __tablename__ = "weight_logs"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        String, ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    date = Column(Date, nullable=False)
+    weight_kg = Column(Float, nullable=False)
+    photo_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())

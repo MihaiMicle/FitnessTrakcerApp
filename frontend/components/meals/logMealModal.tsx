@@ -34,8 +34,6 @@ export default function LogMealModal({
   const [activeTab, setActiveTab] = useState<
     "recent" | "global" | "custom" | "manual"
   >("recent");
-
-  // Search State
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +71,6 @@ export default function LogMealModal({
     cholesterol_mg: "",
   });
 
-  // Clear search query when changing tabs
   useEffect(() => {
     setSearchQuery("");
   }, [activeTab]);
@@ -112,28 +109,21 @@ export default function LogMealModal({
 
   if (!isOpen) return null;
 
-  // Split and Filter Logic
   const safeSearch = searchQuery.toLowerCase().trim();
-
   const filteredRecent = recentFoods.filter((f) =>
     (f.name || f.food_name || "").toLowerCase().includes(safeSearch),
   );
-
-  const globalFoodsList = customFoods.filter((f) => f.user_id === null);
-  const filteredGlobal = globalFoodsList.filter((f) =>
-    f.name.toLowerCase().includes(safeSearch),
-  );
-
-  const myFoodsList = customFoods.filter((f) => f.user_id !== null);
-  const filteredCustom = myFoodsList.filter((f) =>
-    f.name.toLowerCase().includes(safeSearch),
-  );
+  const filteredGlobal = customFoods
+    .filter((f) => f.user_id === null)
+    .filter((f) => f.name.toLowerCase().includes(safeSearch));
+  const filteredCustom = customFoods
+    .filter((f) => f.user_id !== null)
+    .filter((f) => f.name.toLowerCase().includes(safeSearch));
 
   const getGramsMultiplier = (unit: string, foodContext: any = baseFood) => {
     if (!unit) return null;
     const cleanUnit = unit.toLowerCase().trim();
     if (UNIT_TO_G[cleanUnit]) return UNIT_TO_G[cleanUnit];
-
     if (foodContext?.custom_servings) {
       const custom = foodContext.custom_servings.find(
         (s: any) => s.description.toLowerCase() === cleanUnit,
@@ -155,7 +145,6 @@ export default function LogMealModal({
     }
 
     let enrichedFood = { ...food };
-
     if (
       !isEditMode &&
       (!food.custom_servings || food.custom_servings.length === 0)
@@ -172,7 +161,6 @@ export default function LogMealModal({
     const baseServing =
       enrichedFood.serving_size || enrichedFood.quantity_g || 100;
     const defaultUnit = enrichedFood.serving_unit || "g";
-
     setBaseFood({ ...enrichedFood, baseServing, defaultUnit });
     setUnknownUnit(null);
 
@@ -197,7 +185,6 @@ export default function LogMealModal({
       calcium_mg: enrichedFood.calcium_mg ?? "",
       cholesterol_mg: enrichedFood.cholesterol_mg ?? "",
     });
-
     setActiveTab("manual");
   };
 
@@ -214,7 +201,6 @@ export default function LogMealModal({
       }));
       return;
     }
-
     const amount = Number(size);
     const activeContext = contextOverride || baseFood;
     const multiplier = getGramsMultiplier(unit, activeContext);
@@ -283,17 +269,14 @@ export default function LogMealModal({
       description: unknownUnit,
       equivalent_g: Number(unknownUnitGrams),
     };
-
     const updatedServings = baseFood?.custom_servings
       ? [...baseFood.custom_servings, newAlias]
       : [newAlias];
     const updatedBase = baseFood
       ? { ...baseFood, custom_servings: updatedServings }
       : { custom_servings: updatedServings };
-
     setBaseFood(updatedBase);
     setSaveAsCustom(true);
-
     if (updatedBase.baseServing > 0) {
       updateMacrosForWeightAndUnit(
         formData.serving_size,
@@ -329,13 +312,11 @@ export default function LogMealModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
-
       const finalName = formData.food_name;
 
       if (saveAsCustom) {
@@ -345,7 +326,6 @@ export default function LogMealModal({
           ? [...baseFood.custom_servings]
           : [];
         let saveMacros = { ...formData };
-
         const inputtedMultiplier = getGramsMultiplier(saveUnit, baseFood) || 1;
         const inputtedTotalGrams = saveSize * inputtedMultiplier;
 
@@ -468,7 +448,6 @@ export default function LogMealModal({
       }
       onClose();
     } catch (err: any) {
-      console.error(err);
       alert("Failed to process request.");
     } finally {
       setIsSubmitting(false);
@@ -481,62 +460,66 @@ export default function LogMealModal({
         ...baseFood.custom_servings.map((s: any) => s.description),
       ]
     : SERVING_UNITS;
-
-  // Reusable classes for the active and inactive states
   const activeTabClass =
     "bg-emerald-900/40 text-emerald-400 font-bold border border-emerald-800/50";
   const inactiveTabClass =
     "text-neutral-400 hover:text-white border border-transparent";
 
+  // INPUT CLASS: Prevents iOS Zoom with text-[16px] sm:text-sm
+  const inputClass =
+    "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-emerald-500 outline-none transition-colors";
+
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl my-8">
+    // WRAPPER: items-end on mobile (bottom sheet), items-center on desktop
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
+      {/* MODAL: rounded-t-2xl on mobile, rounded-xl on desktop. Max height fits screen properly */}
+      <div className="bg-neutral-900 border-t sm:border border-neutral-800 rounded-t-2xl sm:rounded-xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[90dvh] sm:max-h-[85vh] overflow-y-auto custom-scrollbar">
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+        <div className="flex justify-between items-center border-b border-neutral-800 pb-3 sticky top-0 bg-neutral-900 z-10">
           <h3 className="text-lg font-semibold text-white">
             {editingFoodId ? "Edit Custom Food" : "Log Meal"}
           </h3>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-sm"
+            className="text-neutral-400 hover:text-white font-mono text-xl sm:text-sm px-2 py-1"
           >
             ✕
           </button>
         </div>
 
-        {/* Navigation Tabs - All tabs now share the green highlight on active */}
+        {/* Navigation Tabs */}
         <div className="flex bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-[11px] sm:text-xs font-mono overflow-x-auto custom-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab("recent")}
-            className={`flex-1 py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recent" ? activeTabClass : inactiveTabClass}`}
+            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recent" ? activeTabClass : inactiveTabClass}`}
           >
             Recent
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("global")}
-            className={`flex-1 py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "global" ? activeTabClass : inactiveTabClass}`}
+            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "global" ? activeTabClass : inactiveTabClass}`}
           >
             Database
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("custom")}
-            className={`flex-1 py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "custom" ? activeTabClass : inactiveTabClass}`}
+            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "custom" ? activeTabClass : inactiveTabClass}`}
           >
             My Foods
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("manual")}
-            className={`flex-1 py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "manual" ? activeTabClass : inactiveTabClass}`}
+            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "manual" ? activeTabClass : inactiveTabClass}`}
           >
             Form/Edit
           </button>
         </div>
 
-        {/* Search Bar (Only visible on list tabs) */}
+        {/* Search Bar */}
         {activeTab !== "manual" && (
           <div className="relative">
             <input
@@ -544,13 +527,13 @@ export default function LogMealModal({
               placeholder={`Search ${activeTab === "global" ? "database" : activeTab === "custom" ? "my foods" : "recent meals"}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-md py-2 px-3 text-xs font-mono text-white focus:border-emerald-500 outline-none"
+              className={inputClass + " font-mono"}
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono text-xs p-2"
               >
                 ✕
               </button>
@@ -558,124 +541,108 @@ export default function LogMealModal({
           </div>
         )}
 
-        {/* Tab 1: Recent Foods */}
+        {/* Tab 1: Recent */}
         {activeTab === "recent" && (
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="space-y-2 pb-4">
             {filteredRecent.length === 0 ? (
               <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                No recent foods match your search.
+                No recent foods match.
               </p>
             ) : (
               filteredRecent.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleSelectFood(item)}
-                  className="bg-neutral-950 hover:bg-emerald-950/20 border border-neutral-800/80 hover:border-emerald-900/50 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center group"
+                  className="bg-neutral-950 hover:bg-neutral-800 border border-neutral-800/80 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center active:scale-[0.98]"
                 >
                   <div>
                     <h4 className="text-sm font-medium text-neutral-200">
                       {item.name || item.food_name}
                     </h4>
-                    <p className="text-xs text-neutral-500 font-mono mt-1">
+                    <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
                       {item.serving_size} {item.serving_unit} • {item.calories}{" "}
-                      kcal | P: {item.protein_g}g | C: {item.carbs_g}g | F:{" "}
-                      {item.fats_g}g
+                      kcal | P: {item.protein_g}g
                     </p>
                   </div>
-                  <span className="text-xs font-mono text-emerald-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    + Select
-                  </span>
                 </div>
               ))
             )}
           </div>
         )}
 
-        {/* Tab 2: Global/Database Foods (No edit/delete buttons) */}
+        {/* Tab 2: Database */}
         {activeTab === "global" && (
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="space-y-2 pb-4">
             {filteredGlobal.length === 0 ? (
               <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                No database foods match your search.
+                No database foods match.
               </p>
             ) : (
               filteredGlobal.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleSelectFood(item)}
-                  className="bg-neutral-950 hover:bg-emerald-950/20 border border-neutral-800/80 hover:border-emerald-900/50 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center group"
+                  className="bg-neutral-950 hover:bg-emerald-950/20 border border-neutral-800/80 hover:border-emerald-900/50 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center active:scale-[0.98]"
                 >
                   <div>
                     <h4 className="text-sm font-medium text-neutral-200 flex items-center gap-2">
                       {item.name}
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold hidden sm:inline-block">
                         APP
                       </span>
                     </h4>
-                    <p className="text-xs text-neutral-500 font-mono mt-1">
-                     {item.serving_size} {item.serving_unit} • {item.calories}{" "}
-                      kcal | P: {item.protein_g}g | C: {item.carbs_g}g | F:{" "}
-                      {item.fats_g}g
+                    <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
+                      P: {item.protein_g}g | C: {item.carbs_g}g | F:{" "}
+                      {item.fats_g}g ({item.serving_size} {item.serving_unit})
                     </p>
                   </div>
-                  <span className="text-xs font-mono text-emerald-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    + Select
-                  </span>
                 </div>
               ))
             )}
           </div>
         )}
 
-        {/* Tab 3: User's Custom Foods */}
+        {/* Tab 3: Custom */}
         {activeTab === "custom" && (
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="space-y-2 pb-4">
             {filteredCustom.length === 0 ? (
               <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                No custom foods match your search.
+                No custom foods match.
               </p>
             ) : (
               filteredCustom.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleSelectFood(item)}
-                  className="bg-neutral-950 hover:bg-emerald-950/20 border border-neutral-800/80 hover:border-emerald-900/50 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center group"
+                  className="bg-neutral-950 hover:bg-neutral-800 border border-neutral-800/80 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center active:scale-[0.98]"
                 >
                   <div>
-                    <h4 className="text-sm font-medium text-neutral-200 flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-neutral-200">
                       {item.name}
                     </h4>
-                    <p className="text-xs text-neutral-500 font-mono mt-1">
-                      {item.serving_size} {item.serving_unit} • {item.calories}{" "}
-                      kcal | P: {item.protein_g}g | C: {item.carbs_g}g | F:{" "}
+                    <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
+                      P: {item.protein_g}g | C: {item.carbs_g}g | F:{" "}
                       {item.fats_g}g
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex gap-1 mr-2 pr-3 border-r border-neutral-800">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectFood(item, true);
-                        }}
-                        className="text-neutral-500 hover:text-blue-400 font-bold px-1"
-                        title="Edit Food"
-                      >
-                        ✎
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteCustomFood(e, item.id)}
-                        className="text-neutral-500 hover:text-red-500 font-bold px-1"
-                        title="Delete Food"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <span className="text-xs font-mono text-emerald-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                      + Select
-                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectFood(item, true);
+                      }}
+                      className="text-neutral-500 hover:text-blue-400 font-bold px-2 py-1"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteCustomFood(e, item.id)}
+                      className="text-neutral-500 hover:text-red-500 font-bold px-2 py-1"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
               ))
@@ -685,7 +652,7 @@ export default function LogMealModal({
 
         {/* Tab 4: Form */}
         {activeTab === "manual" && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 pb-4">
             <div>
               <label className="text-xs text-neutral-400 block mb-1">
                 Food Name
@@ -697,11 +664,11 @@ export default function LogMealModal({
                 onChange={(e) =>
                   setFormData({ ...formData, food_name: e.target.value })
                 }
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm text-white focus:border-emerald-500 outline-none"
+                className={inputClass}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-xs text-neutral-400 block mb-1">
                   Meal Category
@@ -711,7 +678,7 @@ export default function LogMealModal({
                   onChange={(e) =>
                     setFormData({ ...formData, meal_type: e.target.value })
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm text-white focus:border-emerald-500 outline-none"
+                  className={inputClass + " h-[42px]"}
                 >
                   {MEAL_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -721,99 +688,48 @@ export default function LogMealModal({
                 </select>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-xs text-neutral-400 block mb-1">
-                      Size
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      value={formData.serving_size}
-                      onChange={(e) =>
-                        updateMacrosForWeightAndUnit(
-                          e.target.value,
-                          formData.serving_unit,
-                        )
-                      }
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm font-mono text-white focus:border-emerald-500 outline-none"
-                    />
-                  </div>
-                  <div className="w-28 relative">
-                    <label className="text-xs text-neutral-400 block mb-1">
-                      Unit
-                    </label>
-                    <input
-                      list="available-units"
-                      required
-                      placeholder="e.g. Medium"
-                      value={formData.serving_unit}
-                      onChange={(e) =>
-                        updateMacrosForWeightAndUnit(
-                          formData.serving_size,
-                          e.target.value,
-                        )
-                      }
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm text-white focus:border-emerald-500 outline-none"
-                    />
-                    <datalist id="available-units">
-                      {availableUnits.map((u) => (
-                        <option key={u} value={u} />
-                      ))}
-                    </datalist>
-                  </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-neutral-400 block mb-1">
+                    Size
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={formData.serving_size}
+                    onChange={(e) =>
+                      updateMacrosForWeightAndUnit(
+                        e.target.value,
+                        formData.serving_unit,
+                      )
+                    }
+                    className={inputClass + " font-mono"}
+                  />
                 </div>
-
-                {unknownUnit && (
-                  <div className="mt-1 p-2 bg-emerald-950/40 border border-emerald-900/50 rounded-lg flex items-center justify-between gap-3 animate-in fade-in">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-emerald-400 font-mono">
-                        1 {unknownUnit} =
-                      </span>
-                      <input
-                        type="number"
-                        value={unknownUnitGrams}
-                        onChange={(e) => setUnknownUnitGrams(e.target.value)}
-                        placeholder="grams"
-                        className="w-16 bg-neutral-900 border border-neutral-700 rounded p-1 text-[11px] text-white focus:border-emerald-500 outline-none"
-                      />
-                      <span className="text-[11px] text-emerald-400 font-mono">
-                        g
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddUnknownUnit}
-                      className="bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded text-[10px] text-white font-medium transition-colors"
-                    >
-                      Lock Unit
-                    </button>
-                  </div>
-                )}
-
-                {!unknownUnit &&
-                  baseFood?.custom_servings &&
-                  baseFood.custom_servings.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-0.5">
-                      {baseFood.custom_servings.map((serving: any) => (
-                        <button
-                          key={serving.description}
-                          type="button"
-                          onClick={() =>
-                            updateMacrosForWeightAndUnit(
-                              "1",
-                              serving.description,
-                            )
-                          }
-                          className="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold font-mono rounded border border-emerald-500/20 transition-colors"
-                        >
-                          {serving.description} ({serving.equivalent_g}g)
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div className="w-28 relative">
+                  <label className="text-xs text-neutral-400 block mb-1">
+                    Unit
+                  </label>
+                  <input
+                    list="available-units"
+                    required
+                    placeholder="e.g. Medium"
+                    value={formData.serving_unit}
+                    onChange={(e) =>
+                      updateMacrosForWeightAndUnit(
+                        formData.serving_size,
+                        e.target.value,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                  <datalist id="available-units">
+                    {availableUnits.map((u) => (
+                      <option key={u} value={u} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
             </div>
 
@@ -829,7 +745,7 @@ export default function LogMealModal({
                   onChange={(e) =>
                     setFormData({ ...formData, calories: e.target.value })
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm font-mono text-white focus:border-emerald-500 outline-none"
+                  className={inputClass + " font-mono"}
                 />
               </div>
               <div>
@@ -843,7 +759,10 @@ export default function LogMealModal({
                   onChange={(e) =>
                     setFormData({ ...formData, protein_g: e.target.value })
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm font-mono text-white focus:border-blue-400 outline-none"
+                  className={
+                    inputClass +
+                    " font-mono border-blue-900/30 focus:border-blue-500"
+                  }
                 />
               </div>
               <div>
@@ -857,7 +776,10 @@ export default function LogMealModal({
                   onChange={(e) =>
                     setFormData({ ...formData, carbs_g: e.target.value })
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm font-mono text-white focus:border-amber-400 outline-none"
+                  className={
+                    inputClass +
+                    " font-mono border-amber-900/30 focus:border-amber-500"
+                  }
                 />
               </div>
               <div>
@@ -871,22 +793,25 @@ export default function LogMealModal({
                   onChange={(e) =>
                     setFormData({ ...formData, fats_g: e.target.value })
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm font-mono text-white focus:border-rose-400 outline-none"
+                  className={
+                    inputClass +
+                    " font-mono border-rose-900/30 focus:border-rose-500"
+                  }
                 />
               </div>
             </div>
 
             {/* EXPANDED Micronutrients Grid */}
             <details className="group border border-neutral-800 rounded-lg bg-neutral-950 p-2 mt-3">
-              <summary className="text-xs font-mono text-neutral-400 cursor-pointer flex justify-between items-center outline-none list-none [&::-webkit-details-marker]:hidden">
+              <summary className="text-[13px] sm:text-xs font-mono text-neutral-400 cursor-pointer flex justify-between items-center outline-none list-none p-1">
                 <span>Show Micronutrients</span>
                 <span className="group-open:rotate-180 transition-transform">
                   ▼
                 </span>
               </summary>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-3 mt-2 border-t border-neutral-800">
+              <div className="grid grid-cols-2 gap-3 pt-3 mt-2 border-t border-neutral-800">
                 <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
+                  <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
                     Sat Fat (g)
                   </label>
                   <input
@@ -899,11 +824,11 @@ export default function LogMealModal({
                         saturated_fats_g: e.target.value,
                       })
                     }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
+                    className={inputClass + " p-1.5 font-mono"}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
+                  <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
                     Fiber (g)
                   </label>
                   <input
@@ -913,11 +838,11 @@ export default function LogMealModal({
                     onChange={(e) =>
                       setFormData({ ...formData, fiber_g: e.target.value })
                     }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
+                    className={inputClass + " p-1.5 font-mono"}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
+                  <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
                     Sugar (g)
                   </label>
                   <input
@@ -927,11 +852,11 @@ export default function LogMealModal({
                     onChange={(e) =>
                       setFormData({ ...formData, sugar_g: e.target.value })
                     }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
+                    className={inputClass + " p-1.5 font-mono"}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
+                  <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
                     Potassium (mg)
                   </label>
                   <input
@@ -941,11 +866,11 @@ export default function LogMealModal({
                     onChange={(e) =>
                       setFormData({ ...formData, potassium_mg: e.target.value })
                     }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
+                    className={inputClass + " p-1.5 font-mono"}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
+                  <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
                     Sodium (mg)
                   </label>
                   <input
@@ -955,11 +880,11 @@ export default function LogMealModal({
                     onChange={(e) =>
                       setFormData({ ...formData, sodium_mg: e.target.value })
                     }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
+                    className={inputClass + " p-1.5 font-mono"}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
+                  <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
                     Iron (mg)
                   </label>
                   <input
@@ -969,151 +894,84 @@ export default function LogMealModal({
                     onChange={(e) =>
                       setFormData({ ...formData, iron_mg: e.target.value })
                     }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
-                    Vitamin D (mcg)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.vitamin_d_mcg}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        vitamin_d_mcg: e.target.value,
-                      })
-                    }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
-                    Zinc (mg)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.zinc_mg}
-                    onChange={(e) =>
-                      setFormData({ ...formData, zinc_mg: e.target.value })
-                    }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
-                    Magnesium (mg)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.magnesium_mg}
-                    onChange={(e) =>
-                      setFormData({ ...formData, magnesium_mg: e.target.value })
-                    }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
-                    Calcium (mg)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.calcium_mg}
-                    onChange={(e) =>
-                      setFormData({ ...formData, calcium_mg: e.target.value })
-                    }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-neutral-500 block mb-1">
-                    Cholesterol (mg)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.cholesterol_mg}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        cholesterol_mg: e.target.value,
-                      })
-                    }
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded p-1.5 text-xs font-mono text-white focus:border-emerald-500 outline-none"
+                    className={inputClass + " p-1.5 font-mono"}
                   />
                 </div>
               </div>
             </details>
 
-            <div className="flex flex-col gap-3 pt-3 border-t border-neutral-800 mt-4">
-              
-              {/* CUSTOM CHECKBOX 1 */}
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-4 sm:gap-3 pt-3 border-t border-neutral-800 mt-4">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   role="checkbox"
                   aria-checked={saveAsCustom}
                   onClick={() => setSaveAsCustom(!saveAsCustom)}
-                  className={`w-4 h-4 rounded flex items-center justify-center transition-colors border ${
-                    saveAsCustom
-                      ? "bg-emerald-500 border-emerald-500"
-                      : "bg-neutral-950 border-neutral-700 hover:border-emerald-500/50"
-                  }`}
+                  className={`w-5 h-5 sm:w-4 sm:h-4 rounded flex items-center justify-center transition-colors border ${saveAsCustom ? "bg-emerald-500 border-emerald-500" : "bg-neutral-950 border-neutral-700"}`}
                 >
                   {saveAsCustom && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   )}
                 </button>
                 <span
                   onClick={() => setSaveAsCustom(!saveAsCustom)}
-                  className="text-xs font-mono text-neutral-300 cursor-pointer select-none"
+                  className="text-[13px] sm:text-xs font-mono text-neutral-300 cursor-pointer select-none"
                 >
-                  {editingFoodId ? 'Update this item in "My Custom Foods"' : 'Save to "My Custom Foods"'}
+                  {editingFoodId
+                    ? 'Update in "My Custom Foods"'
+                    : 'Save to "My Custom Foods"'}
                 </span>
               </div>
-
-              {/* CUSTOM CHECKBOX 2 */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   role="checkbox"
                   aria-checked={logMealToDiary}
                   onClick={() => setLogMealToDiary(!logMealToDiary)}
-                  className={`w-4 h-4 rounded flex items-center justify-center transition-colors border ${
-                    logMealToDiary
-                      ? "bg-emerald-500 border-emerald-500"
-                      : "bg-neutral-950 border-neutral-700 hover:border-emerald-500/50"
-                  }`}
+                  className={`w-5 h-5 sm:w-4 sm:h-4 rounded flex items-center justify-center transition-colors border ${logMealToDiary ? "bg-emerald-500 border-emerald-500" : "bg-neutral-950 border-neutral-700"}`}
                 >
                   {logMealToDiary && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   )}
                 </button>
                 <span
                   onClick={() => setLogMealToDiary(!logMealToDiary)}
-                  className="text-xs font-mono text-neutral-300 cursor-pointer select-none"
+                  className="text-[13px] sm:text-xs font-mono text-neutral-300 cursor-pointer select-none"
                 >
                   Log this meal to my daily diary
                 </span>
               </div>
-
             </div>
 
-            <div className="flex justify-end gap-3 pt-3">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-5">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-mono text-neutral-400 hover:text-white transition-colors"
+                className="px-4 py-3 sm:py-2 text-sm sm:text-xs font-mono text-neutral-400 hover:text-white transition-colors bg-neutral-800/50 sm:bg-transparent rounded-lg"
               >
                 Cancel
               </button>
@@ -1124,7 +982,7 @@ export default function LogMealModal({
                   (!saveAsCustom && !logMealToDiary) ||
                   unknownUnit !== null
                 }
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg text-xs font-mono disabled:opacity-50"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 sm:py-2 rounded-lg text-sm sm:text-xs font-mono disabled:opacity-50"
               >
                 {unknownUnit
                   ? "Lock Unit First"

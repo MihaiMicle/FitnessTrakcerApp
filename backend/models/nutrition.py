@@ -5,6 +5,7 @@ import uuid
 
 from core.database import Base
 
+
 class DailyLog(Base):
     __tablename__ = "daily_logs"
 
@@ -28,6 +29,7 @@ class DailyLog(Base):
     total_calcium_mg = Column(Float, default=0.0)
     total_cholesterol_mg = Column(Float, default=0.0)
     total_water_ml = Column(Integer, default=0)
+
 
 class Meal(Base):
     __tablename__ = "meals"
@@ -55,7 +57,7 @@ class Meal(Base):
     magnesium_mg = Column(Float, default=0.0)
     calcium_mg = Column(Float, default=0.0)
     cholesterol_mg = Column(Float, default=0.0)
-    
+
     serving_size = Column(Float, default=0.0)
     serving_unit = Column(String, default="g")
 

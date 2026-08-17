@@ -9,7 +9,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Fitness Tracker API",
     description="A modular backend supporting automated TDEE/macro calculations and custom overrides.",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Configure CORS for your Next.js frontend

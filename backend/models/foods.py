@@ -3,11 +3,16 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
 from core.database import Base
 
+
 class CustomFood(Base):
     __tablename__ = "custom_foods"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_profiles.id", ondelete="CASCADE"),
+        nullable=True,
+    )
     name = Column(String, nullable=False)
     brand = Column(String, nullable=True)
     serving_size = Column(Float, default=100.0)

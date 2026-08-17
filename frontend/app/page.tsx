@@ -6,14 +6,21 @@ import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import { useDailyLog } from "@/hooks/useDailyLog";
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from "@/lib/constants";
+import {
+  useDashboardLayout,
+  NUTRITION_METRICS,
+  FEATURE_METRICS,
+} from "@/hooks/useDashboardLayout";
 
-import MacroGoals from "@/components/dashboard/MacroGoals";
 import MealGroup from "@/components/dashboard/MealGroup";
 import LogMealModal from "@/components/meals/LogMealModal";
 import GoalsModal from "@/components/dashboard/GoalsModal";
 import ProfileModal from "@/components/dashboard/ProfileModal";
 import WaterTracker from "@/components/dashboard/WaterTracker";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import WeightChart from "@/components/dashboard/WeightChart";
+import WeightHistoryModal from "@/components/dashboard/WeightHistoryModal";
+import DetailedNutritionModal from "@/components/dashboard/DetailedNutritionModal";
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -23,14 +30,15 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isDetailedModalOpen, setIsDetailedModalOpen] = useState(false);
+  const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
 
+  const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState("");
 
-  // Initialize today's date in state instead of a constant
   const getTodayString = () => new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(getTodayString());
 
-  // Pass the selectedDate state to your hook!
   const {
     dailyLog,
     loading: logLoading,
@@ -39,22 +47,25 @@ export default function Dashboard() {
     refreshLog,
   } = useDailyLog(session ? selectedDate : "");
 
+  const { layout, updateLayout, isLoaded: layoutLoaded } = useDashboardLayout();
+
+  const [resizingIndex, setResizingIndex] = useState<number | null>(null);
+  const [startMouseY, setStartMouseY] = useState(0);
+  const [startHeight, setStartHeight] = useState(0);
+  const [liveHeight, setLiveHeight] = useState<number | null>(null);
+
   useEffect(() => {
     const fetchDashboardProfile = async (token: string) => {
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/profile/me`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         if (res.ok) {
           const data = await res.json();
           if (data.avatar_url) setAvatarUrl(data.avatar_url);
         }
-      } catch (err) {
-        console.error("Failed to load initial avatar", err);
-      }
+      } catch (err) {}
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -75,48 +86,157 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !session) {
-      router.replace("/login");
-    }
+    if (!authLoading && !session) router.replace("/login");
   }, [authLoading, session, router]);
 
-  // Date Navigation Handlers
   const handlePrevDay = () => {
     const d = new Date(selectedDate);
     d.setUTCDate(d.getUTCDate() - 1);
     setSelectedDate(d.toISOString().split("T")[0]);
   };
-
   const handleNextDay = () => {
     const d = new Date(selectedDate);
     d.setUTCDate(d.getUTCDate() + 1);
     setSelectedDate(d.toISOString().split("T")[0]);
   };
-
   const handleJumpToToday = () => {
     setSelectedDate(getTodayString());
   };
 
-  if (authLoading) {
-    return <div className="p-8 text-white font-mono">Checking session...</div>;
-  }
+  const handleResizeStart = (
+    e: React.MouseEvent | React.TouchEvent,
+    index: number,
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const clientY =
+      "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const element = document.getElementById(`widget-${index}`);
+    if (!element) return;
 
-  if (!session) {
-    return null;
-  }
+    setResizingIndex(index);
+    setStartMouseY(clientY);
+    const h = element.getBoundingClientRect().height;
+    setStartHeight(h);
+    setLiveHeight(h);
+  };
+
+  useEffect(() => {
+    if (resizingIndex === null) return;
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const clientY =
+        "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+      const delta = clientY - startMouseY;
+      setLiveHeight(Math.max(80, startHeight + delta));
+    };
+
+    const handleEnd = () => {
+      if (resizingIndex !== null && liveHeight !== null) {
+        const newLayout = [...layout];
+        newLayout[resizingIndex].height = liveHeight;
+        updateLayout(newLayout);
+      }
+      setResizingIndex(null);
+      setLiveHeight(null);
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleEnd);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleEnd);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleEnd);
+    };
+  }, [
+    resizingIndex,
+    startMouseY,
+    startHeight,
+    liveHeight,
+    layout,
+    updateLayout,
+  ]);
+
+  const handleDragStart = (
+    e: React.DragEvent,
+    source: "grid" | "palette",
+    type: "goal" | "meal" | "feature",
+    id: string,
+    index?: number,
+  ) => {
+    e.dataTransfer.setData("source", source);
+    e.dataTransfer.setData("type", type);
+    e.dataTransfer.setData("id", id);
+    if (index !== undefined) e.dataTransfer.setData("index", index.toString());
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const source = e.dataTransfer.getData("source");
+    const type = e.dataTransfer.getData("type") as "goal" | "meal" | "feature";
+    const id = e.dataTransfer.getData("id");
+
+    const newLayout = [...layout];
+
+    if (source === "palette") {
+      newLayout.splice(targetIndex, 0, {
+        id,
+        type,
+        size: type === "goal" ? "half" : "full",
+      });
+      updateLayout(newLayout);
+    } else if (source === "grid") {
+      const sourceIndex = parseInt(e.dataTransfer.getData("index"));
+      if (sourceIndex === targetIndex) return;
+      const [moved] = newLayout.splice(sourceIndex, 1);
+
+      let adjustedTarget = targetIndex;
+      if (sourceIndex < targetIndex) adjustedTarget -= 1;
+
+      newLayout.splice(adjustedTarget, 0, moved);
+      updateLayout(newLayout);
+    }
+  };
+
+  const toggleSize = (index: number) => {
+    const newLayout = [...layout];
+    newLayout[index].size = newLayout[index].size === "full" ? "half" : "full";
+    updateLayout(newLayout);
+  };
+
+  const removeWidget = (index: number) => {
+    const newLayout = [...layout];
+    newLayout.splice(index, 1);
+    updateLayout(newLayout);
+  };
+
+  const unusedMetrics = Object.keys(NUTRITION_METRICS).filter(
+    (k) => !layout.some((w) => w.type === "goal" && w.id === k),
+  );
+  const unusedMeals = MEAL_TYPES.filter(
+    (t) => !layout.some((w) => w.type === "meal" && w.id === t),
+  );
+  const unusedFeatures = Object.keys(FEATURE_METRICS).filter(
+    (k) => !layout.some((w) => w.type === "feature" && w.id === k),
+  );
+
+  if (authLoading || !layoutLoaded)
+    return <div className="p-8 text-white font-mono">Loading...</div>;
+  if (!session) return null;
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100 p-6 md:p-12 relative">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <main className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-6 md:p-12 pb-24 md:pb-12 relative">
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
         {/* Header Section */}
         <header className="border-b border-neutral-800 pb-6 flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-          {/* Avatar + Title block */}
-          <div className="flex items-start gap-4">
-            {/* Profile Button */}
+          <div className="flex items-start gap-3 sm:gap-4">
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              className="flex-shrink-0 w-12 h-12 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center hover:bg-emerald-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 overflow-hidden shadow-md mt-1"
-              title="Open Profile Settings"
+              className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center hover:bg-emerald-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 overflow-hidden shadow-md mt-1"
             >
               {avatarUrl ? (
                 <img
@@ -126,7 +246,7 @@ export default function Dashboard() {
                 />
               ) : (
                 <svg
-                  className="w-6 h-6 text-neutral-400"
+                  className="w-6 h-6 sm:w-7 sm:h-7 text-neutral-400"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -139,33 +259,30 @@ export default function Dashboard() {
               )}
             </button>
 
-            {/* Title & Secondary Buttons */}
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold tracking-tight">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                   Daily Nutrition
                 </h1>
                 <button
                   onClick={() => setIsGoalsModalOpen(true)}
-                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-emerald-500 px-2.5 py-1 rounded transition-colors"
+                  className="text-[10px] sm:text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-emerald-500 px-2 sm:px-2.5 py-1 rounded transition-colors"
                 >
                   Goals
                 </button>
                 <button
                   onClick={() => supabase.auth.signOut()}
-                  className="text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-emerald-500 px-2.5 py-1 rounded transition-colors"
+                  className="text-[10px] sm:text-xs bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-emerald-500 px-2 sm:px-2.5 py-1 rounded transition-colors"
                 >
                   Sign Out
                 </button>
               </div>
 
-              {/* Date Navigator UI */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-lg p-0.5 shadow-sm">
                   <button
                     onClick={handlePrevDay}
-                    className="text-neutral-500 hover:text-emerald-400 p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
-                    title="Previous Day"
+                    className="text-neutral-500 hover:text-emerald-400 p-1 sm:p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
                   >
                     <ChevronLeft size={18} strokeWidth={2.5} />
                   </button>
@@ -173,76 +290,284 @@ export default function Dashboard() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-transparent border-none px-2 py-1 text-sm text-neutral-300 font-mono focus:outline-none focus:ring-0 [color-scheme:dark] cursor-pointer hover:text-emerald-500 transition-colors"
+                    className="bg-transparent border-none px-1 sm:px-2 py-1 text-[13px] sm:text-sm text-neutral-300 font-mono focus:outline-none focus:ring-0 [color-scheme:dark] cursor-pointer hover:text-emerald-500 transition-colors"
                   />
                   <button
                     onClick={handleNextDay}
-                    className="text-neutral-500 hover:text-emerald-400 p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
-                    title="Next Day"
+                    className="text-neutral-500 hover:text-emerald-400 p-1 sm:p-1.5 hover:bg-neutral-800 rounded-md transition-all active:scale-95"
                   >
                     <ChevronRight size={18} strokeWidth={2.5} />
                   </button>
                 </div>
-
                 {selectedDate !== getTodayString() && (
                   <button
                     onClick={handleJumpToToday}
-                    className="text-xs font-mono font-medium text-emerald-400 hover:text-emerald-300 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-md border border-emerald-500/20 transition-all active:scale-95"
+                    className="text-[10px] sm:text-xs font-mono font-medium text-emerald-400 hover:text-emerald-300 px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-md border border-emerald-500/20 transition-all active:scale-95"
                   >
                     Today
                   </button>
                 )}
+
+                <button
+                  onClick={() => setIsEditingLayout(!isEditingLayout)}
+                  className={`flex items-center gap-1.5 text-[10px] sm:text-xs font-mono font-medium px-2.5 py-1.5 rounded-md transition-all active:scale-95 border ${
+                    isEditingLayout
+                      ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
+                      : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-white"
+                  }`}
+                >
+                  <Settings size={14} />
+                  {isEditingLayout ? "Done Editing" : "Edit Layout"}
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Log Meal */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm h-fit self-end md:self-auto"
+            className="hidden md:flex bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition-colors items-center gap-2 text-sm h-fit self-end"
           >
-            <span>+</span> Log Meal
+            <span className="text-lg leading-none">+</span> Log Meal
           </button>
         </header>
 
-        {/* Dashboard Content */}
         {logLoading ? (
           <div className="py-12 text-center text-neutral-400 font-mono text-sm animate-pulse">
             Loading nutrition data for {selectedDate}...
           </div>
         ) : (
-          <>
-            <section className="mb-8">
-              <MacroGoals summary={dailyLog} />
+          <section className="mb-6 sm:mb-8">
+            {/* Widget Palette Overlay */}
+            {isEditingLayout && (
+              <div className="bg-neutral-900 border border-emerald-500/30 rounded-xl p-5 shadow-lg mb-6 animate-in fade-in slide-in-from-top-4">
+                <h3 className="text-sm font-semibold text-emerald-400 mb-3 flex items-center gap-2">
+                  <span className="animate-pulse">●</span> Widget Palette (Drag
+                  into the grid)
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {unusedMetrics.map((key) => (
+                    <div
+                      key={`pal-goal-${key}`}
+                      draggable
+                      onDragStart={(e) =>
+                        handleDragStart(e, "palette", "goal", key)
+                      }
+                      className="bg-neutral-950 border border-neutral-700 px-3 py-1.5 rounded-full text-xs font-mono cursor-grab active:cursor-grabbing hover:border-emerald-500 transition-colors shadow-sm"
+                    >
+                      + {NUTRITION_METRICS[key].label}
+                    </div>
+                  ))}
+                  {unusedMeals.map((key) => (
+                    <div
+                      key={`pal-meal-${key}`}
+                      draggable
+                      onDragStart={(e) =>
+                        handleDragStart(e, "palette", "meal", key)
+                      }
+                      className="bg-neutral-950 border border-neutral-700 px-3 py-1.5 rounded-full text-xs font-mono cursor-grab active:cursor-grabbing hover:border-blue-500 transition-colors shadow-sm"
+                    >
+                      + {MEAL_TYPE_LABELS[key] || key} Meal
+                    </div>
+                  ))}
+                  {unusedFeatures.map((key) => (
+                    <div
+                      key={`pal-feat-${key}`}
+                      draggable
+                      onDragStart={(e) =>
+                        handleDragStart(e, "palette", "feature", key)
+                      }
+                      className="bg-neutral-950 border border-neutral-700 px-3 py-1.5 rounded-full text-xs font-mono cursor-grab active:cursor-grabbing hover:border-indigo-500 transition-colors shadow-sm"
+                    >
+                      + {FEATURE_METRICS[key].label}
+                    </div>
+                  ))}
+                  {unusedMetrics.length === 0 &&
+                    unusedMeals.length === 0 &&
+                    unusedFeatures.length === 0 && (
+                      <span className="text-xs text-neutral-500 font-mono">
+                        All available widgets are on your dashboard!
+                      </span>
+                    )}
+                </div>
+              </div>
+            )}
 
-              <WaterTracker
-                summary={dailyLog}
-                onWaterUpdated={(updatedLog) => {
-                  refreshLog();
-                }}
-              />
-            </section>
+            {/* UNIFIED DRAGGABLE GRID */}
+            <div
+              className={`grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 ${isEditingLayout ? "pb-8 bg-neutral-950/40 p-2 sm:p-4 rounded-xl border border-dashed border-neutral-800" : ""}`}
+            >
+              {layout.map((widget, index) => {
+                const isFull = widget.size === "full";
+                const colSpanClass = isFull
+                  ? "col-span-2 lg:col-span-4"
+                  : "col-span-1 lg:col-span-2";
 
-            <section className="space-y-6">
-              {MEAL_TYPES.map((type) => {
-                const mealsForCategory = (dailyLog?.meals || []).filter(
-                  (m: any) => m.meal_type?.toLowerCase() === type,
-                );
+                const currentHeight =
+                  resizingIndex === index ? liveHeight : widget.height;
+
                 return (
-                  <MealGroup
-                    key={type}
-                    label={MEAL_TYPE_LABELS[type]}
-                    meals={mealsForCategory}
-                    onDeleteMeal={removeMeal}
-                  />
+                  <div
+                    id={`widget-${index}`}
+                    key={`${widget.type}-${widget.id}-${index}`}
+                    draggable={isEditingLayout && resizingIndex === null}
+                    onDragStart={(e) =>
+                      handleDragStart(e, "grid", widget.type, widget.id, index)
+                    }
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(e) => handleDrop(e, index)}
+                    style={{
+                      minHeight: currentHeight
+                        ? `${currentHeight}px`
+                        : undefined,
+                    }}
+                    className={`${colSpanClass} flex flex-col relative group transition-all duration-200 ${isEditingLayout ? "ring-1 ring-emerald-500/30 hover:ring-emerald-500 rounded-xl bg-neutral-900/50" : ""} ${isEditingLayout && resizingIndex === null ? "cursor-grab active:cursor-grabbing" : ""}`}
+                  >
+                    {/* VERTICAL DRAG-TO-RESIZE HANDLE */}
+                    {isEditingLayout && (
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, index)}
+                        onTouchStart={(e) => handleResizeStart(e, index)}
+                        className="absolute bottom-0 left-0 right-0 h-5 hover:h-6 bg-emerald-500/10 hover:bg-emerald-500/30 cursor-ns-resize flex items-end justify-center rounded-b-xl z-40 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <div className="w-12 h-1 bg-emerald-500 rounded-full mb-1.5 opacity-80" />
+                      </div>
+                    )}
+
+                    <div className="absolute -top-2 -right-2 flex gap-1 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {isEditingLayout && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSize(index);
+                            }}
+                            className="bg-neutral-800 hover:bg-neutral-700 text-white w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-mono border border-neutral-600 shadow-md"
+                          >
+                            {isFull ? "><" : "<>"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeWidget(index);
+                            }}
+                            className="bg-rose-900/90 hover:bg-rose-600 text-white w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold border border-rose-700 shadow-md"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Widget Wrapper */}
+                    <div
+                      className={`flex-1 w-full [&>div]:h-full ${isEditingLayout && widget.type === "meal" ? "pointer-events-none opacity-60 pl-8 sm:pl-12 transition-all" : ""} ${isEditingLayout && widget.type === "goal" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && widget.type === "feature" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && resizingIndex !== null ? "select-none" : ""}`}
+                    >
+                      {/* RENDER FEATURE */}
+                      {widget.type === "feature" &&
+                        widget.id === "weight_chart" && (
+                          <WeightChart
+                            selectedDate={selectedDate}
+                            onClick={() =>
+                              !isEditingLayout && setIsWeightModalOpen(true)
+                            }
+                          />
+                        )}
+
+                      {/* RENDER GOAL */}
+                      {widget.type === "goal" &&
+                        (widget.id === "water" ? (
+                          <WaterTracker
+                            summary={dailyLog}
+                            onWaterUpdated={() => refreshLog && refreshLog()}
+                          />
+                        ) : (
+                          (() => {
+                            const config = NUTRITION_METRICS[widget.id];
+                            if (!config) return null;
+                            const currentVal =
+                              (dailyLog as any)?.[config.key] || 0;
+                            const targetVal =
+                              (dailyLog as any)?.[config.targetKey] ||
+                              config.defaultTarget;
+                            const progress =
+                              Math.min((currentVal / targetVal) * 100, 100) ||
+                              0;
+
+                            return (
+                              <div
+                                onClick={() =>
+                                  !isEditingLayout &&
+                                  setIsDetailedModalOpen(true)
+                                }
+                                className={`bg-neutral-900 p-4 sm:p-6 rounded-xl border border-neutral-800 space-y-2 sm:space-y-3 flex flex-col justify-center shadow-sm ${!isEditingLayout ? "cursor-pointer hover:border-emerald-700" : ""}`}
+                              >
+                                <div className="flex flex-col sm:flex-row sm:justify-between text-xs sm:text-sm gap-1">
+                                  <span className="text-neutral-400">
+                                    {config.label}
+                                  </span>
+                                  <span className="font-mono font-bold">
+                                    {currentVal} / {targetVal} {config.unit}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-neutral-800 h-2.5 sm:h-3 rounded-full overflow-hidden">
+                                  <div
+                                    className={`${config.color} h-full transition-all duration-500 shadow-sm`}
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ))}
+
+                      {/* RENDER MEAL */}
+                      {widget.type === "meal" && (
+                        <MealGroup
+                          label={MEAL_TYPE_LABELS[widget.id] || widget.id}
+                          meals={(dailyLog?.meals || []).filter(
+                            (m: any) =>
+                              m.meal_type?.toLowerCase() === widget.id,
+                          )}
+                          onDeleteMeal={removeMeal}
+                        />
+                      )}
+                    </div>
+                  </div>
                 );
               })}
-            </section>
-          </>
+
+              {isEditingLayout && (
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "copy";
+                  }}
+                  onDrop={(e) => handleDrop(e, layout.length)}
+                  className="col-span-2 lg:col-span-4 h-16 border-2 border-dashed border-neutral-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 rounded-xl flex items-center justify-center text-neutral-500 font-mono text-xs transition-colors mt-2"
+                >
+                  + Drop here to add to bottom
+                </div>
+              )}
+            </div>
+          </section>
         )}
       </div>
 
-      {/* Modals */}
+      <div className="md:hidden fixed bottom-4 right-4 left-4 z-40">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base py-3.5 rounded-xl shadow-[0_8px_30px_rgba(5,150,105,0.4)] flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+        >
+          <span className="text-2xl leading-none font-light mb-1">+</span> Log
+          Meal
+        </button>
+      </div>
+
       <LogMealModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -259,6 +584,15 @@ export default function Dashboard() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         onProfileUpdate={(newUrl) => setAvatarUrl(newUrl)}
+      />
+      <DetailedNutritionModal
+        isOpen={isDetailedModalOpen}
+        onClose={() => setIsDetailedModalOpen(false)}
+        dailyLog={dailyLog}
+      />
+      <WeightHistoryModal
+        isOpen={isWeightModalOpen}
+        onClose={() => setIsWeightModalOpen(false)}
       />
     </main>
   );

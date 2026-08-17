@@ -73,6 +73,6 @@ export function useDailyLog(date: string) {
     refetch: fetchLog,
     addMeal,
     removeMeal,
-    refreshLog: fetchLog, 
+    refreshLog: fetchLog,
   };
 }
