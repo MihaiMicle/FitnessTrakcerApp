@@ -8,7 +8,6 @@ interface MealItemProps {
 }
 
 export default function MealItem({ meal, onDelete }: MealItemProps) {
-  // Temporary debug log: open browser console (F12) to see the exact properties FastAPI is returning!
   console.log("Logged meal object:", meal);
 
   // Exhaustive check for any property name your backend might be using for the weight/serving

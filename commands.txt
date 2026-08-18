@@ -6,3 +6,8 @@ frontend:
 npm run dev
 
 https://github.com/MihaiMicle/FitnessTrakcerApp
+
+
+{item.serving_size} {item.serving_unit} •{" "}
+                        {item.calories} kcal | P: {item.protein_g}g | C:{" "}
+                        {item.carbs_g}g | F: {item.fats_g}g

@@ -28,6 +28,9 @@ export default function Dashboard() {
   const [authLoading, setAuthLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMealTypeForModal, setSelectedMealTypeForModal] =
+    useState<string>("lunch");
+
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isDetailedModalOpen, setIsDetailedModalOpen] = useState(false);
@@ -322,13 +325,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="hidden md:flex bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition-colors items-center gap-2 text-sm h-fit self-end"
-          >
-            <span className="text-lg leading-none">+</span> Log Meal
-          </button>
         </header>
 
         {logLoading ? (
@@ -392,7 +388,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* UNIFIED DRAGGABLE GRID */}
+            {/* Unified Draggable Grid */}
             <div
               className={`grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 ${isEditingLayout ? "pb-8 bg-neutral-950/40 p-2 sm:p-4 rounded-xl border border-dashed border-neutral-800" : ""}`}
             >
@@ -425,7 +421,7 @@ export default function Dashboard() {
                     }}
                     className={`${colSpanClass} flex flex-col relative group transition-all duration-200 ${isEditingLayout ? "ring-1 ring-emerald-500/30 hover:ring-emerald-500 rounded-xl bg-neutral-900/50" : ""} ${isEditingLayout && resizingIndex === null ? "cursor-grab active:cursor-grabbing" : ""}`}
                   >
-                    {/* VERTICAL DRAG-TO-RESIZE HANDLE */}
+                    {/* Vertical Drag-To-Resize Handle */}
                     {isEditingLayout && (
                       <div
                         onMouseDown={(e) => handleResizeStart(e, index)}
@@ -467,7 +463,7 @@ export default function Dashboard() {
                     <div
                       className={`flex-1 w-full [&>div]:h-full ${isEditingLayout && widget.type === "meal" ? "pointer-events-none opacity-60 pl-8 sm:pl-12 transition-all" : ""} ${isEditingLayout && widget.type === "goal" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && widget.type === "feature" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && resizingIndex !== null ? "select-none" : ""}`}
                     >
-                      {/* RENDER FEATURE */}
+                      {/* Render Feature */}
                       {widget.type === "feature" &&
                         widget.id === "weight_chart" && (
                           <WeightChart
@@ -478,7 +474,7 @@ export default function Dashboard() {
                           />
                         )}
 
-                      {/* RENDER GOAL */}
+                      {/* Render Goal */}
                       {widget.type === "goal" &&
                         (widget.id === "water" ? (
                           <WaterTracker
@@ -525,15 +521,23 @@ export default function Dashboard() {
                           })()
                         ))}
 
-                      {/* RENDER MEAL */}
+                      {/* Render Meal Group */}
                       {widget.type === "meal" && (
                         <MealGroup
                           label={MEAL_TYPE_LABELS[widget.id] || widget.id}
+                          mealType={widget.id}
+                          selectedDate={selectedDate}
+                          isToday={selectedDate === getTodayString()}
                           meals={(dailyLog?.meals || []).filter(
                             (m: any) =>
                               m.meal_type?.toLowerCase() === widget.id,
                           )}
                           onDeleteMeal={removeMeal}
+                          onAddMeal={addMeal}
+                          onAddMealClick={() => {
+                            setSelectedMealTypeForModal(widget.id);
+                            setIsModalOpen(true);
+                          }}
                         />
                       )}
                     </div>
@@ -558,20 +562,11 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="md:hidden fixed bottom-4 right-4 left-4 z-40">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base py-3.5 rounded-xl shadow-[0_8px_30px_rgba(5,150,105,0.4)] flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-        >
-          <span className="text-2xl leading-none font-light mb-1">+</span> Log
-          Meal
-        </button>
-      </div>
-
       <LogMealModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddMeal={addMeal}
+        initialMealType={selectedMealTypeForModal}
       />
       <GoalsModal
         isOpen={isGoalsModalOpen}

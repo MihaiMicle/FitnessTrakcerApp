@@ -291,7 +291,6 @@ export default function DetailedNutritionModal({
           </div>
         </div>
 
-        {/* FOOTER ACTION BUTTON: shrink-0 keeps it pinned to the bottom */}
         <div className="mt-4 pt-4 border-t border-neutral-800 shrink-0">
           <button
             onClick={onClose}
