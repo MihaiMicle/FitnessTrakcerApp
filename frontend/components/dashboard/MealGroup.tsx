@@ -39,7 +39,7 @@ export default function MealGroup({
 
   const extractCleanPayload = (m: any) => ({
     meal_type: mealType,
-    food_name: m.food_name,
+    food_name: m.food_name || m.name,
     serving_size: m.serving_size,
     serving_unit: m.serving_unit,
     calories: m.calories,
@@ -82,13 +82,11 @@ export default function MealGroup({
 
       const cleanFoods = meals.map(extractCleanPayload);
 
-      const { error } = await supabase
-        .from("saved_meals")
-        .insert({
-          user_id: session.user.id,
-          name: mealName.trim(),
-          foods: cleanFoods,
-        });
+      const { error } = await supabase.from("saved_meals").insert({
+        user_id: session.user.id,
+        name: mealName.trim(),
+        foods: cleanFoods,
+      });
       if (error) throw error;
       toast.success("Bundle saved successfully!", { id: "saveMeal" });
     } catch (err: any) {
@@ -105,7 +103,6 @@ export default function MealGroup({
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Uses your backend's verified /logs/{date} route
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/logs/${fromDate}`,
         {
@@ -160,69 +157,92 @@ export default function MealGroup({
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      // 1. Get or create the daily_log ID for the target date directly via Supabase / backend fetch
-      let logRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/logs/${toDate}`,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/logs/${toDate}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
 
-      let dailyLogId;
-      if (logRes.ok) {
-        const logData = await logRes.json();
-        dailyLogId = logData.id;
-      }
-
-      // If the log doesn't exist yet, let's create it or use Supabase client to insert directly
-      if (!dailyLogId) {
-        const { data: newLog, error: logErr } = await supabase
-          .from("daily_logs")
-          .upsert(
-            { user_id: session.user.id, date: toDate },
-            { onConflict: "user_id,date" },
-          )
-          .select("id")
-          .single();
-
-        if (logErr) throw logErr;
-        dailyLogId = newLog.id;
-      }
-
-      // 2. Insert the meals directly into the `meals` table linked to that daily_log_id
       for (const food of meals) {
-        const cleanFood = {
-          ...extractCleanPayload(food),
-          daily_log_id: dailyLogId,
-        };
+        const cleanFood = extractCleanPayload(food);
 
-        const { error: insertErr } = await supabase
-          .from("meals")
-          .insert(cleanFood);
+        let res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/logs/${toDate}/meals`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify(cleanFood),
+          },
+        );
 
-        if (insertErr) throw insertErr;
+        if (res.status === 404 || res.status === 405) {
+          res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/meals`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ ...cleanFood, date: toDate }),
+          });
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText);
+        }
       }
 
       toast.success(`Copied to ${toDate}!`, { id: "copyMeal" });
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to copy meal", { id: "copyMeal" });
+    } catch (err: any) {
+      console.error("Copy Error:", err);
+      toast.error(`Failed: ${err.message || "Could not copy meal"}`, {
+        id: "copyMeal",
+      });
     }
   };
 
   const safeMeals = meals || [];
 
+  // Calculate meal totals dynamically
+  const totalCalories = Math.round(
+    safeMeals.reduce((sum, m) => sum + (Number(m.calories) || 0), 0),
+  );
+  const totalProtein = Math.round(
+    safeMeals.reduce((sum, m) => sum + (Number(m.protein_g) || 0), 0),
+  );
+  const totalCarbs = Math.round(
+    safeMeals.reduce((sum, m) => sum + (Number(m.carbs_g) || 0), 0),
+  );
+  const totalFats = Math.round(
+    safeMeals.reduce((sum, m) => sum + (Number(m.fats_g) || 0), 0),
+  );
+
   return (
     <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 sm:p-5 shadow-sm h-full flex flex-col relative">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-white flex items-center gap-2 text-sm sm:text-base tracking-tight">
-          {label}
-          <span className="text-[10px] bg-neutral-950 px-2 py-0.5 rounded-full text-neutral-500 font-mono border border-neutral-800">
-            {safeMeals.length} items
-          </span>
-        </h3>
+      <div className="flex justify-between items-start sm:items-center mb-4">
+        {/* Title and Dynamic Totals Section */}
+        <div className="flex flex-col gap-1.5">
+          <h3 className="font-bold text-white flex items-center gap-2 text-sm sm:text-base tracking-tight">
+            {label}
+            <span className="text-[10px] bg-neutral-950 px-2 py-0.5 rounded-full text-neutral-500 font-mono border border-neutral-800">
+              {safeMeals.length} items
+            </span>
+          </h3>
 
-        <div className="flex items-center gap-2">
+          {/* Display totals only if there are items logged */}
+          {safeMeals.length > 0 && (
+            <div className="text-[10px] font-mono flex items-center gap-2 sm:gap-3 flex-wrap">
+              <span className="text-neutral-200">{totalCalories} kcal</span>
+              <span className="text-neutral-600 hidden sm:inline">|</span>
+              <span className="text-blue-400">P: {totalProtein}g</span>
+              <span className="text-amber-400">C: {totalCarbs}g</span>
+              <span className="text-rose-400">F: {totalFats}g</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 mt-1 sm:mt-0">
           <button
             onClick={onAddMealClick}
             className="text-[10px] sm:text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white px-2.5 py-1 rounded transition-colors active:scale-95"
@@ -283,7 +303,7 @@ export default function MealGroup({
                         e.target.value = "";
                       }
                     }}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:dark]"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [color-scheme:dark]"
                     title="Copy from date"
                   />
                 </div>
@@ -322,7 +342,7 @@ export default function MealGroup({
                         e.target.value = "";
                       }
                     }}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:dark]"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [color-scheme:dark]"
                     title="Copy to date"
                   />
                 </div>
@@ -345,7 +365,7 @@ export default function MealGroup({
             >
               <div>
                 <p className="text-xs sm:text-sm font-medium text-neutral-200">
-                  {meal.food_name}
+                  {meal.food_name || meal.name}
                 </p>
                 <p className="text-[10px] sm:text-[11px] text-neutral-500 font-mono mt-0.5">
                   {meal.serving_size} {meal.serving_unit} • {meal.calories} kcal

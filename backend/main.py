@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import engine, Base
-from routers import profile, nutrition, foods
+from routers import profile, nutrition, foods, chat
+
 
 # Create database tables automatically if they don't exist yet
 Base.metadata.create_all(bind=engine)
@@ -25,7 +26,7 @@ app.add_middleware(
 app.include_router(profile.router)
 app.include_router(nutrition.router)
 app.include_router(foods.router)
-
+app.include_router(chat.router)
 
 @app.get("/", tags=["Health"])
 def root():

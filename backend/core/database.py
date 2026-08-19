@@ -16,11 +16,9 @@ if not DATABASE_URL:
 engine = create_engine(DATABASE_URL)
 
 # Create the SessionLocal class
-# Each request will get its own temporary database session from this factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create the Base class
-# All your models (in models/user.py and models/nutrition.py) will inherit from this
 Base = declarative_base()
 
 

@@ -21,6 +21,7 @@ import WeightChart from "@/components/dashboard/WeightChart";
 import WeightHistoryModal from "@/components/dashboard/WeightHistoryModal";
 import DetailedNutritionModal from "@/components/dashboard/DetailedNutritionModal";
 import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import Copilot from "@/components/chat/Copilot";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -562,6 +563,13 @@ export default function Dashboard() {
         )}
       </div>
 
+      <Copilot
+        selectedDate={selectedDate}
+        onUpdateSuccess={() => {
+          if (refreshLog) refreshLog();
+        }}
+        onAddMeal={addMeal}
+      />
       <LogMealModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
