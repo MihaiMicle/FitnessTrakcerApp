@@ -13,6 +13,7 @@ interface FoodFormProps {
   setLogMealToDiary: (val: boolean) => void;
   builderMode: "meal" | "recipe" | null;
   editingFoodId: string | null;
+  isEditingLog?: boolean;
   isSubmitting: boolean;
   onClose: () => void;
   onSubmit: (e: FormEvent) => void;
@@ -30,10 +31,12 @@ export default function FoodForm(props: FoodFormProps) {
     setLogMealToDiary,
     builderMode,
     editingFoodId,
+    isEditingLog,
     isSubmitting,
     onClose,
     onSubmit,
   } = props;
+
   const inputClass =
     "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-emerald-500 outline-none transition-colors";
 
@@ -68,20 +71,25 @@ export default function FoodForm(props: FoodFormProps) {
         </div>
         <div className="w-28 relative">
           <label className="text-xs text-neutral-400 block mb-1">Unit</label>
-          <input
-            list="available-units"
+          <select
             required
             value={formData.serving_unit}
             onChange={(e) =>
               updateMacros(formData.serving_size, e.target.value)
             }
-            className={inputClass}
-          />
-          <datalist id="available-units">
+            className={
+              inputClass + " appearance-none cursor-pointer pr-8 font-mono"
+            }
+          >
             {availableUnits.map((u) => (
-              <option key={u} value={u} />
+              <option key={u} value={u} className="bg-neutral-900 text-white">
+                {u}
+              </option>
             ))}
-          </datalist>
+          </select>
+          <div className="absolute right-3 top-[32px] pointer-events-none text-neutral-500 text-[10px]">
+            ▼
+          </div>
         </div>
       </div>
 
@@ -100,7 +108,7 @@ export default function FoodForm(props: FoodFormProps) {
           />
         </div>
         <div>
-          <label className="text-xs text-blue-400 block mb-1">
+          <label className="text-xs text-neutral-400 block mb-1">
             Protein (g)
           </label>
           <input
@@ -110,11 +118,13 @@ export default function FoodForm(props: FoodFormProps) {
             onChange={(e) =>
               setFormData({ ...formData, protein_g: e.target.value })
             }
-            className={inputClass + " font-mono border-blue-900/30"}
+            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-blue-500 outline-none transition-colors font-mono"
           />
         </div>
         <div>
-          <label className="text-xs text-amber-400 block mb-1">Carbs (g)</label>
+          <label className="text-xs text-neutral-400 block mb-1">
+            Carbs (g)
+          </label>
           <input
             type="number"
             step="any"
@@ -122,11 +132,13 @@ export default function FoodForm(props: FoodFormProps) {
             onChange={(e) =>
               setFormData({ ...formData, carbs_g: e.target.value })
             }
-            className={inputClass + " font-mono border-amber-900/30"}
+            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-amber-500 outline-none transition-colors font-mono"
           />
         </div>
         <div>
-          <label className="text-xs text-rose-400 block mb-1">Fats (g)</label>
+          <label className="text-xs text-neutral-400 block mb-1">
+            Fats (g)
+          </label>
           <input
             type="number"
             step="any"
@@ -134,7 +146,7 @@ export default function FoodForm(props: FoodFormProps) {
             onChange={(e) =>
               setFormData({ ...formData, fats_g: e.target.value })
             }
-            className={inputClass + " font-mono border-neutral-400"}
+            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-rose-500 outline-none transition-colors font-mono"
           />
         </div>
       </div>
@@ -147,7 +159,7 @@ export default function FoodForm(props: FoodFormProps) {
         <div className="grid grid-cols-2 gap-3 pt-3 mt-2 border-t border-neutral-800">
           <div>
             <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
-              Sat Fat (g)
+              Saturated Fats (g)
             </label>
             <input
               type="number"
@@ -229,6 +241,76 @@ export default function FoodForm(props: FoodFormProps) {
               className={inputClass + " p-1.5 font-mono"}
             />
           </div>
+          <div>
+            <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
+              Zinc (mg)
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={formData.zinc_mg}
+              onChange={(e) =>
+                setFormData({ ...formData, zinc_mg: e.target.value })
+              }
+              className={inputClass + " p-1.5 font-mono"}
+            />
+          </div>
+          <div>
+            <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
+              Magnesium (mg)
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={formData.magnesium_mg}
+              onChange={(e) =>
+                setFormData({ ...formData, magnesium_mg: e.target.value })
+              }
+              className={inputClass + " p-1.5 font-mono"}
+            />
+          </div>
+          <div>
+            <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
+              Calcium (mg)
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={formData.calcium_mg}
+              onChange={(e) =>
+                setFormData({ ...formData, calcium_mg: e.target.value })
+              }
+              className={inputClass + " p-1.5 font-mono"}
+            />
+          </div>
+          <div>
+            <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
+              Vitamin D (mcg)
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={formData.vitamin_d_mcg}
+              onChange={(e) =>
+                setFormData({ ...formData, vitamin_d_mcg: e.target.value })
+              }
+              className={inputClass + " p-1.5 font-mono"}
+            />
+          </div>
+          <div>
+            <label className="text-[11px] sm:text-[10px] text-neutral-500 block mb-1">
+              Cholesterol (mg)
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={formData.cholesterol_mg}
+              onChange={(e) =>
+                setFormData({ ...formData, cholesterol_mg: e.target.value })
+              }
+              className={inputClass + " p-1.5 font-mono"}
+            />
+          </div>
         </div>
       </details>
 
@@ -299,7 +381,9 @@ export default function FoodForm(props: FoodFormProps) {
               ? "Stage to Meal Builder"
               : builderMode === "recipe"
                 ? "Stage to Recipe Builder"
-                : "Log this food to my daily diary"}
+                : isEditingLog
+                  ? "Update this entry in diary"
+                  : "Log this food to my daily diary"}
           </span>
         </div>
       </div>
@@ -321,7 +405,9 @@ export default function FoodForm(props: FoodFormProps) {
             ? "Processing..."
             : builderMode
               ? `+ Add to ${builderMode}`
-              : "Log Food"}
+              : isEditingLog
+                ? "Update Log"
+                : "Log Food"}
         </button>
       </div>
     </form>

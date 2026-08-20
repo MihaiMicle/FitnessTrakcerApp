@@ -15,12 +15,16 @@ import toast from "react-hot-toast";
 
 import BundleBuilder from "./BundleBuilder";
 import FoodForm from "./FoodForm";
+import FoodList from "./FoodList";
+import CollectionList from "./CollectionList";
 
 interface LogMealModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddMeal: (payload: LogMealPayload) => Promise<any>;
-  initialMealType?: string; // NEW: Tells the modal which section to pre-select
+  initialMealType?: string;
+  editingLog?: any;
+  onUpdateLog?: (id: string, payload: any) => Promise<any>;
 }
 
 const UNIT_TO_G: Record<string, number> = {
@@ -36,6 +40,8 @@ export default function LogMealModal({
   onClose,
   onAddMeal,
   initialMealType,
+  editingLog,
+  onUpdateLog,
 }: LogMealModalProps) {
   const [activeTab, setActiveTab] = useState<
     "recent" | "global" | "custom" | "meals" | "recipes" | "manual"
@@ -52,6 +58,7 @@ export default function LogMealModal({
   const [builderMode, setBuilderMode] = useState<"meal" | "recipe" | null>(
     null,
   );
+  const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
   const [stagedFoods, setStagedFoods] = useState<any[]>([]);
   const [stagedName, setStagedName] = useState("");
   const [stagedServings, setStagedServings] = useState<number | string>("");
@@ -62,6 +69,15 @@ export default function LogMealModal({
 
   const [unknownUnit, setUnknownUnit] = useState<string | null>(null);
   const [baseFood, setBaseFood] = useState<any | null>(null);
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    isDestructive: boolean;
+    action: () => void;
+  } | null>(null);
 
   const [formData, setFormData] = useState<any>({
     meal_type: "lunch",
@@ -94,14 +110,12 @@ export default function LogMealModal({
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
-
     supabase
       .from("saved_meals")
       .select("*")
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => data && setSavedMeals(data));
-
     supabase
       .from("recipes")
       .select("*")
@@ -112,12 +126,41 @@ export default function LogMealModal({
 
   useEffect(() => {
     if (isOpen) {
-      // PRE-SELECT THE DROPDOWN AUTOMATICALLY
-      setFormData((prev: any) => ({
-        ...prev,
-        meal_type: initialMealType || "lunch",
-      }));
-
+      if (editingLog) {
+        setFormData({
+          meal_type: editingLog.meal_type || initialMealType || "lunch",
+          food_name: editingLog.food_name || editingLog.name,
+          serving_size: editingLog.serving_size,
+          serving_unit: editingLog.serving_unit,
+          calories: editingLog.calories ?? "",
+          protein_g: editingLog.protein_g ?? "",
+          carbs_g: editingLog.carbs_g ?? "",
+          fats_g: editingLog.fats_g ?? "",
+          saturated_fats_g: editingLog.saturated_fats_g ?? "",
+          fiber_g: editingLog.fiber_g ?? "",
+          sugar_g: editingLog.sugar_g ?? "",
+          potassium_mg: editingLog.potassium_mg ?? "",
+          sodium_mg: editingLog.sodium_mg ?? "",
+          iron_mg: editingLog.iron_mg ?? "",
+          vitamin_d_mcg: editingLog.vitamin_d_mcg ?? "",
+          zinc_mg: editingLog.zinc_mg ?? "",
+          magnesium_mg: editingLog.magnesium_mg ?? "",
+          calcium_mg: editingLog.calcium_mg ?? "",
+          cholesterol_mg: editingLog.cholesterol_mg ?? "",
+        });
+        const baseServing =
+          editingLog.serving_size || editingLog.quantity_g || 100;
+        const defaultUnit = editingLog.serving_unit || "g";
+        setBaseFood({ ...editingLog, baseServing, defaultUnit });
+        setActiveTab("manual");
+        setLogMealToDiary(true);
+        setSaveAsCustom(false);
+      } else {
+        setFormData((prev: any) => ({
+          ...prev,
+          meal_type: initialMealType || "lunch",
+        }));
+      }
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) return;
         getRecentFoods(session.access_token)
@@ -128,7 +171,8 @@ export default function LogMealModal({
           .then((data: CustomFood[]) => {
             const uniqueFoods = new Map<string, CustomFood>();
             data.forEach((item) => {
-              const nameKey = item.name.toLowerCase().trim();
+              const rawName = item.name || (item as any).food_name || "";
+              const nameKey = rawName.toLowerCase().trim();
               if (!uniqueFoods.has(nameKey) || item.user_id !== null)
                 uniqueFoods.set(nameKey, item);
             });
@@ -138,6 +182,7 @@ export default function LogMealModal({
       });
     } else {
       setEditingFoodId(null);
+      setEditingBundleId(null);
       setSaveAsCustom(false);
       setLogMealToDiary(true);
       setUnknownUnit(null);
@@ -148,8 +193,9 @@ export default function LogMealModal({
       setStagedServings("");
       setActiveTab("recent");
       setSearchQuery("");
+      setConfirmConfig(null);
     }
-  }, [isOpen, initialMealType]);
+  }, [isOpen, initialMealType, editingLog]);
 
   if (!isOpen) return null;
 
@@ -157,25 +203,61 @@ export default function LogMealModal({
   const filteredRecent = recentFoods.filter((f) =>
     (f.name || f.food_name || "").toLowerCase().includes(safeSearch),
   );
-  const filteredGlobal = customFoods
-    .filter((f) => f.user_id === null)
-    .filter((f) => f.name.toLowerCase().includes(safeSearch));
-  const filteredCustom = customFoods
-    .filter((f) => f.user_id !== null)
-    .filter((f) => f.name.toLowerCase().includes(safeSearch));
+  const filteredGlobal = customFoods.filter(
+    (f) =>
+      f.user_id === null &&
+      (f.name || (f as any).food_name || "").toLowerCase().includes(safeSearch),
+  );
+  const filteredCustom = customFoods.filter(
+    (f) =>
+      f.user_id !== null &&
+      (f.name || (f as any).food_name || "").toLowerCase().includes(safeSearch),
+  );
   const filteredMeals = savedMeals.filter((m) =>
-    m.name.toLowerCase().includes(safeSearch),
+    (m.name || "").toLowerCase().includes(safeSearch),
   );
   const filteredRecipes = recipes.filter((r) =>
-    r.name.toLowerCase().includes(safeSearch),
+    (r.name || "").toLowerCase().includes(safeSearch),
   );
 
   const getGramsMultiplier = (unit: string, foodContext: any = baseFood) => {
     if (!unit) return null;
     const cleanUnit = unit.toLowerCase().trim();
     if (UNIT_TO_G[cleanUnit]) return UNIT_TO_G[cleanUnit];
-    if (foodContext?.custom_servings) {
-      const custom = foodContext.custom_servings.find(
+
+    let parsedServings = foodContext?.custom_servings || [];
+    if (typeof parsedServings === "string") {
+      try {
+        parsedServings = JSON.parse(parsedServings);
+      } catch (e) {
+        parsedServings = [];
+      }
+    }
+
+    if (
+      parsedServings.length === 0 &&
+      (foodContext?.name || foodContext?.food_name)
+    ) {
+      const matchedCustom = customFoods.find(
+        (cf) =>
+          (cf.name || "").toLowerCase() ===
+          (foodContext.name || foodContext.food_name || "").toLowerCase(),
+      );
+      if (matchedCustom && matchedCustom.custom_servings) {
+        let matchParsed = matchedCustom.custom_servings;
+        if (typeof matchParsed === "string") {
+          try {
+            matchParsed = JSON.parse(matchParsed);
+          } catch (e) {
+            matchParsed = [];
+          }
+        }
+        parsedServings = matchParsed;
+      }
+    }
+
+    if (parsedServings && Array.isArray(parsedServings)) {
+      const custom = parsedServings.find(
         (s: any) => s.description.toLowerCase() === cleanUnit,
       );
       if (custom) return custom.equivalent_g;
@@ -195,24 +277,39 @@ export default function LogMealModal({
     }
 
     let enrichedFood = { ...food };
-    if (
-      !isEditMode &&
-      (!food.custom_servings || food.custom_servings.length === 0)
-    ) {
+    let parsedServings = [];
+
+    try {
+      if (typeof food.custom_servings === "string") {
+        parsedServings = JSON.parse(food.custom_servings);
+      } else if (Array.isArray(food.custom_servings)) {
+        parsedServings = food.custom_servings;
+      }
+    } catch (e) {}
+
+    if (!isEditMode && parsedServings.length === 0) {
       const matchedCustom = customFoods.find(
         (cf) =>
-          cf.name.toLowerCase() === (food.name || food.food_name).toLowerCase(),
+          (cf.name || "").toLowerCase() ===
+          (food.name || food.food_name || "").toLowerCase(),
       );
-      if (matchedCustom && matchedCustom.custom_servings)
-        enrichedFood.custom_servings = matchedCustom.custom_servings;
+      if (matchedCustom && matchedCustom.custom_servings) {
+        try {
+          parsedServings =
+            typeof matchedCustom.custom_servings === "string"
+              ? JSON.parse(matchedCustom.custom_servings)
+              : matchedCustom.custom_servings;
+        } catch (e) {}
+      }
     }
+
+    enrichedFood.custom_servings = parsedServings || [];
 
     const baseServing =
       enrichedFood.serving_size || enrichedFood.quantity_g || 100;
     const defaultUnit = enrichedFood.serving_unit || "g";
     setBaseFood({ ...enrichedFood, baseServing, defaultUnit });
     setUnknownUnit(null);
-
     setFormData({
       meal_type: formData.meal_type,
       food_name: enrichedFood.name || enrichedFood.food_name,
@@ -283,7 +380,6 @@ export default function LogMealModal({
       const requestedGrams = amount * multiplier;
       const baseGrams = activeContext.baseServing * baseMultiplier;
       const ratio = requestedGrams / baseGrams;
-
       setFormData((prev: any) => ({
         ...prev,
         serving_size: size,
@@ -323,27 +419,6 @@ export default function LogMealModal({
     }
   };
 
-  const handleDeleteCustomFood = async (
-    e: React.MouseEvent,
-    foodId: string,
-  ) => {
-    e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this custom food?")) return;
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        toast.loading("Deleting...", { id: "deleteFood" });
-        await deleteCustomFood(session.access_token, foodId);
-        setCustomFoods((prev) => prev.filter((food) => food.id !== foodId));
-        toast.success("Custom food deleted", { id: "deleteFood" });
-      }
-    } catch (err) {
-      toast.error("Failed to delete food", { id: "deleteFood" });
-    }
-  };
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -352,10 +427,8 @@ export default function LogMealModal({
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
-
-      const finalName = formData.food_name;
       const cleanPayload: any = {
-        food_name: finalName,
+        food_name: formData.food_name,
         serving_size: Number(formData.serving_size) || 0,
         serving_unit: formData.serving_unit,
         calories: Number(formData.calories) || 0,
@@ -375,52 +448,48 @@ export default function LogMealModal({
         cholesterol_mg: Number(formData.cholesterol_mg) || 0,
       };
 
+      if (editingLog && onUpdateLog && logMealToDiary) {
+        await onUpdateLog(editingLog.id, {
+          ...cleanPayload,
+          meal_type: formData.meal_type,
+        });
+        onClose();
+        return;
+      }
+
       if (builderMode && logMealToDiary) {
         setStagedFoods([...stagedFoods, cleanPayload]);
-        toast.success(`Added ${finalName} to ${builderMode}`);
+        toast.success(`Added ${cleanPayload.food_name} to ${builderMode}`);
         setActiveTab(builderMode === "meal" ? "meals" : "recipes");
         setIsSubmitting(false);
         return;
       }
 
       if (saveAsCustom) {
-        let saveSize = cleanPayload.serving_size || 1;
-        let saveUnit = cleanPayload.serving_unit;
-        const customServings = baseFood?.custom_servings
-          ? [...baseFood.custom_servings]
-          : [];
-        let saveMacros = { ...cleanPayload };
-        const inputtedMultiplier = getGramsMultiplier(saveUnit, baseFood) || 1;
-        const inputtedTotalGrams = saveSize * inputtedMultiplier;
-
-        if (inputtedTotalGrams > 0) {
-          const ratioTo100g = 100 / inputtedTotalGrams;
-          saveMacros = {
-            ...saveMacros,
-            calories: Math.round(
-              (Number(saveMacros.calories) || 0) * ratioTo100g,
-            ),
-            protein_g: Number(
-              ((Number(saveMacros.protein_g) || 0) * ratioTo100g).toFixed(1),
-            ),
-            carbs_g: Number(
-              ((Number(saveMacros.carbs_g) || 0) * ratioTo100g).toFixed(1),
-            ),
-            fats_g: Number(
-              ((Number(saveMacros.fats_g) || 0) * ratioTo100g).toFixed(1),
-            ),
-          };
-          saveSize = 100;
-          saveUnit = "g";
-        }
-
         const dbPayload = {
-          name: finalName,
-          serving_size: saveSize,
-          serving_unit: saveUnit,
-          custom_servings: customServings,
-          ...saveMacros,
+          name: cleanPayload.food_name,
+          serving_size: cleanPayload.serving_size || 1,
+          serving_unit: cleanPayload.serving_unit || "serving",
+          custom_servings: baseFood?.custom_servings
+            ? [...baseFood.custom_servings]
+            : [],
+          calories: cleanPayload.calories,
+          protein_g: cleanPayload.protein_g,
+          carbs_g: cleanPayload.carbs_g,
+          fats_g: cleanPayload.fats_g,
+          saturated_fats_g: cleanPayload.saturated_fats_g,
+          fiber_g: cleanPayload.fiber_g,
+          sugar_g: cleanPayload.sugar_g,
+          potassium_mg: cleanPayload.potassium_mg,
+          sodium_mg: cleanPayload.sodium_mg,
+          iron_mg: cleanPayload.iron_mg,
+          vitamin_d_mcg: cleanPayload.vitamin_d_mcg,
+          zinc_mg: cleanPayload.zinc_mg,
+          magnesium_mg: cleanPayload.magnesium_mg,
+          calcium_mg: cleanPayload.calcium_mg,
+          cholesterol_mg: cleanPayload.cholesterol_mg,
         };
+
         if (editingFoodId) {
           await updateCustomFood(
             session.access_token,
@@ -434,33 +503,11 @@ export default function LogMealModal({
         }
       }
 
-      if (logMealToDiary) {
+      if (logMealToDiary && !editingLog)
         await onAddMeal({ ...cleanPayload, meal_type: formData.meal_type });
-      }
       onClose();
     } catch (err: any) {
       alert("Failed to process request.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleLogSavedMeal = async (meal: any) => {
-    if (
-      !confirm(
-        `Log all items from '${meal.name}' into ${MEAL_TYPE_LABELS[formData.meal_type as keyof typeof MEAL_TYPE_LABELS]}?`,
-      )
-    )
-      return;
-    setIsSubmitting(true);
-    toast.loading(`Unpacking ${meal.name}...`, { id: "logBundle" });
-    try {
-      for (const food of meal.foods)
-        await onAddMeal({ ...food, meal_type: formData.meal_type });
-      toast.success("Meal completely logged!", { id: "logBundle" });
-      onClose();
-    } catch (e) {
-      toast.error("Failed to log some items", { id: "logBundle" });
     } finally {
       setIsSubmitting(false);
     }
@@ -491,13 +538,22 @@ export default function LogMealModal({
       if (!session) return;
 
       if (builderMode === "meal") {
-        const { error } = await supabase.from("saved_meals").insert({
-          user_id: session.user.id,
-          name: stagedName,
-          foods: stagedFoods,
-        });
-        if (error) throw error;
-        toast.success("Meal bundle saved!");
+        if (editingBundleId) {
+          const { error } = await supabase
+            .from("saved_meals")
+            .update({ name: stagedName, foods: stagedFoods })
+            .eq("id", editingBundleId);
+          if (error) throw error;
+          toast.success("Meal updated!");
+        } else {
+          const { error } = await supabase.from("saved_meals").insert({
+            user_id: session.user.id,
+            name: stagedName,
+            foods: stagedFoods,
+          });
+          if (error) throw error;
+          toast.success("Meal saved!");
+        }
       } else if (builderMode === "recipe") {
         const servings = Number(stagedServings);
         const totals = stagedFoods.reduce(
@@ -536,7 +592,6 @@ export default function LogMealModal({
             cholesterol_mg: 0,
           },
         );
-
         const macros_per_serving = {
           calories: Math.round(totals.calories / servings),
           protein_g: Number((totals.protein_g / servings).toFixed(1)),
@@ -556,19 +611,32 @@ export default function LogMealModal({
           calcium_mg: Number((totals.calcium_mg / servings).toFixed(1)),
           cholesterol_mg: Number((totals.cholesterol_mg / servings).toFixed(1)),
         };
-
-        const { error } = await supabase.from("recipes").insert({
-          user_id: session.user.id,
-          name: stagedName,
-          servings,
-          ingredients: stagedFoods,
-          macros_per_serving,
-        });
-        if (error) throw error;
-        toast.success("Recipe saved!");
+        if (editingBundleId) {
+          const { error } = await supabase
+            .from("recipes")
+            .update({
+              name: stagedName,
+              servings,
+              ingredients: stagedFoods,
+              macros_per_serving,
+            })
+            .eq("id", editingBundleId);
+          if (error) throw error;
+          toast.success("Recipe updated!");
+        } else {
+          const { error } = await supabase.from("recipes").insert({
+            user_id: session.user.id,
+            name: stagedName,
+            servings,
+            ingredients: stagedFoods,
+            macros_per_serving,
+          });
+          if (error) throw error;
+          toast.success("Recipe saved!");
+        }
       }
-
       setBuilderMode(null);
+      setEditingBundleId(null);
       setStagedFoods([]);
       setStagedName("");
       setStagedServings("");
@@ -580,30 +648,124 @@ export default function LogMealModal({
     }
   };
 
-  const handleDeleteSavedEntity = async (
+  const handleDeleteCustomFoodClick = (e: React.MouseEvent, foodId: string) => {
+    e.stopPropagation();
+    setConfirmConfig({
+      isOpen: true,
+      title: "DELETE CUSTOM FOOD",
+      message: "Are you sure you want to permanently delete this custom food?",
+      confirmText: "Delete",
+      isDestructive: true,
+      action: async () => {
+        setConfirmConfig(null);
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session) {
+            toast.loading("Deleting...", { id: "deleteFood" });
+            await deleteCustomFood(session.access_token, foodId);
+            setCustomFoods((prev) => prev.filter((food) => food.id !== foodId));
+            toast.success("Custom food deleted", { id: "deleteFood" });
+          }
+        } catch (err) {
+          toast.error("Failed to delete food", { id: "deleteFood" });
+        }
+      },
+    });
+  };
+
+  const handleLogSavedMealClick = (meal: any) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "LOG MEAL",
+      message: `Log all items from '${meal.name}' into ${MEAL_TYPE_LABELS[formData.meal_type as keyof typeof MEAL_TYPE_LABELS]}?`,
+      confirmText: "Log Items",
+      isDestructive: false,
+      action: async () => {
+        setConfirmConfig(null);
+        setIsSubmitting(true);
+        toast.loading(`Unpacking ${meal.name}...`, { id: "logBundle" });
+        try {
+          for (const food of meal.foods)
+            await onAddMeal({ ...food, meal_type: formData.meal_type });
+          toast.success("Meal completely logged!", { id: "logBundle" });
+          onClose();
+        } catch (e) {
+          toast.error("Failed to log some items", { id: "logBundle" });
+        } finally {
+          setIsSubmitting(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteSavedEntityClick = (
     e: React.MouseEvent,
     id: string,
     table: "saved_meals" | "recipes",
   ) => {
     e.stopPropagation();
-    if (
-      !confirm(`Delete this ${table === "recipes" ? "recipe" : "saved meal"}?`)
-    )
-      return;
-    const { error } = await supabase.from(table).delete().eq("id", id);
-    if (!error) {
-      if (table === "saved_meals")
-        setSavedMeals((prev) => prev.filter((m) => m.id !== id));
-      else setRecipes((prev) => prev.filter((r) => r.id !== id));
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: table === "recipes" ? "DELETE RECIPE" : "DELETE MEAL",
+      message: `Are you sure you want to permanently delete this ${table === "recipes" ? "recipe" : "saved meal"}?`,
+      confirmText: "Delete",
+      isDestructive: true,
+      action: async () => {
+        setConfirmConfig(null);
+        const { error } = await supabase.from(table).delete().eq("id", id);
+        if (!error) {
+          if (table === "saved_meals")
+            setSavedMeals((prev) => prev.filter((m) => m.id !== id));
+          else setRecipes((prev) => prev.filter((r) => r.id !== id));
+          toast.success("Deleted successfully!");
+        } else {
+          toast.error("Failed to delete.");
+        }
+      },
+    });
   };
 
-  const availableUnits = baseFood?.custom_servings
-    ? [
-        ...SERVING_UNITS,
-        ...baseFood.custom_servings.map((s: any) => s.description),
-      ]
-    : SERVING_UNITS;
+  // Dynamic Available Units Calculation during render!
+  let parsedBaseServings = baseFood?.custom_servings || [];
+  if (typeof parsedBaseServings === "string") {
+    try {
+      parsedBaseServings = JSON.parse(parsedBaseServings);
+    } catch (e) {
+      parsedBaseServings = [];
+    }
+  }
+
+  if (
+    parsedBaseServings.length === 0 &&
+    (baseFood?.name || baseFood?.food_name)
+  ) {
+    const matchedCustom = customFoods.find(
+      (cf) =>
+        (cf.name || "").toLowerCase() ===
+        (baseFood.name || baseFood.food_name || "").toLowerCase(),
+    );
+    if (matchedCustom && matchedCustom.custom_servings) {
+      let matchParsed = matchedCustom.custom_servings;
+      if (typeof matchParsed === "string") {
+        try {
+          matchParsed = JSON.parse(matchParsed);
+        } catch (e) {
+          matchParsed = [];
+        }
+      }
+      parsedBaseServings = matchParsed;
+    }
+  }
+
+  const availableUnits = Array.from(
+    new Set([
+      ...SERVING_UNITS,
+      ...parsedBaseServings.map((s: any) => s.description),
+    ]),
+  );
+
   const activeTabClass =
     "bg-emerald-900/40 text-emerald-400 font-bold border border-emerald-800/50";
   const inactiveTabClass =
@@ -612,458 +774,292 @@ export default function LogMealModal({
     "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-emerald-500 outline-none transition-colors";
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
-      <div className="bg-neutral-900 border-t sm:border border-neutral-800 rounded-t-2xl sm:rounded-xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[90dvh] sm:max-h-[85vh] flex flex-col">
-        <div className="flex justify-between items-center border-b border-neutral-800 pb-3 shrink-0">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            {builderMode ? (
-              <span className="text-amber-400 animate-pulse">
-                ● {builderMode === "meal" ? "Meal Builder" : "Recipe Builder"}
-              </span>
-            ) : editingFoodId ? (
-              "Edit Custom Food"
-            ) : (
-              "Log Food"
-            )}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-xl sm:text-sm px-2 py-1"
-          >
-            ✕
-          </button>
-        </div>
-
-        {(!builderMode || activeTab === "manual") && (
-          <div className="flex items-center justify-between bg-neutral-950 p-2 rounded-lg border border-neutral-800 shrink-0">
-            <span className="text-xs text-neutral-400 font-mono ml-2">
-              Target Section:
-            </span>
-            <select
-              value={formData.meal_type}
-              onChange={(e) =>
-                setFormData({ ...formData, meal_type: e.target.value })
-              }
-              className="bg-transparent border-none text-emerald-400 text-sm font-bold focus:ring-0 cursor-pointer outline-none text-right"
+    <>
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
+        <div className="bg-neutral-900 border-t sm:border border-neutral-800 rounded-t-2xl sm:rounded-xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[90dvh] sm:max-h-[85vh] flex flex-col">
+          <div className="flex justify-between items-center border-b border-neutral-800 pb-3 shrink-0">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              {builderMode ? (
+                <span className="text-amber-400 animate-pulse">
+                  ● {builderMode === "meal" ? "Meal Builder" : "Recipe Builder"}
+                </span>
+              ) : editingFoodId ? (
+                "Edit Custom Food"
+              ) : editingLog ? (
+                "Update Diary Entry"
+              ) : (
+                "Log Food"
+              )}
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-neutral-400 hover:text-white font-mono text-xl sm:text-sm px-2 py-1"
             >
-              {MEAL_TYPES.map((type) => (
-                <option
-                  key={type}
-                  value={type}
-                  className="bg-neutral-900 text-white"
-                >
-                  {MEAL_TYPE_LABELS[type]}
-                </option>
-              ))}
-            </select>
+              ✕
+            </button>
           </div>
-        )}
 
-        <div className="flex bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-[11px] sm:text-[10px] md:text-xs font-mono overflow-x-auto custom-scrollbar shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab("recent")}
-            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recent" ? activeTabClass : inactiveTabClass}`}
-          >
-            Recent
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("global")}
-            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "global" ? activeTabClass : inactiveTabClass}`}
-          >
-            Database
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("custom")}
-            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "custom" ? activeTabClass : inactiveTabClass}`}
-          >
-            My Foods
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("meals")}
-            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "meals" ? activeTabClass : inactiveTabClass}`}
-          >
-            Meals
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("recipes")}
-            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recipes" ? activeTabClass : inactiveTabClass}`}
-          >
-            Recipes
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("manual")}
-            className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "manual" ? activeTabClass : inactiveTabClass}`}
-          >
-            Form
-          </button>
-        </div>
+          {(!builderMode || activeTab === "manual") && (
+            <div className="flex items-center justify-between bg-neutral-950 p-2 rounded-lg border border-neutral-800 shrink-0">
+              <span className="text-xs text-neutral-400 font-mono ml-2">
+                Target Section:
+              </span>
+              <select
+                value={formData.meal_type}
+                onChange={(e) =>
+                  setFormData({ ...formData, meal_type: e.target.value })
+                }
+                className="bg-transparent border-none text-emerald-400 text-sm font-bold focus:ring-0 cursor-pointer outline-none text-right"
+              >
+                {MEAL_TYPES.map((type) => (
+                  <option
+                    key={type}
+                    value={type}
+                    className="bg-neutral-900 text-white"
+                  >
+                    {MEAL_TYPE_LABELS[type]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-        {activeTab !== "manual" &&
-          activeTab !== "meals" &&
-          activeTab !== "recipes" && (
-            <div className="relative shrink-0">
-              <input
-                type="text"
-                placeholder={`Search ${activeTab === "global" ? "database" : activeTab === "custom" ? "my foods" : "recent"}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={inputClass + " font-mono"}
+          <div className="flex bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-[11px] sm:text-[10px] md:text-xs font-mono overflow-x-auto custom-scrollbar shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab("recent")}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recent" ? activeTabClass : inactiveTabClass}`}
+            >
+              Recent
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("global")}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "global" ? activeTabClass : inactiveTabClass}`}
+            >
+              Database
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("custom")}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "custom" ? activeTabClass : inactiveTabClass}`}
+            >
+              My Foods
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("meals")}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "meals" ? activeTabClass : inactiveTabClass}`}
+            >
+              Meals
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("recipes")}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recipes" ? activeTabClass : inactiveTabClass}`}
+            >
+              Recipes
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("manual")}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "manual" ? activeTabClass : inactiveTabClass}`}
+            >
+              Form
+            </button>
+          </div>
+
+          {activeTab !== "manual" &&
+            activeTab !== "meals" &&
+            activeTab !== "recipes" && (
+              <div className="relative shrink-0">
+                <input
+                  type="text"
+                  placeholder={`Search ${activeTab === "global" ? "database" : activeTab === "custom" ? "my foods" : "recent"}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={inputClass + " font-mono"}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono text-xs p-2"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-2">
+            {activeTab === "recent" && (
+              <FoodList
+                foods={filteredRecent}
+                emptyMessage="No recent foods."
+                onSelect={handleSelectFood}
               />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono text-xs p-2"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          )}
+            )}
 
-        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-2">
-          {activeTab === "recent" && (
-            <div className="space-y-2">
-              {filteredRecent.length === 0 ? (
-                <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                  No recent foods.
-                </p>
-              ) : (
-                filteredRecent.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleSelectFood(item)}
-                    className="bg-neutral-950 hover:bg-neutral-800 border border-neutral-800/80 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center active:scale-[0.98]"
-                  >
-                    <div>
-                      <h4 className="text-sm font-medium text-neutral-200">
-                        {item.name || item.food_name}
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
-                        {item.serving_size} {item.serving_unit} •{" "}
-                        {item.calories} kcal | P: {item.protein_g}g | C:{" "}
-                        {item.carbs_g}g | F: {item.fats_g}g
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+            {activeTab === "global" && (
+              <FoodList
+                foods={filteredGlobal}
+                emptyMessage="No database foods match."
+                onSelect={handleSelectFood}
+                showAppBadge
+              />
+            )}
 
-          {activeTab === "global" && (
-            <div className="space-y-2">
-              {filteredGlobal.length === 0 ? (
-                <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                  No database foods match.
-                </p>
-              ) : (
-                filteredGlobal.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleSelectFood(item)}
-                    className="bg-neutral-950 hover:bg-emerald-950/20 border border-neutral-800/80 hover:border-emerald-900/50 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center active:scale-[0.98]"
-                  >
-                    <div>
-                      <h4 className="text-sm font-medium text-neutral-200 flex items-center gap-2">
-                        {item.name}
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
-                          APP
-                        </span>
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
-                        {item.serving_size} {item.serving_unit} •{" "}
-                        {item.calories} kcal | P: {item.protein_g}g | C:{" "}
-                        {item.carbs_g}g | F: {item.fats_g}g
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+            {activeTab === "custom" && (
+              <FoodList
+                foods={filteredCustom}
+                emptyMessage="No custom foods match."
+                onSelect={handleSelectFood}
+                onDelete={handleDeleteCustomFoodClick}
+                showActions
+              />
+            )}
 
-          {activeTab === "custom" && (
-            <div className="space-y-2">
-              {filteredCustom.length === 0 ? (
-                <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                  No custom foods match.
-                </p>
-              ) : (
-                filteredCustom.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleSelectFood(item)}
-                    className="group bg-neutral-950 hover:bg-neutral-800 border border-neutral-800/80 rounded-lg p-3 cursor-pointer transition-colors flex justify-between items-center active:scale-[0.98]"
-                  >
-                    <div>
-                      <h4 className="text-sm font-medium text-neutral-200">
-                        {item.name}
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
-                        {item.serving_size} {item.serving_unit} •{" "}
-                        {item.calories} kcal | P: {item.protein_g}g | C:{" "}
-                        {item.carbs_g}g | F: {item.fats_g}g
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectFood(item, true);
-                        }}
-                        className="text-neutral-500 hover:text-blue-400 font-bold px-3 py-2 text-sm transition-colors"
-                        title="Edit"
-                      >
-                        ✎
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteCustomFood(e, item.id)}
-                        className="text-neutral-500 hover:text-rose-500 font-bold px-3 py-2 text-sm transition-colors"
-                        title="Delete"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+            {activeTab === "meals" && (
+              <div className="space-y-4">
+                {builderMode === "meal" ? (
+                  <BundleBuilder
+                    builderMode="meal"
+                    stagedFoods={stagedFoods}
+                    stagedName={stagedName}
+                    setStagedName={setStagedName}
+                    stagedServings={stagedServings}
+                    setStagedServings={setStagedServings}
+                    onCancel={() => {
+                      setBuilderMode(null);
+                      setStagedFoods([]);
+                      setEditingBundleId(null);
+                    }}
+                    onAddFood={() => setActiveTab("recent")}
+                    onSave={handleSaveBuilder}
+                    isSubmitting={isSubmitting}
+                  />
+                ) : (
+                  <CollectionList
+                    type="meal"
+                    items={filteredMeals}
+                    emptyMessage="No saved meals."
+                    onLog={handleLogSavedMealClick}
+                    onEdit={(e, meal) => {
+                      e.stopPropagation();
+                      setBuilderMode("meal");
+                      setEditingBundleId(meal.id);
+                      setStagedName(meal.name);
+                      setStagedFoods(meal.foods || []);
+                    }}
+                    onDelete={handleDeleteSavedEntityClick}
+                    onCreateNew={() => {
+                      setBuilderMode("meal");
+                      setEditingBundleId(null);
+                      setStagedName("");
+                      setStagedFoods([]);
+                    }}
+                  />
+                )}
+              </div>
+            )}
 
-          {activeTab === "meals" && (
-            <div className="space-y-4">
-              {builderMode === "meal" ? (
-                <BundleBuilder
-                  builderMode="meal"
-                  stagedFoods={stagedFoods}
-                  stagedName={stagedName}
-                  setStagedName={setStagedName}
-                  stagedServings={stagedServings}
-                  setStagedServings={setStagedServings}
-                  onCancel={() => {
-                    setBuilderMode(null);
-                    setStagedFoods([]);
-                  }}
-                  onAddFood={() => setActiveTab("recent")}
-                  onSave={handleSaveBuilder}
-                  isSubmitting={isSubmitting}
-                />
-              ) : (
-                <>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search saved meals..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className={inputClass + " font-mono mb-3"}
-                    />
-                  </div>
-                  <button
-                    onClick={() => setBuilderMode("meal")}
-                    className="w-full py-3 rounded-xl border-2 border-dashed border-neutral-800 text-emerald-500 font-bold text-sm hover:border-emerald-500 hover:bg-emerald-950/20 transition-all mb-2"
-                  >
-                    + Create New Meal Bundle
-                  </button>
-                  <div className="space-y-2">
-                    {filteredMeals.length === 0 ? (
-                      <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                        No saved meals.
-                      </p>
-                    ) : (
-                      filteredMeals.map((meal) => {
-                        const totalCals = Math.round(
-                          meal.foods.reduce(
-                            (acc: number, f: any) => acc + (f.calories || 0),
-                            0,
-                          ),
-                        );
-                        const totalProtein = meal.foods
-                          .reduce(
-                            (acc: number, f: any) => acc + (f.protein_g || 0),
-                            0,
-                          )
-                          .toFixed(1);
-                        const totalCarbs = meal.foods
-                          .reduce(
-                            (acc: number, f: any) => acc + (f.carbs_g || 0),
-                            0,
-                          )
-                          .toFixed(1);
-                        const totalFats = meal.foods
-                          .reduce(
-                            (acc: number, f: any) => acc + (f.fats_g || 0),
-                            0,
-                          )
-                          .toFixed(1);
-                        return (
-                          <div
-                            key={meal.id}
-                            onClick={() => handleLogSavedMeal(meal)}
-                            className="bg-neutral-950 hover:bg-emerald-950/20 border border-neutral-800/80 hover:border-emerald-900/50 rounded-xl p-3 sm:p-4 cursor-pointer transition-colors active:scale-[0.98] group"
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <h4 className="text-sm font-bold text-neutral-200">
-                                  {meal.name}
-                                </h4>
-                                <p className="text-[11px] text-neutral-500 font-mono mt-0.5">
-                                  {meal.foods.length} items • {totalCals} kcal |
-                                  P: {totalProtein}g | C: {totalCarbs}g | F:{" "}
-                                  {totalFats}g
-                                </p>
-                              </div>
-                              <button
-                                onClick={(e) =>
-                                  handleDeleteSavedEntity(
-                                    e,
-                                    meal.id,
-                                    "saved_meals",
-                                  )
-                                }
-                                className="text-neutral-600 hover:text-rose-500 font-bold px-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {meal.foods
-                                .slice(0, 3)
-                                .map((f: any, i: number) => (
-                                  <span
-                                    key={i}
-                                    className="text-[9px] bg-neutral-900 px-1.5 py-0.5 rounded text-neutral-400"
-                                  >
-                                    {f.food_name.length > 12
-                                      ? f.food_name.substring(0, 12) + "..."
-                                      : f.food_name}
-                                  </span>
-                                ))}
-                              {meal.foods.length > 3 && (
-                                <span className="text-[9px] bg-neutral-900 px-1.5 py-0.5 rounded text-neutral-400">
-                                  +{meal.foods.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+            {activeTab === "recipes" && (
+              <div className="space-y-4">
+                {builderMode === "recipe" ? (
+                  <BundleBuilder
+                    builderMode="recipe"
+                    stagedFoods={stagedFoods}
+                    stagedName={stagedName}
+                    setStagedName={setStagedName}
+                    stagedServings={stagedServings}
+                    setStagedServings={setStagedServings}
+                    onCancel={() => {
+                      setBuilderMode(null);
+                      setStagedFoods([]);
+                      setEditingBundleId(null);
+                    }}
+                    onAddFood={() => setActiveTab("recent")}
+                    onSave={handleSaveBuilder}
+                    isSubmitting={isSubmitting}
+                  />
+                ) : (
+                  <CollectionList
+                    type="recipe"
+                    items={filteredRecipes}
+                    emptyMessage="No recipes created."
+                    onLog={handleLogRecipe}
+                    onEdit={(e, recipe) => {
+                      e.stopPropagation();
+                      setBuilderMode("recipe");
+                      setEditingBundleId(recipe.id);
+                      setStagedName(recipe.name);
+                      setStagedFoods(recipe.ingredients || []);
+                      setStagedServings(recipe.servings);
+                    }}
+                    onDelete={handleDeleteSavedEntityClick}
+                    onCreateNew={() => {
+                      setBuilderMode("recipe");
+                      setEditingBundleId(null);
+                      setStagedName("");
+                      setStagedFoods([]);
+                      setStagedServings("");
+                    }}
+                  />
+                )}
+              </div>
+            )}
 
-          {activeTab === "recipes" && (
-            <div className="space-y-4">
-              {builderMode === "recipe" ? (
-                <BundleBuilder
-                  builderMode="recipe"
-                  stagedFoods={stagedFoods}
-                  stagedName={stagedName}
-                  setStagedName={setStagedName}
-                  stagedServings={stagedServings}
-                  setStagedServings={setStagedServings}
-                  onCancel={() => {
-                    setBuilderMode(null);
-                    setStagedFoods([]);
-                  }}
-                  onAddFood={() => setActiveTab("recent")}
-                  onSave={handleSaveBuilder}
-                  isSubmitting={isSubmitting}
-                />
-              ) : (
-                <>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search recipes..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className={inputClass + " font-mono mb-3"}
-                    />
-                  </div>
-                  <button
-                    onClick={() => setBuilderMode("recipe")}
-                    className="w-full py-3 rounded-xl border-2 border-dashed border-neutral-800 text-blue-400 font-bold text-sm hover:border-blue-400 hover:bg-blue-950/20 transition-all mb-2"
-                  >
-                    + Create New Recipe
-                  </button>
-                  <div className="space-y-2">
-                    {filteredRecipes.length === 0 ? (
-                      <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                        No recipes created.
-                      </p>
-                    ) : (
-                      filteredRecipes.map((recipe) => (
-                        <div
-                          key={recipe.id}
-                          onClick={() => handleLogRecipe(recipe)}
-                          className="bg-neutral-950 hover:bg-blue-950/20 border border-neutral-800/80 hover:border-blue-900/50 rounded-xl p-3 sm:p-4 cursor-pointer transition-colors active:scale-[0.98] group"
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h4 className="text-sm font-bold text-neutral-200">
-                                {recipe.name}
-                              </h4>
-                              <p className="text-[11px] text-neutral-500 font-mono mt-0.5">
-                                Yields {recipe.servings} servings
-                              </p>
-                              <p className="text-[11px] text-neutral-400 font-mono mt-1">
-                                Per Serving:{" "}
-                                {recipe.macros_per_serving.calories} kcal | P:{" "}
-                                {recipe.macros_per_serving.protein_g}g | C:{" "}
-                                {recipe.macros_per_serving.carbs_g}g | F:{" "}
-                                {recipe.macros_per_serving.fats_g}g
-                              </p>
-                            </div>
-                            <button
-                              onClick={(e) =>
-                                handleDeleteSavedEntity(e, recipe.id, "recipes")
-                              }
-                              className="text-neutral-600 hover:text-rose-500 font-bold px-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {activeTab === "manual" && (
-            <FoodForm
-              formData={formData}
-              setFormData={setFormData}
-              availableUnits={availableUnits}
-              updateMacros={updateMacrosForWeightAndUnit}
-              saveAsCustom={saveAsCustom}
-              setSaveAsCustom={setSaveAsCustom}
-              logMealToDiary={logMealToDiary}
-              setLogMealToDiary={setLogMealToDiary}
-              builderMode={builderMode}
-              editingFoodId={editingFoodId}
-              isSubmitting={isSubmitting}
-              onClose={onClose}
-              onSubmit={handleSubmit}
-            />
-          )}
+            {activeTab === "manual" && (
+              <FoodForm
+                formData={formData}
+                setFormData={setFormData}
+                availableUnits={availableUnits}
+                updateMacros={updateMacrosForWeightAndUnit}
+                saveAsCustom={saveAsCustom}
+                setSaveAsCustom={setSaveAsCustom}
+                logMealToDiary={logMealToDiary}
+                setLogMealToDiary={setLogMealToDiary}
+                builderMode={builderMode}
+                editingFoodId={editingFoodId}
+                isEditingLog={!!editingLog}
+                isSubmitting={isSubmitting}
+                onClose={onClose}
+                onSubmit={handleSubmit}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {confirmConfig && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-xs w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
+            <h3
+              className={`text-lg font-bold font-mono tracking-wider mb-2 ${confirmConfig.isDestructive ? "text-rose-500" : "text-emerald-400"}`}
+            >
+              {confirmConfig.title}
+            </h3>
+            <p className="text-sm text-neutral-400 mb-6 font-mono leading-relaxed">
+              {confirmConfig.message}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmConfig(null)}
+                className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmConfig.action}
+                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${confirmConfig.isDestructive ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
+              >
+                {confirmConfig.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

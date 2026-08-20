@@ -19,7 +19,14 @@ export default function GoalsModal({
   const [goalType, setGoalType] = useState("maintain");
   const [profileData, setProfileData] = useState<any>(null);
 
-  const [targets, setTargets] = useState({
+  // Allow numbers OR empty strings so the user can easily clear the input
+  const [targets, setTargets] = useState<{
+    target_calories: number | "";
+    target_protein_g: number | "";
+    target_carbs_g: number | "";
+    target_fats_g: number | "";
+    target_water_ml: number | "";
+  }>({
     target_calories: 2300,
     target_protein_g: 150,
     target_carbs_g: 250,
@@ -27,7 +34,6 @@ export default function GoalsModal({
     target_water_ml: 3000,
   });
 
-  // Fetch current goals when the modal opens
   useEffect(() => {
     if (isOpen) {
       fetchGoals();
@@ -71,30 +77,23 @@ export default function GoalsModal({
 
     toast.loading("Calculating optimal macros...", { id: "calc" });
 
-    // Calculate BMR using Mifflin-St Jeor
     const w = profileData.weight_kg;
-    const h = profileData.height_cm || 170; // Fallback if missing
-    const a = profileData.age || 25; // Fallback if missing
+    const h = profileData.height_cm || 170;
+    const a = profileData.age || 25;
     const isMale = profileData.gender !== "female";
-    const activity = profileData.activity_level || 1.375; // Fallback to lightly active
+    const activity = profileData.activity_level || 1.375;
 
     const bmr = 10 * w + 6.25 * h - 5 * a + (isMale ? 5 : -161);
-
-    // Calculate TDEE (Maintenance)
     const tdee = bmr * activity;
 
-    // Adjust for Goal
     let cals = tdee;
-    if (goalType === "cut") cals -= 500; // 500 cal deficit
-    if (goalType === "bulk") cals += 300; // 300 cal surplus
+    if (goalType === "cut") cals -= 500;
+    if (goalType === "bulk") cals += 300;
 
     cals = Math.round(cals);
 
-    // Bodybuilder Macro Split (2.2g Protein/kg, ~0.8g Fat/kg)
     const p = Math.round(w * 2.2);
     const f = Math.round(w * 0.8);
-
-    // Remaining calories go to Carbs
     const c = Math.round((cals - p * 4 - f * 9) / 4);
 
     setTargets({
@@ -108,6 +107,65 @@ export default function GoalsModal({
     toast.success("Macros auto-calculated!", { id: "calc" });
   };
 
+  const getGoalTip = (goal: string, activityLevel?: number) => {
+    const isSedentary = !activityLevel || activityLevel <= 1.2;
+    const isVeryActive = activityLevel && activityLevel >= 1.725;
+
+    if (goal === "bulk" && isSedentary) {
+      return (
+        <span>
+          Your current goal is{" "}
+          <strong className="text-amber-200">Muscle Gain</strong>. A sedentary
+          activity level may lead to excess fat gain instead of muscle.{" "}
+          <strong className="text-amber-200">
+            Consider increasing your daily activity or step count
+          </strong>{" "}
+          to ensure those extra calories are put to good use!
+        </span>
+      );
+    }
+
+    if (goal === "cut" && isVeryActive) {
+      return (
+        <span>
+          Your current goal is{" "}
+          <strong className="text-amber-200">Fat Loss</strong> with high energy
+          expenditure. Keep protein high to prevent muscle breakdown and
+          recovery fatigue.
+        </span>
+      );
+    }
+
+    if (goal === "cut") {
+      return (
+        <span>
+          Your current goal is{" "}
+          <strong className="text-amber-200">Fat Loss</strong>. Aim for a
+          moderate 300–500 kcal deficit to preserve strength and lean tissue.
+        </span>
+      );
+    }
+
+    if (goal === "bulk") {
+      return (
+        <span>
+          Your current goal is{" "}
+          <strong className="text-amber-200">Muscle Gain</strong>. A lean
+          surplus of 200–300 kcal optimizes hypertrophy while minimizing fat
+          accrual.
+        </span>
+      );
+    }
+
+    return (
+      <span>
+        Your current goal is{" "}
+        <strong className="text-amber-200">Maintenance</strong>. Ideal for
+        strength plateau breakthroughs and body recomposition.
+      </span>
+    );
+  };
+
   const handleSave = async () => {
     setLoading(true);
     toast.loading("Saving goals...", { id: "saveGoals" });
@@ -118,13 +176,23 @@ export default function GoalsModal({
       } = await supabase.auth.getSession();
       if (!session) throw new Error("No session");
 
+      // Ensure empty strings are cast back to 0 before saving
+      const payload = {
+        target_calories: Number(targets.target_calories) || 0,
+        target_protein_g: Number(targets.target_protein_g) || 0,
+        target_carbs_g: Number(targets.target_carbs_g) || 0,
+        target_fats_g: Number(targets.target_fats_g) || 0,
+        target_water_ml: Number(targets.target_water_ml) || 0,
+        goal_type: goalType,
+      };
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ ...targets, goal_type: goalType }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error("Failed to save goals");
@@ -142,7 +210,39 @@ export default function GoalsModal({
   if (!isOpen) return null;
 
   const inputClass =
-    "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors";
+    "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 font-mono text-sm focus:outline-none text-white transition-colors";
+
+  // Dynamic Percentage Calculations
+  const currentCalories = Number(targets.target_calories) || 0;
+  const safeCaloriesForMath = currentCalories > 0 ? currentCalories : 1;
+
+  const pPct =
+    Math.round(
+      ((Number(targets.target_protein_g) * 4) / safeCaloriesForMath) * 100,
+    ) || 0;
+  const cPct =
+    Math.round(
+      ((Number(targets.target_carbs_g) * 4) / safeCaloriesForMath) * 100,
+    ) || 0;
+  const fPct =
+    Math.round(
+      ((Number(targets.target_fats_g) * 9) / safeCaloriesForMath) * 100,
+    ) || 0;
+  const totalPct = pPct + cPct + fPct;
+
+  // Slider Handlers
+  const handleProteinSlider = (pct: number) => {
+    const newGrams = Math.round((currentCalories * (pct / 100)) / 4);
+    setTargets({ ...targets, target_protein_g: newGrams });
+  };
+  const handleCarbsSlider = (pct: number) => {
+    const newGrams = Math.round((currentCalories * (pct / 100)) / 4);
+    setTargets({ ...targets, target_carbs_g: newGrams });
+  };
+  const handleFatsSlider = (pct: number) => {
+    const newGrams = Math.round((currentCalories * (pct / 100)) / 9);
+    setTargets({ ...targets, target_fats_g: newGrams });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -169,7 +269,7 @@ export default function GoalsModal({
                 <select
                   value={goalType}
                   onChange={(e) => setGoalType(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors cursor-pointer"
                 >
                   <option value="maintain">Maintenance</option>
                   <option value="cut">Fat Loss (Cut)</option>
@@ -184,7 +284,6 @@ export default function GoalsModal({
               </button>
             </div>
 
-            {/* Conditional Warning: Muscle Gain + Sedentary */}
             {profileData?.activity_level === 1.2 && goalType === "bulk" && (
               <div className="p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-2 text-amber-400 text-xs font-mono animate-in fade-in">
                 <svg
@@ -223,16 +322,20 @@ export default function GoalsModal({
               onChange={(e) =>
                 setTargets({
                   ...targets,
-                  target_calories: Number(e.target.value),
+                  target_calories:
+                    e.target.value === "" ? "" : Number(e.target.value),
                 })
               }
-              className={inputClass}
+              className={`${inputClass} focus:border-emerald-500`}
             />
           </div>
+
           <div className="grid grid-cols-3 gap-3">
+            {/* Protein Column */}
             <div>
-              <label className="block text-xs font-mono text-blue-400 mb-1">
-                Protein (g)
+              <label className="block text-[11px] font-mono text-blue-400 mb-1 flex justify-between">
+                <span>Protein (g)</span>
+                <span>{pPct}%</span>
               </label>
               <input
                 type="number"
@@ -240,15 +343,28 @@ export default function GoalsModal({
                 onChange={(e) =>
                   setTargets({
                     ...targets,
-                    target_protein_g: Number(e.target.value),
+                    target_protein_g:
+                      e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
-                className={inputClass}
+                className={`${inputClass} focus:border-blue-500`}
+              />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={pPct}
+                onChange={(e) => handleProteinSlider(Number(e.target.value))}
+                className="w-full mt-2 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
               />
             </div>
+
+            {/* Carbs Column */}
             <div>
-              <label className="block text-xs font-mono text-amber-400 mb-1">
-                Carbs (g)
+              <label className="block text-[11px] font-mono text-amber-400 mb-1 flex justify-between">
+                <span>Carbs (g)</span>
+                <span>{cPct}%</span>
               </label>
               <input
                 type="number"
@@ -256,15 +372,28 @@ export default function GoalsModal({
                 onChange={(e) =>
                   setTargets({
                     ...targets,
-                    target_carbs_g: Number(e.target.value),
+                    target_carbs_g:
+                      e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
-                className={inputClass}
+                className={`${inputClass} focus:border-amber-500`}
+              />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={cPct}
+                onChange={(e) => handleCarbsSlider(Number(e.target.value))}
+                className="w-full mt-2 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
               />
             </div>
+
+            {/* Fats Column */}
             <div>
-              <label className="block text-xs font-mono text-rose-400 mb-1">
-                Fats (g)
+              <label className="block text-[11px] font-mono text-rose-400 mb-1 flex justify-between">
+                <span>Fats (g)</span>
+                <span>{fPct}%</span>
               </label>
               <input
                 type="number"
@@ -272,13 +401,35 @@ export default function GoalsModal({
                 onChange={(e) =>
                   setTargets({
                     ...targets,
-                    target_fats_g: Number(e.target.value),
+                    target_fats_g:
+                      e.target.value === "" ? "" : Number(e.target.value),
                   })
                 }
-                className={inputClass}
+                className={`${inputClass} focus:border-rose-500`}
+              />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={fPct}
+                onChange={(e) => handleFatsSlider(Number(e.target.value))}
+                className="w-full mt-2 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
               />
             </div>
           </div>
+
+          <div className="flex justify-between items-center bg-neutral-950 p-2 rounded-lg border border-neutral-800">
+            <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+              Macro Split Total
+            </span>
+            <span
+              className={`text-xs font-bold font-mono ${totalPct === 100 ? "text-emerald-400" : "text-rose-500 animate-pulse"}`}
+            >
+              {totalPct}% {totalPct !== 100 && "(Aim for 100%)"}
+            </span>
+          </div>
+
           <div>
             <label className="block text-xs font-mono text-cyan-400 mb-1">
               Daily Water (ml)
@@ -289,10 +440,11 @@ export default function GoalsModal({
               onChange={(e) =>
                 setTargets({
                   ...targets,
-                  target_water_ml: Number(e.target.value),
+                  target_water_ml:
+                    e.target.value === "" ? "" : Number(e.target.value),
                 })
               }
-              className={inputClass}
+              className={`${inputClass} focus:border-cyan-500`}
             />
           </div>
         </div>

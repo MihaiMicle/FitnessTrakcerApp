@@ -109,7 +109,7 @@ export default function BundleBuilder(props: BundleBuilderProps) {
             }
             className="flex-1 py-2 rounded-lg text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-black transition-colors disabled:opacity-50"
           >
-            Save {builderMode === "meal" ? "Bundle" : "Recipe"}
+            Save {builderMode === "meal" ? "Meal" : "Recipe"}
           </button>
         </div>
       </div>

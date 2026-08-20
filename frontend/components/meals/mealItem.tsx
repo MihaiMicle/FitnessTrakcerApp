@@ -10,7 +10,6 @@ interface MealItemProps {
 export default function MealItem({ meal, onDelete }: MealItemProps) {
   console.log("Logged meal object:", meal);
 
-  // Exhaustive check for any property name your backend might be using for the weight/serving
   const servingSize =
     meal.serving_size ||
     (meal as any).servingSize ||

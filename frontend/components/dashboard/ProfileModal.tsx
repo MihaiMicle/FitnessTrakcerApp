@@ -19,7 +19,6 @@ export default function ProfileModal({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // Auth states
   const [email, setEmail] = useState("");
   const [originalEmail, setOriginalEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -28,7 +27,7 @@ export default function ProfileModal({
   const [height, setHeight] = useState<number | "">("");
   const [birthDate, setBirthDate] = useState<string>("");
   const [gender, setGender] = useState<"male" | "female">("male");
-  const [bodyFat, setBodyFat] = useState<number | "">(""); // New Body Fat State
+  const [bodyFat, setBodyFat] = useState<number | "">("");
 
   const [activityLevel, setActivityLevel] = useState<number>(1.2);
   const [goalType, setGoalType] = useState<string>("maintain");
@@ -36,6 +35,16 @@ export default function ProfileModal({
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [unitSystem, setUnitSystem] = useState<"metric" | "imperial">("metric");
+
+  // Custom Confirm Dialog State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    isDestructive: boolean;
+    action: () => void;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -98,6 +107,8 @@ export default function ProfileModal({
       };
 
       fetchProfile();
+    } else {
+      setConfirmConfig(null);
     }
   }, [isOpen]);
 
@@ -188,7 +199,7 @@ export default function ProfileModal({
         return;
       }
 
-      // UPDATE AUTHENTICATION
+      // Update authentication
       let requireEmailConfirm = false;
       if (email !== originalEmail || newPassword) {
         const authUpdates: { email?: string; password?: string } = {};
@@ -207,7 +218,7 @@ export default function ProfileModal({
         }
       }
 
-      // UPDATE PROFILE METRICS
+      // Update profile metrics
       const finalWeightKg =
         unitSystem === "imperial" && weight !== ""
           ? Number((Number(weight) / 2.20462).toFixed(2))
@@ -228,7 +239,7 @@ export default function ProfileModal({
         activity_level: activityLevel,
         goal_type: goalType,
         avatar_url: avatarUrl,
-        body_fat_percentage: bodyFat === "" ? null : Number(bodyFat), // Sent directly to backend API
+        body_fat_percentage: bodyFat === "" ? null : Number(bodyFat),
       };
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
@@ -263,297 +274,396 @@ export default function ProfileModal({
     }
   };
 
+  // Handle Account Deletion
+  const handleDeleteAccountClick = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "DELETE ACCOUNT",
+      message:
+        "Are you absolutely sure you want to permanently delete your account and all associated data? This action cannot be undone.",
+      confirmText: "Delete My Account",
+      isDestructive: true,
+      action: async () => {
+        setConfirmConfig(null);
+        setSaving(true);
+        toast.loading("Deleting account...", { id: "deleteAccount" });
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session) {
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/profile/me`,
+              {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              },
+            );
+
+            if (!res.ok) {
+              const errText = await res.text();
+              toast.error(`Backend Error: ${errText || "Route missing"}`, {
+                id: "deleteAccount",
+              });
+              setSaving(false);
+              return;
+            }
+
+            await supabase.auth.signOut();
+            toast.success("Account deleted successfully.", {
+              id: "deleteAccount",
+            });
+            onClose();
+            router.replace("/login");
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error("Network failed. Is the backend running?", {
+            id: "deleteAccount",
+          });
+          setSaving(false);
+        }
+      },
+    });
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-2xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
-        {/* Header & Close Button */}
-        <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
-          <h2 className="text-lg font-bold font-mono tracking-wider">
-            PROFILE SETTINGS
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white font-mono text-sm"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Scrollable Content Area */}
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-          {/* Personal Details Section */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              Personal Details
-            </h3>
-
-            {/* Avatar Upload */}
-            <div className="flex items-center gap-4 py-2">
-              <div className="w-14 h-14 bg-neutral-950 border border-neutral-800 rounded-full flex items-center justify-center text-neutral-400 text-sm shrink-0 overflow-hidden relative group cursor-pointer">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Profile"
-                    className="object-cover w-full h-full"
-                  />
-                ) : (
-                  <span className="text-neutral-400 font-mono text-xs">
-                    IMG
-                  </span>
-                )}
-                <div className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center transition-all">
-                  <span className="text-white font-mono text-[10px] tracking-wider font-semibold">
-                    UPLOAD
-                  </span>
-                </div>
-                <input
-                  type="file"
-                  accept="image/png, image/jpeg, image/webp"
-                  onChange={handleAvatarUpload}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-              </div>
-              <div>
-                <p className="text-sm font-mono text-neutral-300 mb-0.5">
-                  Profile Photo
-                </p>
-                <p className="text-xs font-mono text-neutral-500">
-                  Click avatar to update
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Leave blank to keep current"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
-                />
-              </div>
-            </div>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-2xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
+          {/* Header & Close Button */}
+          <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
+            <h2 className="text-lg font-bold font-mono tracking-wider">
+              PROFILE SETTINGS
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-neutral-400 hover:text-white font-mono text-sm"
+            >
+              ✕
+            </button>
           </div>
 
-          {/* Physical Metrics Section */}
-          <div className="space-y-3 pt-2 border-t border-neutral-800">
-            <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              Physical Metrics
-            </h3>
+          {/* Scrollable Content Area */}
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+            {/* Personal Details Section */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
+                Personal Details
+              </h3>
 
-            {/* Added Body Fat Field to Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">
-                  Weight ({unitSystem === "metric" ? "kg" : "lbs"})
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={weight}
-                  onChange={(e) =>
-                    setWeight(
-                      e.target.value === "" ? "" : Number(e.target.value),
-                    )
-                  }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">
-                  Height ({unitSystem === "metric" ? "cm" : "in"})
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={height}
-                  onChange={(e) =>
-                    setHeight(
-                      e.target.value === "" ? "" : Number(e.target.value),
-                    )
-                  }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1 flex justify-between">
-                  <span>Body Fat %</span>
-                  <span className="text-neutral-500">Optional</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={bodyFat}
-                  onChange={(e) =>
-                    setBodyFat(
-                      e.target.value === "" ? "" : Number(e.target.value),
-                    )
-                  }
-                  placeholder="e.g. 15"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1 flex justify-between">
-                  <span>Birth Date</span>
-                  {birthDate && (
-                    <span className="text-neutral-500">
-                      Age: {calculateAge(birthDate)}
+              {/* Avatar Upload */}
+              <div className="flex items-center gap-4 py-2">
+                <div className="w-14 h-14 bg-neutral-950 border border-neutral-800 rounded-full flex items-center justify-center text-neutral-400 text-sm shrink-0 overflow-hidden relative group cursor-pointer">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Profile"
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <span className="text-neutral-400 font-mono text-xs">
+                      IMG
                     </span>
                   )}
-                </label>
-                <input
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors [color-scheme:dark]"
-                />
+                  <div className="absolute inset-0 bg-black/60 hidden group-hover:flex items-center justify-center transition-all">
+                    <span className="text-white font-mono text-[10px] tracking-wider font-semibold">
+                      UPLOAD
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    onChange={handleAvatarUpload}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-mono text-neutral-300 mb-0.5">
+                    Profile Photo
+                  </p>
+                  <p className="text-xs font-mono text-neutral-500">
+                    Click avatar to update
+                  </p>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-mono text-neutral-400 mb-1">
-                  Sex
-                </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Leave blank to keep current"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Physical Metrics Section */}
+            <div className="space-y-3 pt-2 border-t border-neutral-800">
+              <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
+                Physical Metrics
+              </h3>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    Weight ({unitSystem === "metric" ? "kg" : "lbs"})
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={weight}
+                    onChange={(e) =>
+                      setWeight(
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      )
+                    }
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    Height ({unitSystem === "metric" ? "cm" : "in"})
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={height}
+                    onChange={(e) =>
+                      setHeight(
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      )
+                    }
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1 flex justify-between">
+                    <span>Body Fat %</span>
+                    <span className="text-neutral-500">Optional</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={bodyFat}
+                    onChange={(e) =>
+                      setBodyFat(
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      )
+                    }
+                    placeholder="e.g. 15"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1 flex justify-between">
+                    <span>Birth Date</span>
+                    {birthDate && (
+                      <span className="text-neutral-500">
+                        Age: {calculateAge(birthDate)}
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors [color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    Sex
+                  </label>
+                  <select
+                    value={gender}
+                    onChange={(e) =>
+                      setGender(e.target.value as "male" | "female")
+                    }
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Preferred Units Toggle */}
+              <div className="bg-neutral-950 border border-neutral-800 rounded p-2.5 flex justify-between items-center mt-2">
+                <span className="text-xs font-mono text-neutral-400">
+                  Measurement System
+                </span>
                 <select
-                  value={gender}
+                  value={unitSystem}
                   onChange={(e) =>
-                    setGender(e.target.value as "male" | "female")
+                    handleUnitToggle(e.target.value as "metric" | "imperial")
                   }
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  className="bg-transparent text-xs font-mono text-neutral-300 outline-none cursor-pointer focus:text-white"
                 >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
+                  <option value="metric" className="bg-neutral-900">
+                    Metric (kg, cm)
+                  </option>
+                  <option value="imperial" className="bg-neutral-900">
+                    Imperial (lbs, in)
+                  </option>
                 </select>
               </div>
             </div>
 
-            {/* Preferred Units Toggle */}
-            <div className="bg-neutral-950 border border-neutral-800 rounded p-2.5 flex justify-between items-center mt-2">
-              <span className="text-xs font-mono text-neutral-400">
-                Measurement System
-              </span>
-              <select
-                value={unitSystem}
-                onChange={(e) =>
-                  handleUnitToggle(e.target.value as "metric" | "imperial")
-                }
-                className="bg-transparent text-xs font-mono text-neutral-300 outline-none cursor-pointer focus:text-white"
-              >
-                <option value="metric" className="bg-neutral-900">
-                  Metric (kg, cm)
-                </option>
-                <option value="imperial" className="bg-neutral-900">
-                  Imperial (lbs, in)
-                </option>
-              </select>
+            {/* Goals & Activity Section */}
+            <div className="space-y-3 pt-2 border-t border-neutral-800 pb-2">
+              <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
+                Goals & Activity
+              </h3>
+              <div>
+                <label className="block text-xs font-mono text-neutral-400 mb-1">
+                  Activity Level
+                </label>
+                <select
+                  value={activityLevel}
+                  onChange={(e) => setActivityLevel(Number(e.target.value))}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                >
+                  <option value={1.2}>Sedentary (Little to no exercise)</option>
+                  <option value={1.375}>Lightly Active (1-3 days/week)</option>
+                  <option value={1.55}>
+                    Moderately Active (3-5 days/week)
+                  </option>
+                  <option value={1.725}>Very Active (6-7 days/week)</option>
+                </select>
+
+                {/* Safety Measure for Muscle Gain + Sedentary */}
+                {activityLevel === 1.2 && goalType === "bulk" && (
+                  <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-2 text-amber-400 text-xs font-mono animate-in fade-in">
+                    <svg
+                      className="w-4 h-4 shrink-0 mt-0.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p>
+                      <strong>Tip:</strong> Your current goal is{" "}
+                      <strong>Muscle Gain</strong>. A sedentary activity level
+                      may lead to excess fat gain instead of muscle.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Goals & Activity Section */}
-          <div className="space-y-3 pt-2 border-t border-neutral-800 pb-2">
-            <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              Goals & Activity
-            </h3>
-            <div>
-              <label className="block text-xs font-mono text-neutral-400 mb-1">
-                Activity Level
-              </label>
-              <select
-                value={activityLevel}
-                onChange={(e) => setActivityLevel(Number(e.target.value))}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row justify-between gap-3 pt-6 border-t border-neutral-800 mt-2">
+            <button
+              onClick={handleDeleteAccountClick}
+              disabled={saving}
+              className="px-4 py-2 rounded font-mono text-xs text-rose-500 hover:bg-rose-500/10 transition text-center sm:text-left disabled:opacity-50"
+            >
+              Delete Account
+            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition text-center"
               >
-                <option value={1.2}>Sedentary (Little to no exercise)</option>
-                <option value={1.375}>Lightly Active (1-3 days/week)</option>
-                <option value={1.55}>Moderately Active (3-5 days/week)</option>
-                <option value={1.725}>Very Active (6-7 days/week)</option>
-              </select>
-
-              {/* Safety Measure for Muscle Gain + Sedentary */}
-              {activityLevel === 1.2 && goalType === "bulk" && (
-                <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-2 text-amber-400 text-xs font-mono animate-in fade-in">
-                  <svg
-                    className="w-4 h-4 shrink-0 mt-0.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <p>
-                    <strong>Tip:</strong> Your current goal is{" "}
-                    <strong>Muscle Gain</strong>. A sedentary activity level may
-                    lead to excess fat gain instead of muscle.
-                  </p>
-                </div>
-              )}
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSave()}
+                disabled={saving}
+                className="px-4 py-2 rounded font-mono text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50 text-center"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
             </div>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-neutral-800 mt-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition text-center"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => handleSave()}
-            disabled={saving}
-            className="px-4 py-2 rounded font-mono text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50 text-center"
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
         </div>
       </div>
-    </div>
+
+      {/* Custom confirmation modal for deletion */}
+      {confirmConfig?.isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-xs w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
+            <h3
+              className={`text-lg font-bold font-mono tracking-wider mb-2 ${confirmConfig.isDestructive ? "text-rose-500" : "text-emerald-400"}`}
+            >
+              {confirmConfig.title}
+            </h3>
+            <p className="text-sm text-neutral-400 mb-6 font-mono leading-relaxed">
+              {confirmConfig.message}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmConfig(null)}
+                className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmConfig.action}
+                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${
+                  confirmConfig.isDestructive
+                    ? "bg-rose-600 hover:bg-rose-500 text-white"
+                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                }`}
+              >
+                {confirmConfig.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

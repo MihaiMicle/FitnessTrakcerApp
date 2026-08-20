@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from uuid import UUID
 from typing import List
 
@@ -118,15 +119,16 @@ def calculate_macros(
 def get_my_profile(
     current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Fetch the authenticated user's profile, creating a blank one if it doesn't exist."""
+    """Fetch the authenticated user's profile."""
     user_uuid = UUID(current_user_id)
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_uuid).first()
+    profile = (
+        db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
+    )
 
     if not profile:
-        profile = UserProfile(user_id=user_uuid)
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
+        raise HTTPException(
+            status_code=404, detail="Profile not found. Needs onboarding."
+        )
 
     return profile
 
@@ -308,3 +310,29 @@ def get_weight_logs(
         .order_by(WeightLog.date.asc())
         .all()
     )
+
+
+@router.delete("/me")
+def delete_account(
+    current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    try:
+        # Get the UUID using the same pattern as your other profile routes
+        user_uuid = UUID(current_user_id)
+
+        # Safely find and delete using the correct UserProfile model
+        db_user = (
+            db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
+        )
+
+        if db_user:
+            db.delete(db_user)
+            db.commit()
+
+        return {"message": "Account data wiped successfully."}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Database error during deletion: {str(e)}"
+        )

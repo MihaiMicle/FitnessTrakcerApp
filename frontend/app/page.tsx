@@ -22,16 +22,19 @@ import WeightHistoryModal from "@/components/dashboard/WeightHistoryModal";
 import DetailedNutritionModal from "@/components/dashboard/DetailedNutritionModal";
 import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import Copilot from "@/components/chat/Copilot";
+import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 
 export default function Dashboard() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // State to track if the user needs to complete onboarding
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMealTypeForModal, setSelectedMealTypeForModal] =
     useState<string>("lunch");
-
   const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isDetailedModalOpen, setIsDetailedModalOpen] = useState(false);
@@ -49,7 +52,7 @@ export default function Dashboard() {
     addMeal,
     removeMeal,
     refreshLog,
-  } = useDailyLog(session ? selectedDate : "");
+  } = useDailyLog(session && !needsOnboarding ? selectedDate : ""); // Pause fetching if onboarding
 
   const { layout, updateLayout, isLoaded: layoutLoaded } = useDashboardLayout();
 
@@ -65,11 +68,23 @@ export default function Dashboard() {
           `${process.env.NEXT_PUBLIC_API_URL}/profile/me`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
+        
         if (res.ok) {
           const data = await res.json();
           if (data.avatar_url) setAvatarUrl(data.avatar_url);
+          
+          // If the profile exists but weight is missing or 0
+          if (!data.weight_kg) {
+            setNeedsOnboarding(true);
+          }
+        } else if (res.status === 404) {
+          // If the profile row doesn't exist at all yet
+          setNeedsOnboarding(true);
         }
-      } catch (err) {}
+      } catch (err) {
+        // Fallback: If network errors or 404 occur on a brand new session, trigger onboarding
+        setNeedsOnboarding(true);
+      }
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -98,11 +113,13 @@ export default function Dashboard() {
     d.setUTCDate(d.getUTCDate() - 1);
     setSelectedDate(d.toISOString().split("T")[0]);
   };
+
   const handleNextDay = () => {
     const d = new Date(selectedDate);
     d.setUTCDate(d.getUTCDate() + 1);
     setSelectedDate(d.toISOString().split("T")[0]);
   };
+
   const handleJumpToToday = () => {
     setSelectedDate(getTodayString());
   };
@@ -117,7 +134,6 @@ export default function Dashboard() {
       "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     const element = document.getElementById(`widget-${index}`);
     if (!element) return;
-
     setResizingIndex(index);
     setStartMouseY(clientY);
     const h = element.getBoundingClientRect().height;
@@ -127,7 +143,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (resizingIndex === null) return;
-
     const handleMove = (e: MouseEvent | TouchEvent) => {
       const clientY =
         "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
@@ -183,7 +198,6 @@ export default function Dashboard() {
     const source = e.dataTransfer.getData("source");
     const type = e.dataTransfer.getData("type") as "goal" | "meal" | "feature";
     const id = e.dataTransfer.getData("id");
-
     const newLayout = [...layout];
 
     if (source === "palette") {
@@ -197,10 +211,8 @@ export default function Dashboard() {
       const sourceIndex = parseInt(e.dataTransfer.getData("index"));
       if (sourceIndex === targetIndex) return;
       const [moved] = newLayout.splice(sourceIndex, 1);
-
       let adjustedTarget = targetIndex;
       if (sourceIndex < targetIndex) adjustedTarget -= 1;
-
       newLayout.splice(adjustedTarget, 0, moved);
       updateLayout(newLayout);
     }
@@ -262,7 +274,6 @@ export default function Dashboard() {
                 </svg>
               )}
             </button>
-
             <div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
@@ -311,7 +322,6 @@ export default function Dashboard() {
                     Today
                   </button>
                 )}
-
                 <button
                   onClick={() => setIsEditingLayout(!isEditingLayout)}
                   className={`flex items-center gap-1.5 text-[10px] sm:text-xs font-mono font-medium px-2.5 py-1.5 rounded-md transition-all active:scale-95 border ${
@@ -328,7 +338,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {logLoading ? (
+        {logLoading && !needsOnboarding ? (
           <div className="py-12 text-center text-neutral-400 font-mono text-sm animate-pulse">
             Loading nutrition data for {selectedDate}...
           </div>
@@ -570,12 +580,14 @@ export default function Dashboard() {
         }}
         onAddMeal={addMeal}
       />
+
       <LogMealModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddMeal={addMeal}
         initialMealType={selectedMealTypeForModal}
       />
+
       <GoalsModal
         isOpen={isGoalsModalOpen}
         onClose={() => setIsGoalsModalOpen(false)}
@@ -583,20 +595,33 @@ export default function Dashboard() {
           if (refreshLog) refreshLog();
         }}
       />
+
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         onProfileUpdate={(newUrl) => setAvatarUrl(newUrl)}
       />
+
       <DetailedNutritionModal
         isOpen={isDetailedModalOpen}
         onClose={() => setIsDetailedModalOpen(false)}
         dailyLog={dailyLog}
       />
+
       <WeightHistoryModal
         isOpen={isWeightModalOpen}
         onClose={() => setIsWeightModalOpen(false)}
       />
+
+      {/* Render Onboarding Wizard for fresh accounts */}
+      {needsOnboarding && (
+        <OnboardingWizard
+          onComplete={() => {
+            setNeedsOnboarding(false);
+            if (refreshLog) refreshLog();
+          }}
+        />
+      )}
     </main>
   );
 }
