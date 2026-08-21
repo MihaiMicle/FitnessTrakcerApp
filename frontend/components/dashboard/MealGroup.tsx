@@ -51,7 +51,14 @@ export default function MealGroup({
   const [localMeals, setLocalMeals] = useState<any[]>([]);
   const [isManageMode, setIsManageMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Upgraded Drag & Drop State
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<"above" | "below" | null>(
+    null,
+  );
+  const [isDragOverContainer, setIsDragOverContainer] = useState(false);
 
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -309,26 +316,96 @@ export default function MealGroup({
     });
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
+  const handleDragStart = (e: React.DragEvent, index: number, meal: any) => {
+    e.stopPropagation();
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/html", "");
+    e.dataTransfer.setData("application/json", JSON.stringify(meal));
+    e.dataTransfer.setData("sourceMealType", mealType);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-    const itemsCopy = [...localMeals];
-    const draggedItem = itemsCopy[draggedIndex];
-    itemsCopy.splice(draggedIndex, 1);
-    itemsCopy.splice(index, 0, draggedItem);
-    setDraggedIndex(index);
-    setLocalMeals(itemsCopy);
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    if (draggedIndex === index) return;
+
+    setDragOverIndex(index);
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    if (relativeY > rect.height / 2) {
+      setDropPosition("below");
+    } else {
+      setDropPosition("above");
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent, index?: number) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    const sourceMealType = e.dataTransfer.getData("sourceMealType");
+    const foodDataStr = e.dataTransfer.getData("application/json");
+
+    const finalDragOverIndex = dragOverIndex;
+    const finalDropPosition = dropPosition;
+
+    setDragOverIndex(null);
+    setDropPosition(null);
     setDraggedIndex(null);
+    setIsDragOverContainer(false);
+
+    if (!sourceMealType || !foodDataStr) return;
+
+    if (sourceMealType !== mealType) {
+      // Cross-meal drop
+      const foodItem = JSON.parse(foodDataStr);
+      toast.loading(`Moving to ${label}...`, { id: "moveMeal" });
+
+      try {
+        let insertIndex =
+          finalDragOverIndex !== null
+            ? finalDragOverIndex
+            : (index ?? localMeals.length);
+        if (finalDropPosition === "below") insertIndex += 1;
+
+        const newLocalMeals = [...localMeals];
+        const cleanFood = extractCleanPayload(foodItem, mealType);
+        newLocalMeals.splice(insertIndex, 0, {
+          ...foodItem,
+          ...cleanFood,
+          id: "temp-" + Date.now(),
+        });
+        setLocalMeals(newLocalMeals);
+
+        onDeleteMeal(foodItem.id);
+        await onAddMeal(cleanFood);
+        toast.success("Moved successfully!", { id: "moveMeal" });
+      } catch (err) {
+        toast.error("Failed to move item", { id: "moveMeal" });
+      }
+    } else {
+      // Reordering
+      if (draggedIndex === null || index === undefined) return;
+
+      let newIndex = finalDragOverIndex !== null ? finalDragOverIndex : index;
+
+      if (finalDropPosition === "below") {
+        newIndex += 1;
+      }
+
+      if (draggedIndex < newIndex) {
+        newIndex -= 1;
+      }
+
+      if (draggedIndex !== newIndex) {
+        const itemsCopy = [...localMeals];
+        const [draggedItem] = itemsCopy.splice(draggedIndex, 1);
+        itemsCopy.splice(newIndex, 0, draggedItem);
+        setLocalMeals(itemsCopy);
+      }
+    }
   };
 
   const totalCalories = Math.round(
@@ -442,9 +519,31 @@ export default function MealGroup({
           </div>
         </div>
 
-        <div className="flex-1 space-y-2">
+        <div
+          className={`flex-1 space-y-2 min-h-[60px] pb-4 relative transition-colors rounded-lg -mx-1 px-1 ${
+            isDragOverContainer && localMeals.length === 0
+              ? "bg-emerald-950/20 border border-dashed border-emerald-500/30"
+              : ""
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = "move";
+            setIsDragOverContainer(true);
+          }}
+          onDragLeave={(e) => {
+            e.stopPropagation();
+            setIsDragOverContainer(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOverContainer(false);
+            handleDrop(e, localMeals.length);
+          }}
+        >
           {localMeals.length === 0 ? (
-            <p className="text-[11px] sm:text-xs text-neutral-600 font-mono italic">
+            <p className="text-[11px] sm:text-xs text-neutral-600 font-mono italic pointer-events-none mt-2">
               No foods logged for {(label || "").toLowerCase()} yet.
             </p>
           ) : (
@@ -452,9 +551,18 @@ export default function MealGroup({
               <div
                 key={meal.id}
                 draggable={!isManageMode}
-                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragStart={(e) => handleDragStart(e, idx, meal)}
                 onDragOver={(e) => handleDragOver(e, idx)}
-                onDragEnd={handleDrop}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDrop(e, idx);
+                }}
+                onDragEnd={() => {
+                  setDraggedIndex(null);
+                  setDragOverIndex(null);
+                  setDropPosition(null);
+                }}
                 onClick={() => {
                   if (isManageMode) {
                     toggleSelection(meal.id);
@@ -462,7 +570,7 @@ export default function MealGroup({
                     onEditMeal(meal);
                   }
                 }}
-                className={`group flex justify-between items-center p-2.5 rounded-lg border transition-all ${
+                className={`group relative flex justify-between items-center p-2.5 rounded-lg border transition-all ${
                   isManageMode || onEditMeal ? "cursor-pointer" : ""
                 } ${
                   draggedIndex === idx
@@ -470,6 +578,18 @@ export default function MealGroup({
                     : "bg-transparent border-transparent hover:bg-neutral-950 hover:border-neutral-800/80"
                 }`}
               >
+                {/* Visual Drop Indicators */}
+                {dragOverIndex === idx &&
+                  dropPosition === "above" &&
+                  draggedIndex !== idx && (
+                    <div className="absolute -top-1.5 left-0 right-0 h-1 bg-emerald-500 rounded-full z-10 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  )}
+                {dragOverIndex === idx &&
+                  dropPosition === "below" &&
+                  draggedIndex !== idx && (
+                    <div className="absolute -bottom-1.5 left-0 right-0 h-1 bg-emerald-500 rounded-full z-10 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  )}
+
                 <div className="flex items-center gap-3">
                   {isManageMode ? (
                     <input

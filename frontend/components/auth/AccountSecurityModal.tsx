@@ -16,12 +16,13 @@ export default function AccountSecurityModal({
 }: AccountSecurityModalProps) {
   const [currentEmail, setCurrentEmail] = useState("");
   const [newEmail, setNewEmail] = useState("");
+
+  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
 
-  // Fetch the user's current email when the modal opens
   useEffect(() => {
     if (isOpen) {
       supabase.auth.getUser().then(({ data: { user } }) => {
@@ -30,12 +31,14 @@ export default function AccountSecurityModal({
           setNewEmail(user.email);
         }
       });
+      setOldPassword("");
       setNewPassword("");
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
+  // Email Update Logic
   const handleUpdateEmail = async (e: FormEvent) => {
     e.preventDefault();
     if (newEmail === currentEmail) {
@@ -59,24 +62,51 @@ export default function AccountSecurityModal({
     }
   };
 
+  // Password Update Logic
   const handleUpdatePassword = async (e: FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+      toast.error("New password must be at least 6 characters.");
       return;
     }
 
     setLoadingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Pass both the new password and the current password directly to Supabase
+      const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
+        current_password: oldPassword,
       });
-      if (error) throw error;
+
+      if (updateError) throw updateError;
 
       toast.success("Password updated successfully!");
+      setOldPassword("");
       setNewPassword("");
+      onClose();
     } catch (err: any) {
       toast.error(err.message || "Failed to update password.");
+    } finally {
+      setLoadingPassword(false);
+    }
+  };
+
+  // Forgot Password
+  const handleForgotPassword = async () => {
+    setLoadingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        currentEmail,
+        {
+          redirectTo: `${window.location.origin}/update-password`,
+        },
+      );
+      if (error) throw error;
+
+      toast.success("Secure password recovery link sent to your email!");
+      onClose(); // Close the modal so they can go check their email
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reset email.");
     } finally {
       setLoadingPassword(false);
     }
@@ -127,8 +157,28 @@ export default function AccountSecurityModal({
           {/* Divider */}
           <div className="h-px w-full bg-neutral-800" />
 
-          {/* Password Update Form */}
-          <form onSubmit={handleUpdatePassword} className="space-y-3">
+          {/* Direct Password Update Form */}
+          <form onSubmit={handleUpdatePassword} className="space-y-4">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs text-neutral-400 font-mono">
+                  Current Password
+                </label>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={loadingPassword}
+                  className="text-[10px] text-emerald-500 hover:text-emerald-400 transition-colors font-mono"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <PasswordField
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+              />
+            </div>
+
             <div>
               <label className="text-xs text-neutral-400 block mb-1 font-mono">
                 New Password
@@ -138,10 +188,11 @@ export default function AccountSecurityModal({
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
+
             <button
               type="submit"
-              disabled={loadingPassword || !newPassword}
-              className="w-full py-2.5 rounded-lg font-mono text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white transition-colors disabled:opacity-50"
+              disabled={loadingPassword || !oldPassword || !newPassword}
+              className="w-full py-2.5 rounded-lg font-mono text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white transition-colors disabled:opacity-50 mt-2"
             >
               {loadingPassword ? "Updating..." : "Update Password"}
             </button>

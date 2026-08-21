@@ -21,7 +21,7 @@ export default function PasswordField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500"
+        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
       />
 
       <button

@@ -48,6 +48,10 @@ export default function ProfileModal({
     action: () => void;
   } | null>(null);
 
+  // The custom input style applied to all text boxes and dropdowns
+  const inputClass =
+    "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm text-white focus:border-emerald-500 outline-none transition-colors [color-scheme:dark]";
+
   useEffect(() => {
     if (isOpen) {
       const fetchProfile = async () => {
@@ -425,7 +429,7 @@ export default function ProfileModal({
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -436,7 +440,7 @@ export default function ProfileModal({
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -462,7 +466,7 @@ export default function ProfileModal({
                         e.target.value === "" ? "" : Number(e.target.value),
                       )
                     }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -478,7 +482,7 @@ export default function ProfileModal({
                         e.target.value === "" ? "" : Number(e.target.value),
                       )
                     }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -496,8 +500,23 @@ export default function ProfileModal({
                       )
                     }
                     placeholder="e.g. 15"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
+                    className={inputClass}
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    Sex
+                  </label>
+                  <select
+                    value={gender}
+                    onChange={(e) =>
+                      setGender(e.target.value as "male" | "female")
+                    }
+                    className={inputClass}
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-mono text-neutral-400 mb-1 flex justify-between">
@@ -512,44 +531,25 @@ export default function ProfileModal({
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors [color-scheme:dark]"
+                    className={inputClass}
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Sex
-                  </label>
-                  <select
-                    value={gender}
-                    onChange={(e) =>
-                      setGender(e.target.value as "male" | "female")
-                    }
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
                 </div>
               </div>
 
               {/* Preferred Units Toggle */}
-              <div className="bg-neutral-950 border border-neutral-800 rounded p-2.5 flex justify-between items-center mt-2">
-                <span className="text-xs font-mono text-neutral-400">
+              <div className="pt-2">
+                <label className="block text-xs font-mono text-neutral-400 mb-1">
                   Measurement System
-                </span>
+                </label>
                 <select
                   value={unitSystem}
                   onChange={(e) =>
                     handleUnitToggle(e.target.value as "metric" | "imperial")
                   }
-                  className="bg-transparent text-xs font-mono text-neutral-300 outline-none cursor-pointer focus:text-white"
+                  className={inputClass}
                 >
-                  <option value="metric" className="bg-neutral-900">
-                    Metric (kg, cm)
-                  </option>
-                  <option value="imperial" className="bg-neutral-900">
-                    Imperial (lbs, in)
-                  </option>
+                  <option value="metric">Metric (kg, cm)</option>
+                  <option value="imperial">Imperial (lbs, in)</option>
                 </select>
               </div>
             </div>
@@ -566,7 +566,7 @@ export default function ProfileModal({
                 <select
                   value={activityLevel}
                   onChange={(e) => setActivityLevel(Number(e.target.value))}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  className={inputClass}
                 >
                   <option value={1.2}>Sedentary (Little to no exercise)</option>
                   <option value={1.375}>Lightly Active (1-3 days/week)</option>

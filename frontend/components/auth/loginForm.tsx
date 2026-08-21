@@ -52,7 +52,7 @@ export default function LoginForm() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/update-password`,
       });
       if (error) throw error;
 
