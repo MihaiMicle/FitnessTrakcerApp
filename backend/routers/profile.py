@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from uuid import UUID
 from typing import List
+import os
+from supabase import create_client
 
 from core.database import get_db
 from core.security import get_current_user
@@ -125,6 +127,7 @@ def get_my_profile(
         db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
     )
 
+    # If no profile exists, throw a 404 to trigger the wizard
     if not profile:
         raise HTTPException(
             status_code=404, detail="Profile not found. Needs onboarding."
@@ -141,10 +144,12 @@ def update_my_profile(
 ):
     """Update profile metrics and apply automatic or manual macro calculations."""
     user_uuid = UUID(current_user_id)
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_uuid).first()
 
+    profile = (
+        db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
+    )
     if not profile:
-        profile = UserProfile(user_id=user_uuid)
+        profile = UserProfile(user_id=str(user_uuid))
         db.add(profile)
 
     # Update basic physical metrics from payload
@@ -176,6 +181,7 @@ def update_my_profile(
             profile.activity_level,
             profile.goal_type,
         ]
+
         if not all(required_fields):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -215,26 +221,31 @@ def update_my_profile(
             profile.target_carbs_g,
             profile.target_fats_g,
         ) = (cals, p, c, f)
+
         (
             profile.target_sugar_g,
             profile.target_fiber_g,
             profile.target_saturated_fats_g,
         ) = (sugar, fiber, sat_fats)
+
         (
             profile.target_potassium_mg,
             profile.target_sodium_mg,
             profile.target_iron_mg,
         ) = (potassium, sodium, iron)
+
         (
             profile.target_zinc_mg,
             profile.target_magnesium_mg,
             profile.target_calcium_mg,
         ) = (zinc, mag, calcium)
+
         (
             profile.target_vitamin_d_mcg,
             profile.target_cholesterol_mg,
             profile.target_water_ml,
         ) = (vit_d, chol, water)
+
     else:
         # Manual overrides take precedence when auto_calculate is False
         if payload.target_calories is not None:
@@ -243,12 +254,10 @@ def update_my_profile(
             profile.target_protein_g = payload.target_protein_g
         if payload.target_carbs_g is not None:
             profile.target_carbs_g = payload.target_carbs_g
-            # Automatically adjust sugar and fiber based on manual carbs
             profile.target_sugar_g = round(payload.target_carbs_g * 0.10, 1)
             profile.target_fiber_g = round(payload.target_carbs_g * 0.14, 1)
         if payload.target_fats_g is not None:
             profile.target_fats_g = payload.target_fats_g
-            # Automatically adjust saturated fats based on manual fats
             profile.target_saturated_fats_g = round(payload.target_fats_g * 0.25, 1)
         if payload.target_water_ml is not None:
             profile.target_water_ml = payload.target_water_ml
@@ -266,6 +275,7 @@ def log_weight(
 ):
     """Creates a new weight log and updates the user's current weight in their profile."""
     user_uuid = UUID(current_user_id)
+
     existing = (
         db.query(WeightLog)
         .filter(WeightLog.user_id == str(user_uuid), WeightLog.date == payload.date)
@@ -290,7 +300,9 @@ def log_weight(
         db.commit()
         db.refresh(log_entry)
 
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_uuid).first()
+    profile = (
+        db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
+    )
     if profile:
         profile.weight_kg = payload.weight_kg
         db.commit()
@@ -316,20 +328,27 @@ def get_weight_logs(
 def delete_account(
     current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
 ):
+    """Deletes the user's profile and completely removes them from Supabase Auth."""
     try:
-        # Get the UUID using the same pattern as your other profile routes
         user_uuid = UUID(current_user_id)
 
-        # Safely find and delete using the correct UserProfile model
+        # Delete all app data (Profile, Meals, Custom Foods)
         db_user = (
             db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
         )
-
         if db_user:
             db.delete(db_user)
             db.commit()
 
-        return {"message": "Account data wiped successfully."}
+        # Delete the actual login credentials from Supabase Auth
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+        if supabase_url and supabase_service_key:
+            supabase_admin = create_client(supabase_url, supabase_service_key)
+            supabase_admin.auth.admin.delete_user(str(user_uuid))
+
+        return {"message": "Account data and login credentials wiped successfully."}
 
     except Exception as e:
         db.rollback()

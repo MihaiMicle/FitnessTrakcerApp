@@ -7,12 +7,14 @@ interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProfileUpdate?: (avatarUrl: string) => void;
+  onOpenSecurity: () => void;
 }
 
 export default function ProfileModal({
   isOpen,
   onClose,
   onProfileUpdate,
+  onOpenSecurity,
 }: ProfileModalProps) {
   const router = useRouter();
 
@@ -338,12 +340,36 @@ export default function ProfileModal({
             <h2 className="text-lg font-bold font-mono tracking-wider">
               PROFILE SETTINGS
             </h2>
-            <button
-              onClick={onClose}
-              className="text-neutral-400 hover:text-white font-mono text-sm"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-5">
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  router.replace("/login");
+                }}
+                className="text-xs font-mono text-neutral-400 hover:text-white transition-colors flex items-center gap-1.5"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+                SIGN OUT
+              </button>
+              <button
+                onClick={onClose}
+                className="text-neutral-400 hover:text-white font-mono text-sm ml-2"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Scrollable Content Area */}
@@ -411,32 +437,6 @@ export default function ProfileModal({
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Leave blank to keep current"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors placeholder:text-neutral-700"
                   />
                 </div>
               </div>
@@ -600,6 +600,29 @@ export default function ProfileModal({
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="pt-2 pb-4">
+              <button
+                type="button"
+                onClick={onOpenSecurity}
+                className="w-full py-3 rounded-lg border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-mono text-xs transition-colors flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+                Manage Account Security (Email & Password)
+              </button>
             </div>
           </div>
 
