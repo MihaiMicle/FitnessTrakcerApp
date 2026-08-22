@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -48,9 +48,14 @@ export default function ProfileModal({
     action: () => void;
   } | null>(null);
 
-  // The custom input style applied to all text boxes and dropdowns
+  // Webcam State
+  const [showWebcam, setShowWebcam] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const inputClass =
-    "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-sm text-white focus:border-emerald-500 outline-none transition-colors [color-scheme:dark]";
+    "w-full py-2 px-3 rounded-lg font-mono text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]";
 
   useEffect(() => {
     if (isOpen) {
@@ -115,25 +120,107 @@ export default function ProfileModal({
       fetchProfile();
     } else {
       setConfirmConfig(null);
+      stopWebcam();
     }
   }, [isOpen]);
 
-  const handleAvatarUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    try {
-      if (!event.target.files || event.target.files.length === 0) {
-        return;
+  // Clean up webcam stream on unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
       }
+    };
+  }, [stream]);
+
+  // Attach stream to video element when it opens
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, showWebcam]);
+
+  const startWebcam = async (mode: "user" | "environment" = "user") => {
+    setFacingMode(mode);
+
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: mode },
+      });
+      setStream(mediaStream);
+      setShowWebcam(true);
+    } catch (err) {
+      console.error("Webcam error:", err);
+      toast.error("Could not access camera. Please check your permissions.");
+    }
+  };
+
+  const flipCamera = () => {
+    const newMode = facingMode === "user" ? "environment" : "user";
+    startWebcam(newMode);
+  };
+
+  const stopWebcam = () => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    setStream(null);
+    setShowWebcam(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+
+      if (ctx) {
+        // If front camera, flip the canvas image horizontally so it saves correctly
+        if (facingMode === "user") {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
+
+        ctx.drawImage(videoRef.current, 0, 0);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const file = new File(
+                [blob],
+                `camera-capture-${Date.now()}.jpg`,
+                { type: "image/jpeg" },
+              );
+              uploadFile(file);
+              stopWebcam();
+            }
+          },
+          "image/jpeg",
+          0.9,
+        );
+      }
+    }
+  };
+
+  // Reusable core upload logic
+  const uploadFile = async (file: File) => {
+    toast.loading("Uploading photo...", { id: "upload" });
+    try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        toast.error("You must be logged in to upload an avatar.");
+        toast.error("You must be logged in to upload an avatar.", {
+          id: "upload",
+        });
         return;
       }
 
-      const file = event.target.files[0];
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `public/${fileName}`;
@@ -146,8 +233,8 @@ export default function ProfileModal({
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
-      setAvatarUrl(publicUrl);
 
+      setAvatarUrl(publicUrl);
       if (onProfileUpdate) {
         onProfileUpdate(publicUrl);
       }
@@ -160,9 +247,19 @@ export default function ProfileModal({
         },
         body: JSON.stringify({ avatar_url: publicUrl }),
       });
+
+      toast.success("Photo updated successfully!", { id: "upload" });
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      toast.error("Could not upload image. Please try again.");
+      toast.error("Could not upload image. Please try again.", {
+        id: "upload",
+      });
+    }
+  };
+
+  const handleFilePicker = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      uploadFile(event.target.files[0]);
     }
   };
 
@@ -338,7 +435,7 @@ export default function ProfileModal({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-2xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-3xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
           {/* Header & Close Button */}
           <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
             <h2 className="text-lg font-bold font-mono tracking-wider">
@@ -406,17 +503,51 @@ export default function ProfileModal({
                   <input
                     type="file"
                     accept="image/png, image/jpeg, image/webp"
-                    onChange={handleAvatarUpload}
+                    onChange={handleFilePicker}
                     className="absolute inset-0 opacity-0 cursor-pointer"
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-mono text-neutral-300 mb-0.5">
+                  <p className="text-sm font-mono text-neutral-300 mb-1.5">
                     Profile Photo
                   </p>
-                  <p className="text-xs font-mono text-neutral-500">
-                    Click avatar to update
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] sm:text-xs font-mono font-medium bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white px-2.5 py-1.5 rounded transition-colors cursor-pointer border border-transparent">
+                      Upload Photo
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp"
+                        onChange={handleFilePicker}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => startWebcam("user")}
+                      className="text-[10px] sm:text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white px-2.5 py-1.5 rounded transition-colors cursor-pointer active:scale-95 flex items-center gap-1.5"
+                    >
+                      <svg
+                        className="w-3 h-3 sm:w-3.5 sm:h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                      </svg>
+                      Take Photo
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -504,21 +635,6 @@ export default function ProfileModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Sex
-                  </label>
-                  <select
-                    value={gender}
-                    onChange={(e) =>
-                      setGender(e.target.value as "male" | "female")
-                    }
-                    className={inputClass}
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-                <div>
                   <label className="block text-xs font-mono text-neutral-400 mb-1 flex justify-between">
                     <span>Birth Date</span>
                     {birthDate && (
@@ -533,6 +649,21 @@ export default function ProfileModal({
                     onChange={(e) => setBirthDate(e.target.value)}
                     className={inputClass}
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-neutral-400 mb-1">
+                    Sex
+                  </label>
+                  <select
+                    value={gender}
+                    onChange={(e) =>
+                      setGender(e.target.value as "male" | "female")
+                    }
+                    className={inputClass}
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
                 </div>
               </div>
 
@@ -653,6 +784,83 @@ export default function ProfileModal({
           </div>
         </div>
       </div>
+
+      {/* Webcam Overlay Modal */}
+      {showWebcam && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+          <div className="bg-neutral-900 border border-emerald-500/50 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl animate-in zoom-in-95 flex flex-col items-center">
+            <h3 className="text-lg font-bold font-mono tracking-wider mb-4 w-full text-center text-emerald-400">
+              CAPTURE PHOTO
+            </h3>
+
+            <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden border border-neutral-800 mb-6 shadow-inner group">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
+              />
+              <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-lg pointer-events-none" />
+
+              {/* Flip Camera Button */}
+              <button
+                onClick={flipCamera}
+                className="absolute top-3 right-3 bg-black/50 hover:bg-black/80 text-white p-2.5 rounded-full backdrop-blur-sm transition-all border border-neutral-700 active:scale-95"
+                title="Switch Camera"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex w-full gap-3">
+              <button
+                onClick={stopWebcam}
+                className="flex-1 py-3 rounded-lg font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={capturePhoto}
+                className="flex-1 py-3 rounded-lg font-mono text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                Capture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom confirmation modal for deletion */}
       {confirmConfig?.isOpen && (

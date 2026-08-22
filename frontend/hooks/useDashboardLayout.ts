@@ -18,7 +18,7 @@ const DEFAULT_LAYOUT: DashboardWidget[] = [
   { id: "carbs", type: "goal", size: "half" },
   { id: "fats", type: "goal", size: "half" },
   { id: "water", type: "goal", size: "full" },
-  { id: "weight_chart", type: "feature", size: "full" }, // Added Weight Tracker
+  { id: "weight_chart", type: "feature", size: "full" },
   { id: "breakfast", type: "meal", size: "full" },
   { id: "lunch", type: "meal", size: "full" },
   { id: "dinner", type: "meal", size: "full" },
@@ -166,7 +166,6 @@ export const NUTRITION_METRICS: Record<
   },
 };
 
-// Dictionary for special features
 export const FEATURE_METRICS: Record<string, { label: string; color: string }> =
   {
     weight_chart: { label: "Weight & Physique", color: "bg-indigo-500" },

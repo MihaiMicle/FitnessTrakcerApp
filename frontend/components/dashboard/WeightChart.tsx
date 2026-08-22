@@ -51,7 +51,6 @@ export default function WeightChart({
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      // Fixed: Logs weight to the active selectedDate instead of hardcoded 'today'
       body: JSON.stringify({
         date: selectedDate,
         weight_kg: parseFloat(weightInput),
