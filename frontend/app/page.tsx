@@ -471,6 +471,7 @@ export default function Dashboard() {
                       </div>
                     )}
 
+                    {/* Mobile-friendly pop-up menu */}
                     {isEditingLayout && (
                       <div className="absolute -top-3 -right-3 z-50">
                         <button

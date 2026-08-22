@@ -40,7 +40,7 @@ export default function UpdatePasswordPage() {
       if (error) throw error;
 
       toast.success("Password updated successfully!");
-      router.replace("/"); // Send them to the dashboard!
+      router.replace("/");
     } catch (err: any) {
       toast.error(err.message || "Failed to update password.");
     } finally {
