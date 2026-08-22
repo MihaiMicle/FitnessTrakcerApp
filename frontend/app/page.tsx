@@ -13,7 +13,7 @@ import {
 } from "@/hooks/useDashboardLayout";
 
 import MealGroup from "@/components/dashboard/MealGroup";
-import LogMealModal from "@/components/meals/LogMealModal";
+import LogMealModal from "@/components/meals/LogMealDialog";
 import GoalsModal from "@/components/dashboard/GoalsModal";
 import ProfileModal from "@/components/auth/ProfileModal";
 import WaterTracker from "@/components/dashboard/WaterTracker";

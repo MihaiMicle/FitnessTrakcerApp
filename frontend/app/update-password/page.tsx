@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import PasswordField from "@/components/auth/PasswordField";
+import PasswordField from "@/components/auth/PasswordInput";
 import toast from "react-hot-toast";
 
 export default function UpdatePasswordPage() {

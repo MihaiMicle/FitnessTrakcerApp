@@ -2,7 +2,7 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "@/lib/supabase";
-import PasswordField from "@/components/auth/PasswordField";
+import PasswordField from "@/components/auth/PasswordInput";
 import toast from "react-hot-toast";
 
 interface AccountSecurityModalProps {
