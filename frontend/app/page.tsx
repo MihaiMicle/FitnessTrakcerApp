@@ -465,9 +465,11 @@ export default function Dashboard() {
                       <div
                         onMouseDown={(e) => handleResizeStart(e, index)}
                         onTouchStart={(e) => handleResizeStart(e, index)}
-                        className="absolute bottom-0 left-0 right-0 h-5 hover:h-6 bg-emerald-500/10 hover:bg-emerald-500/30 cursor-ns-resize flex items-end justify-center rounded-b-xl z-40 transition-all opacity-0 group-hover:opacity-100"
+                        // The wrapper acts as the hit-box: Taller on mobile (h-8), standard on desktop (md:h-6). Transparent by default.
+                        className="absolute bottom-0 left-0 right-0 h-8 md:h-6 bg-transparent hover:bg-emerald-500/10 cursor-ns-resize flex items-end justify-center rounded-b-xl z-40 transition-all touch-none"
                       >
-                        <div className="w-12 h-1 bg-emerald-500 rounded-full mb-1.5 opacity-80" />
+                        {/* The visual line: Semi-visible on mobile, completely hidden on desktop until hovered */}
+                        <div className="w-12 h-1 bg-emerald-500 rounded-full mb-3 md:mb-1.5 opacity-50 md:opacity-0 group-hover:opacity-80 transition-all" />
                       </div>
                     )}
 
