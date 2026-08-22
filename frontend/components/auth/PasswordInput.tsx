@@ -5,12 +5,14 @@ interface PasswordFieldProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
+  className?: string; // We added this!
 }
 
 export default function PasswordField({
   value,
   onChange,
   placeholder = "Enter your password",
+  className = "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 outline-none transition-colors",
 }: PasswordFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -21,7 +23,7 @@ export default function PasswordField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
+        className={className}
       />
 
       <button

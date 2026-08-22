@@ -198,6 +198,7 @@ export default function LoginForm() {
             <PasswordField
               value={authPassword}
               onChange={(e) => setAuthPassword(e.target.value)}
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
 
