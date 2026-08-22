@@ -17,15 +17,15 @@ export default function WaterTracker({
   const [showCustom, setShowCustom] = useState(false);
   const [customAmount, setCustomAmount] = useState<string>("");
 
-  const targetWater = summary?.target_water_ml || 3000;
-  const currentWater = summary?.total_water_ml || 0;
+  const targetWater = (summary as any)?.target_water_ml || 3000;
+  const currentWater = (summary as any)?.total_water_ml || 0;
   const progress = Math.min((currentWater / targetWater) * 100, 100);
 
   const currentLiters = parseFloat((currentWater / 1000).toFixed(2));
   const targetLiters = parseFloat((targetWater / 1000).toFixed(2));
 
   const handleAddWater = async (amount_ml: number) => {
-    const targetDate = summary?.date || (summary as any)?.log_date;
+    const targetDate = (summary as any)?.date || (summary as any)?.log_date;
     if (!targetDate || amount_ml === 0) return;
 
     const finalWater = Math.max(0, currentWater + amount_ml);

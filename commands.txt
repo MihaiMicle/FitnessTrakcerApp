@@ -7,6 +7,8 @@ npm run dev
 
 https://github.com/MihaiMicle/FitnessTrakcerApp
 
+https://fitnesstrakcerapp.onrender.com
+
 
 {item.serving_size} {item.serving_unit} •{" "}
                         {item.calories} kcal | P: {item.protein_g}g | C:{" "}

@@ -554,7 +554,11 @@ export default function Dashboard() {
 
                       {widget.type === "meal" && (
                         <MealGroup
-                          label={MEAL_TYPE_LABELS[widget.id] || widget.id}
+                          label={
+                            MEAL_TYPE_LABELS[
+                              widget.id as keyof typeof MEAL_TYPE_LABELS
+                            ] || widget.id
+                          }
                           mealType={widget.id}
                           selectedDate={selectedDate}
                           isToday={selectedDate === getTodayString()}
@@ -616,14 +620,14 @@ export default function Dashboard() {
       />
 
       <ProfileModal
-     isOpen={isProfileModalOpen}
-     onClose={() => setIsProfileModalOpen(false)}
-     onProfileUpdate={(newUrl) => setAvatarUrl(newUrl)}
-     onOpenSecurity={() => {
-       setIsProfileModalOpen(false);
-       setIsSecurityModalOpen(true);
-     }}
-   />
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onProfileUpdate={(newUrl) => setAvatarUrl(newUrl)}
+        onOpenSecurity={() => {
+          setIsProfileModalOpen(false);
+          setIsSecurityModalOpen(true);
+        }}
+      />
 
       <AccountSecurityModal
         isOpen={isSecurityModalOpen}

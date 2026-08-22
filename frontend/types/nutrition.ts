@@ -89,7 +89,7 @@ export interface CustomFood {
   brand?: string;
   serving_size: number;
   serving_unit: string;
-  custom_servings?: CustomServing[];
+  custom_servings?: any[];
   calories: number;
   protein_g: number;
   carbs_g: number;

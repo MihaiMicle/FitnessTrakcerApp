@@ -11,9 +11,9 @@ export default function MealItem({ meal, onDelete }: MealItemProps) {
   console.log("Logged meal object:", meal);
 
   const servingSize =
-    meal.serving_size ||
+    (meal as any).serving_size ||
     (meal as any).servingSize ||
-    meal.quantity_g ||
+    (meal as any).quantity_g ||
     (meal as any).quantity ||
     (meal as any).grams ||
     (meal as any).amount ||
@@ -21,7 +21,10 @@ export default function MealItem({ meal, onDelete }: MealItemProps) {
     0;
 
   const servingUnit =
-    meal.serving_unit || (meal as any).servingUnit || (meal as any).unit || "g";
+    (meal as any).serving_unit ||
+    (meal as any).servingUnit ||
+    (meal as any).unit ||
+    "g";
 
   return (
     <div className="py-4 flex justify-between items-center group">
