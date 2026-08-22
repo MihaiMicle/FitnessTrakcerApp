@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
 
   const [isEditingLayout, setIsEditingLayout] = useState(false);
+  const [openWidgetMenu, setOpenWidgetMenu] = useState<number | null>(null);
+
   const [avatarUrl, setAvatarUrl] = useState("");
 
   const getTodayString = () => new Date().toISOString().split("T")[0];
@@ -349,7 +351,10 @@ export default function Dashboard() {
                   </button>
                 )}
                 <button
-                  onClick={() => setIsEditingLayout(!isEditingLayout)}
+                  onClick={() => {
+                    setIsEditingLayout(!isEditingLayout);
+                    if (isEditingLayout) setOpenWidgetMenu(null);
+                  }}
                   className={`flex items-center gap-1.5 text-[10px] sm:text-xs font-mono font-medium px-2.5 py-1.5 rounded-md transition-all active:scale-95 border ${
                     isEditingLayout
                       ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
@@ -373,7 +378,7 @@ export default function Dashboard() {
             {isEditingLayout && (
               <div className="bg-neutral-900 border border-emerald-500/30 rounded-xl p-5 shadow-lg mb-6 animate-in fade-in slide-in-from-top-4">
                 <h3 className="text-sm font-semibold text-emerald-400 mb-3 flex items-center gap-2">
-                  <span className="animate-pulse">●</span> Widget Palette (Drag
+                  <span className="animate-pulse">🟢</span> Widget Palette (Drag
                   into the grid)
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -466,32 +471,67 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    <div className="absolute -top-2 -right-2 flex gap-1 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {isEditingLayout && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSize(index);
-                            }}
-                            className="bg-neutral-800 hover:bg-neutral-700 text-white w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-mono border border-neutral-600 shadow-md"
+                    {isEditingLayout && (
+                      <div className="absolute -top-3 -right-3 z-50">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenWidgetMenu(
+                              openWidgetMenu === index ? null : index,
+                            );
+                          }}
+                          className="bg-neutral-800 hover:bg-neutral-700 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg border border-neutral-600 transition-colors"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                           >
-                            {isFull ? "><" : "<>"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeWidget(index);
-                            }}
-                            className="bg-rose-900/90 hover:bg-rose-600 text-white w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold border border-rose-700 shadow-md"
-                          >
-                            ✕
-                          </button>
-                        </>
-                      )}
-                    </div>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                            />
+                          </svg>
+                        </button>
+
+                        {openWidgetMenu === index && (
+                          <div className="absolute top-10 right-0 bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl flex flex-col overflow-hidden w-32 animate-in zoom-in-95">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSize(index);
+                                setOpenWidgetMenu(null);
+                              }}
+                              className="px-4 py-3 text-xs font-mono text-white hover:bg-neutral-800 text-left border-b border-neutral-800 flex items-center justify-between"
+                            >
+                              {isFull ? "Make Half" : "Make Full"}
+                              <span className="text-neutral-500">
+                                {isFull ? "><" : "<>"}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeWidget(index);
+                                setOpenWidgetMenu(null);
+                              }}
+                              className="px-4 py-3 text-xs font-mono font-bold text-rose-500 hover:bg-rose-950/30 text-left flex items-center justify-between"
+                            >
+                              Remove
+                              <span className="text-rose-500 text-lg leading-none">
+                                ×
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div
                       className={`flex-1 w-full [&>div]:h-full ${isEditingLayout && widget.type === "meal" ? "pointer-events-none opacity-60 pl-8 sm:pl-12 transition-all" : ""} ${isEditingLayout && widget.type === "goal" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && widget.type === "feature" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && resizingIndex !== null ? "select-none" : ""}`}
