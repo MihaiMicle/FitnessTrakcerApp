@@ -17,7 +17,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://fitness-trakcer-app-tau.vercel.app/",
+        "https://fitness-trakcer-app-tau.vercel.app",
+        "https://fitness-trakcer-eatkf5b61-misu5.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
