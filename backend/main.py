@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.database import engine, Base
 from routers import profile, nutrition, foods, chat
 
-
 # Create database tables automatically if they don't exist yet
 Base.metadata.create_all(bind=engine)
 
@@ -16,7 +15,10 @@ app = FastAPI(
 # Configure CORS for your Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Add your production domain later
+    allow_origins=[
+        "http://localhost:3000",
+        "https://fitness-trakcer-app-tau.vercel.app/",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,6 +29,7 @@ app.include_router(profile.router)
 app.include_router(nutrition.router)
 app.include_router(foods.router)
 app.include_router(chat.router)
+
 
 @app.get("/", tags=["Health"])
 def root():
