@@ -465,11 +465,11 @@ export default function Dashboard() {
                       <div
                         onMouseDown={(e) => handleResizeStart(e, index)}
                         onTouchStart={(e) => handleResizeStart(e, index)}
-                        // The wrapper acts as the hit-box: Taller on mobile (h-8), standard on desktop (md:h-6). Transparent by default.
-                        className="absolute bottom-0 left-0 right-0 h-8 md:h-6 bg-transparent hover:bg-emerald-500/10 cursor-ns-resize flex items-end justify-center rounded-b-xl z-40 transition-all touch-none"
+                        // Force iOS to never scroll when touching this element
+                        style={{ touchAction: "none" }}
+                        className="absolute -bottom-4 left-0 right-0 h-12 md:bottom-0 md:h-6 bg-transparent md:hover:bg-emerald-500/10 cursor-ns-resize flex items-center md:items-end justify-center rounded-b-xl z-50 transition-all touch-none"
                       >
-                        {/* The visual line: Semi-visible on mobile, completely hidden on desktop until hovered */}
-                        <div className="w-12 h-1 bg-emerald-500 rounded-full mb-3 md:mb-1.5 opacity-50 md:opacity-0 group-hover:opacity-80 transition-all" />
+                        <div className="w-16 h-1.5 md:w-12 md:h-1 bg-emerald-500 rounded-full mb-0 md:mb-1.5 opacity-60 md:opacity-0 group-hover:opacity-80 transition-all shadow-md pointer-events-none" />
                       </div>
                     )}
 

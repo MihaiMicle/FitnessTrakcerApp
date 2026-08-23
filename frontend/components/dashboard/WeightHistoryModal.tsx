@@ -43,6 +43,7 @@ export default function WeightHistoryModal({
   const [localPreviews, setLocalPreviews] = useState<Record<string, string>>(
     {},
   );
+  const [activePhotoLogId, setActivePhotoLogId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -294,7 +295,7 @@ export default function WeightHistoryModal({
     }
   };
 
-   const handleCloseModal = () => {
+  const handleCloseModal = () => {
     if (hasChanges) {
       window.location.reload();
     } else {
@@ -487,7 +488,14 @@ export default function WeightHistoryModal({
                         )}
                       </div>
 
-                      <div className="aspect-square bg-neutral-900 rounded-lg border border-neutral-800 flex items-center justify-center overflow-hidden relative">
+                      <div
+                        className="aspect-square bg-neutral-900 rounded-lg border border-neutral-800 flex items-center justify-center overflow-hidden relative cursor-pointer md:cursor-default"
+                        onClick={() =>
+                          setActivePhotoLogId(
+                            activePhotoLogId === log.id ? null : log.id,
+                          )
+                        }
+                      >
                         {displayImage ? (
                           <img
                             src={displayImage}
@@ -500,7 +508,10 @@ export default function WeightHistoryModal({
                           </span>
                         )}
 
-                        <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                        {/* Overlay: active state on mobile, but keep hover on desktop */}
+                        <div
+                          className={`absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 transition-opacity ${activePhotoLogId === log.id ? "opacity-100 z-20" : "opacity-0 z-0"} md:opacity-0 md:group-hover:opacity-100 md:z-20`}
+                        >
                           <label className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded cursor-pointer transition-colors w-24 text-center">
                             Upload Photo
                             <input
