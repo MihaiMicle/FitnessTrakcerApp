@@ -95,6 +95,7 @@ def update_custom_food(
     flag_modified(existing_food, "custom_servings")
 
     existing_food.name = food.name
+    existing_food.brand = food.brand
     existing_food.serving_size = food.serving_size
     existing_food.serving_unit = food.serving_unit
     existing_food.calories = food.calories

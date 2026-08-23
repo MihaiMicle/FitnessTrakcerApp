@@ -42,17 +42,35 @@ export default function FoodForm(props: FoodFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className="text-xs text-neutral-400 block mb-1">Food Name</label>
-        <input
-          type="text"
-          required
-          value={formData.food_name}
-          onChange={(e) =>
-            setFormData({ ...formData, food_name: e.target.value })
-          }
-          className={inputClass}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-neutral-400 block mb-1">
+            Food Name
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.food_name}
+            onChange={(e) =>
+              setFormData({ ...formData, food_name: e.target.value })
+            }
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-neutral-400 block mb-1 flex justify-between">
+            <span>Brand</span>
+            <span className="text-neutral-600">Optional</span>
+          </label>
+          <input
+            type="text"
+            value={formData.brand || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, brand: e.target.value })
+            }
+            className={inputClass}
+          />
+        </div>
       </div>
 
       <div className="flex gap-2">

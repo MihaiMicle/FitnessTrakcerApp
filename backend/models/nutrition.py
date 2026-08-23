@@ -40,6 +40,7 @@ class Meal(Base):
     )
 
     name = Column(String, nullable=False)
+    brand = Column(String, nullable=True)
     meal_type = Column(String, nullable=False)
 
     calories = Column(Integer, default=0)

@@ -44,6 +44,13 @@ export default function FoodList({
                 </span>
               )}
             </h4>
+
+            {item.brand && (
+              <p className="text-[11px] text-neutral-500 font-mono mt-0.5 tracking-wider">
+                {item.brand}
+              </p>
+            )}
+
             <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
               {item.serving_size} {item.serving_unit} • {item.calories} kcal |
               P: {item.protein_g}g | C: {item.carbs_g}g | F: {item.fats_g}g

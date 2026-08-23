@@ -17,6 +17,7 @@ import BundleBuilder from "./BundleBuilder";
 import FoodForm from "./FoodForm";
 import FoodList from "./FoodList";
 import CollectionList from "./CollectionList";
+import BarcodeScanner from "./BarcodeScanner";
 
 interface LogMealModalProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ export default function LogMealModal({
   onUpdateLog,
 }: LogMealModalProps) {
   const [activeTab, setActiveTab] = useState<
-    "recent" | "global" | "custom" | "meals" | "recipes" | "manual"
+    "recent" | "global" | "custom" | "meals" | "recipes" | "manual" | "scan"
   >("recent");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -82,6 +83,7 @@ export default function LogMealModal({
   const [formData, setFormData] = useState<any>({
     meal_type: "lunch",
     food_name: "",
+    brand: "",
     serving_size: "",
     serving_unit: "g",
     calories: "",
@@ -130,6 +132,7 @@ export default function LogMealModal({
         setFormData({
           meal_type: editingLog.meal_type || initialMealType || "lunch",
           food_name: editingLog.food_name || editingLog.name,
+          brand: editingLog.brand || "",
           serving_size: editingLog.serving_size,
           serving_unit: editingLog.serving_unit,
           calories: editingLog.calories ?? "",
@@ -200,19 +203,24 @@ export default function LogMealModal({
   if (!isOpen) return null;
 
   const safeSearch = searchQuery.toLowerCase().trim();
-  const filteredRecent = recentFoods.filter((f) =>
-    (f.name || f.food_name || "").toLowerCase().includes(safeSearch),
-  );
+
+  // Search logic
+  const matchesSearch = (item: any) => {
+    const nameMatch = (item.name || item.food_name || "")
+      .toLowerCase()
+      .includes(safeSearch);
+    const brandMatch = (item.brand || "").toLowerCase().includes(safeSearch);
+    return nameMatch || brandMatch;
+  };
+
+  const filteredRecent = recentFoods.filter(matchesSearch);
   const filteredGlobal = customFoods.filter(
-    (f) =>
-      f.user_id === null &&
-      (f.name || (f as any).food_name || "").toLowerCase().includes(safeSearch),
+    (f) => f.user_id === null && matchesSearch(f),
   );
   const filteredCustom = customFoods.filter(
-    (f) =>
-      f.user_id !== null &&
-      (f.name || (f as any).food_name || "").toLowerCase().includes(safeSearch),
+    (f) => f.user_id !== null && matchesSearch(f),
   );
+
   const filteredMeals = savedMeals.filter((m) =>
     (m.name || "").toLowerCase().includes(safeSearch),
   );
@@ -313,6 +321,7 @@ export default function LogMealModal({
     setFormData({
       meal_type: formData.meal_type,
       food_name: enrichedFood.name || enrichedFood.food_name,
+      brand: enrichedFood.brand || "",
       serving_size: baseServing,
       serving_unit: defaultUnit,
       calories: enrichedFood.calories ?? "",
@@ -337,6 +346,7 @@ export default function LogMealModal({
   const handleLogRecipe = (recipe: any) => {
     const mappedFood = {
       name: `[Recipe] ${recipe.name}`,
+      brand: "",
       serving_size: 1,
       serving_unit: "serving",
       ...recipe.macros_per_serving,
@@ -429,6 +439,7 @@ export default function LogMealModal({
       if (!session) return;
       const cleanPayload: any = {
         food_name: formData.food_name,
+        brand: formData.brand || "",
         serving_size: Number(formData.serving_size) || 0,
         serving_unit: formData.serving_unit,
         calories: Number(formData.calories) || 0,
@@ -468,6 +479,7 @@ export default function LogMealModal({
       if (saveAsCustom) {
         const dbPayload = {
           name: cleanPayload.food_name,
+          brand: cleanPayload.brand,
           serving_size: cleanPayload.serving_size || 1,
           serving_unit: cleanPayload.serving_unit || "serving",
           custom_servings: baseFood?.custom_servings
@@ -862,6 +874,13 @@ export default function LogMealModal({
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab("scan")}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "scan" ? activeTabClass : inactiveTabClass}`}
+            >
+              Scan
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab("manual")}
               className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "manual" ? activeTabClass : inactiveTabClass}`}
             >
@@ -871,7 +890,8 @@ export default function LogMealModal({
 
           {activeTab !== "manual" &&
             activeTab !== "meals" &&
-            activeTab !== "recipes" && (
+            activeTab !== "recipes" &&
+            activeTab !== "scan" && (
               <div className="relative shrink-0">
                 <input
                   type="text"
@@ -1008,6 +1028,14 @@ export default function LogMealModal({
                   />
                 )}
               </div>
+            )}
+
+            {activeTab === "scan" && (
+              <BarcodeScanner
+                onProductFound={(foodData) => {
+                  handleSelectFood(foodData, false);
+                }}
+              />
             )}
 
             {activeTab === "manual" && (

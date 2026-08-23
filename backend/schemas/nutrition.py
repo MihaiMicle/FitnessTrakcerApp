@@ -98,6 +98,7 @@ class MealCreate(BaseModel):
             "name", "food_name", "foodName", "meal_name", "food", "title"
         ),
     )
+    brand: Optional[str] = None
     meal_type: str = Field(
         ..., validation_alias=AliasChoices("meal_type", "mealType", "type")
     )
