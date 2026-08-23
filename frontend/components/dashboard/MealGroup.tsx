@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
+
+import ConfirmModal from "@/components/shared/ConfirmModal";
+import CopyMealModal from "@/components/shared/CopyMealModal";
 
 interface MealGroupProps {
   label: string;
@@ -15,13 +18,6 @@ interface MealGroupProps {
   onAddMealClick: () => void;
   onEditMeal?: (meal: any) => void;
 }
-
-const mealOptions = [
-  { value: "breakfast", label: "Breakfast" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-  { value: "snack", label: "Snacks" },
-];
 
 export default function MealGroup({
   label,
@@ -44,15 +40,14 @@ export default function MealGroup({
     isOpen: boolean;
     mode: "from" | "to";
   }>({ isOpen: false, mode: "from" });
+
   const [selectedCopyDate, setSelectedCopyDate] = useState("");
   const [selectedCopyMeal, setSelectedCopyMeal] = useState(mealType);
-  const activeDateRef = useRef<HTMLDivElement>(null);
 
   const [localMeals, setLocalMeals] = useState<any[]>([]);
   const [isManageMode, setIsManageMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Upgraded Drag & Drop State
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [dropPosition, setDropPosition] = useState<"above" | "below" | null>(
@@ -93,48 +88,10 @@ export default function MealGroup({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (copyModalConfig.isOpen && activeDateRef.current) {
-      activeDateRef.current.scrollIntoView({
-        block: "center",
-        behavior: "smooth",
-      });
-    }
-  }, [copyModalConfig.isOpen]);
-
-  const dateOptions = useMemo(() => {
-    const options = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = -14; i <= 14; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      const dateStr = `${year}-${month}-${day}`;
-
-      let displayLabel = dateStr;
-      if (i === -1) displayLabel = "Yesterday";
-      else if (i === 0) displayLabel = "Today";
-      else if (i === 1) displayLabel = "Tomorrow";
-      else {
-        displayLabel = d.toLocaleDateString("en-GB", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-        });
-      }
-      options.push({ value: dateStr, label: displayLabel });
-    }
-    return options;
-  }, []);
-
   const extractCleanPayload = (m: any, overrideMealType?: string) => ({
     meal_type: overrideMealType || mealType,
     food_name: m.food_name || m.name,
+    brand: m.brand || "",
     serving_size: m.serving_size,
     serving_unit: m.serving_unit,
     calories: m.calories,
@@ -177,12 +134,15 @@ export default function MealGroup({
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) throw new Error("No session");
+
       const cleanFoods = localMeals.map((m) => extractCleanPayload(m));
+
       const { error } = await supabase.from("saved_meals").insert({
         user_id: session.user.id,
         name: bundleName.trim(),
         foods: cleanFoods,
       });
+
       if (error) throw error;
       toast.success("Bundle saved successfully!", { id: "saveMeal" });
       setIsPromptOpen(false);
@@ -201,9 +161,11 @@ export default function MealGroup({
     }
     const baseDate = new Date(selectedDate);
     baseDate.setDate(baseDate.getDate() + (mode === "from" ? -1 : 1));
+
     const year = baseDate.getFullYear();
     const month = String(baseDate.getMonth() + 1).padStart(2, "0");
     const day = String(baseDate.getDate()).padStart(2, "0");
+
     setSelectedCopyDate(`${year}-${month}-${day}`);
     setSelectedCopyMeal(mealType);
     setCopyModalConfig({ isOpen: true, mode });
@@ -225,20 +187,26 @@ export default function MealGroup({
       if (mode === "from") {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/logs/${selectedCopyDate}`,
-          { headers: { Authorization: `Bearer ${session.access_token}` } },
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          },
         );
+
         if (res.status === 404) {
           toast.error(`No logs found for ${selectedCopyDate}.`, {
             id: "copyMeal",
           });
           return;
         }
+
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
+
         const foodsToCopy = (data.meals || []).filter(
           (m: any) =>
             m.meal_type?.toLowerCase() === selectedCopyMeal.toLowerCase(),
         );
+
         if (foodsToCopy.length === 0) {
           toast.error(`No foods logged on ${selectedCopyDate}.`, {
             id: "copyMeal",
@@ -249,16 +217,22 @@ export default function MealGroup({
         toast.loading(`Copying ${foodsToCopy.length} items...`, {
           id: "copyMeal",
         });
+
         for (const food of foodsToCopy)
           await onAddMeal(extractCleanPayload(food));
+
         toast.success(`Copied into ${label}!`, { id: "copyMeal" });
       } else {
         await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/logs/${selectedCopyDate}`,
-          { headers: { Authorization: `Bearer ${session.access_token}` } },
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          },
         );
+
         for (const food of localMeals) {
           const cleanFood = extractCleanPayload(food, selectedCopyMeal);
+
           let res = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/logs/${selectedCopyDate}/meals`,
             {
@@ -270,6 +244,7 @@ export default function MealGroup({
               body: JSON.stringify(cleanFood),
             },
           );
+
           if (res.status === 404 || res.status === 405) {
             res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/meals`, {
               method: "POST",
@@ -306,9 +281,7 @@ export default function MealGroup({
       confirmText: "Delete Items",
       isDestructive: true,
       action: () => {
-        for (const id of selectedIds) {
-          onDeleteMeal(id);
-        }
+        for (const id of selectedIds) onDeleteMeal(id);
         setSelectedIds([]);
         setIsManageMode(false);
         setConfirmConfig(null);
@@ -331,14 +304,9 @@ export default function MealGroup({
     if (draggedIndex === index) return;
 
     setDragOverIndex(index);
-
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const relativeY = e.clientY - rect.top;
-    if (relativeY > rect.height / 2) {
-      setDropPosition("below");
-    } else {
-      setDropPosition("above");
-    }
+    setDropPosition(relativeY > rect.height / 2 ? "below" : "above");
   };
 
   const handleDrop = async (e: React.DragEvent, index?: number) => {
@@ -359,7 +327,6 @@ export default function MealGroup({
     if (!sourceMealType || !foodDataStr) return;
 
     if (sourceMealType !== mealType) {
-      // Cross-meal drop
       const foodItem = JSON.parse(foodDataStr);
       toast.loading(`Moving to ${label}...`, { id: "moveMeal" });
 
@@ -377,8 +344,8 @@ export default function MealGroup({
           ...cleanFood,
           id: "temp-" + Date.now(),
         });
-        setLocalMeals(newLocalMeals);
 
+        setLocalMeals(newLocalMeals);
         onDeleteMeal(foodItem.id);
         await onAddMeal(cleanFood);
         toast.success("Moved successfully!", { id: "moveMeal" });
@@ -386,18 +353,11 @@ export default function MealGroup({
         toast.error("Failed to move item", { id: "moveMeal" });
       }
     } else {
-      // Reordering
       if (draggedIndex === null || index === undefined) return;
 
       let newIndex = finalDragOverIndex !== null ? finalDragOverIndex : index;
-
-      if (finalDropPosition === "below") {
-        newIndex += 1;
-      }
-
-      if (draggedIndex < newIndex) {
-        newIndex -= 1;
-      }
+      if (finalDropPosition === "below") newIndex += 1;
+      if (draggedIndex < newIndex) newIndex -= 1;
 
       if (draggedIndex !== newIndex) {
         const itemsCopy = [...localMeals];
@@ -432,7 +392,6 @@ export default function MealGroup({
                 {localMeals.length} items
               </span>
             </h3>
-
             {localMeals.length > 0 && (
               <div className="text-[10px] font-mono flex items-center gap-2 sm:gap-3 flex-wrap">
                 <span className="text-neutral-200">{totalCalories} kcal</span>
@@ -443,7 +402,6 @@ export default function MealGroup({
               </div>
             )}
           </div>
-
           <div className="flex items-center gap-2 mt-1 sm:mt-0">
             {isManageMode ? (
               <>
@@ -480,7 +438,6 @@ export default function MealGroup({
                 >
                   + Add
                 </button>
-
                 <div className="relative" ref={menuRef}>
                   <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -490,7 +447,6 @@ export default function MealGroup({
                     <span className="w-1 h-1 bg-current rounded-full"></span>
                     <span className="w-1 h-1 bg-current rounded-full"></span>
                   </button>
-
                   {isMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-neutral-950 border border-neutral-800 rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 flex flex-col">
                       <button
@@ -503,13 +459,13 @@ export default function MealGroup({
                         onClick={() => openCopyModal("from")}
                         className="w-full flex justify-between items-center px-4 py-3 text-xs font-mono text-blue-400 hover:bg-neutral-900 transition-colors border-b border-neutral-800"
                       >
-                        <span>↶ Copy From...</span>
+                        <span>⬇ Copy From...</span>
                       </button>
                       <button
                         onClick={() => openCopyModal("to")}
                         className="w-full flex justify-between items-center px-4 py-3 text-xs font-mono text-purple-400 hover:bg-neutral-900 transition-colors"
                       >
-                        <span>↷ Copy To...</span>
+                        <span>⬆ Copy To...</span>
                       </button>
                     </div>
                   )}
@@ -564,11 +520,8 @@ export default function MealGroup({
                   setDropPosition(null);
                 }}
                 onClick={() => {
-                  if (isManageMode) {
-                    toggleSelection(meal.id);
-                  } else if (onEditMeal) {
-                    onEditMeal(meal);
-                  }
+                  if (isManageMode) toggleSelection(meal.id);
+                  else if (onEditMeal) onEditMeal(meal);
                 }}
                 className={`group relative flex justify-between items-center p-2.5 rounded-lg border transition-all ${
                   isManageMode || onEditMeal ? "cursor-pointer" : ""
@@ -578,7 +531,6 @@ export default function MealGroup({
                     : "bg-transparent border-transparent hover:bg-neutral-950 hover:border-neutral-800/80"
                 }`}
               >
-                {/* Visual Drop Indicators */}
                 {dragOverIndex === idx &&
                   dropPosition === "above" &&
                   draggedIndex !== idx && (
@@ -618,13 +570,19 @@ export default function MealGroup({
                       </svg>
                     </div>
                   )}
-
                   <div>
-                    <p
-                      className={`text-xs sm:text-sm font-medium ${selectedIds.includes(meal.id) ? "text-emerald-400" : "text-neutral-200"} transition-colors`}
-                    >
-                      {meal.food_name || meal.name}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p
+                        className={`text-xs sm:text-sm font-medium ${selectedIds.includes(meal.id) ? "text-emerald-400" : "text-neutral-200"} transition-colors`}
+                      >
+                        {meal.food_name || meal.name}
+                      </p>
+                      {meal.brand && (
+                        <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+                          {meal.brand}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] sm:text-[11px] text-neutral-500 font-mono mt-0.5">
                       {meal.serving_size} {meal.serving_unit} • {meal.calories}{" "}
                       kcal | P: {meal.protein_g}g | C: {meal.carbs_g}g | F:{" "}
@@ -653,126 +611,39 @@ export default function MealGroup({
         </div>
       </div>
 
-      {isPromptOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
-            <h3 className="text-lg font-bold font-mono tracking-wider mb-2">
-              SAVE MEAL
-            </h3>
-            <p className="text-xs text-neutral-400 mb-4 font-mono">
-              Enter a name for this {label} combination so you can easily log it
-              later.
-            </p>
-            <input
-              type="text"
-              autoFocus
-              value={bundleName}
-              onChange={(e) => setBundleName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && confirmSaveBundle()}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-3 font-mono text-sm focus:outline-none focus:border-emerald-500 text-white transition-colors mb-6"
-            />
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setIsPromptOpen(false)}
-                disabled={isSaving}
-                className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmSaveBundle}
-                disabled={isSaving}
-                className="px-4 py-2 rounded font-mono text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50"
-              >
-                {isSaving ? "Saving..." : "Save Meal"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CopyMealModal
+        isOpen={copyModalConfig.isOpen}
+        mode={copyModalConfig.mode}
+        onClose={() =>
+          setCopyModalConfig({ ...copyModalConfig, isOpen: false })
+        }
+        selectedDate={selectedDate}
+        selectedCopyDate={selectedCopyDate}
+        setSelectedCopyDate={setSelectedCopyDate}
+        selectedCopyMeal={selectedCopyMeal}
+        setSelectedCopyMeal={setSelectedCopyMeal}
+        onExecuteCopy={handleExecuteCopy}
+      />
 
-      {copyModalConfig.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-t-2xl sm:rounded-xl w-full max-w-md flex flex-col shadow-2xl animate-in slide-in-from-bottom-5 sm:zoom-in-95">
-            <div className="flex justify-between items-center p-5 border-b border-neutral-800">
-              <h3 className="text-base font-bold text-white tracking-wider">
-                {copyModalConfig.mode === "from" ? "Copy from" : "Copy to"}
-              </h3>
-              <button
-                onClick={() =>
-                  setCopyModalConfig({ ...copyModalConfig, isOpen: false })
-                }
-                className="text-neutral-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex h-56 py-3 bg-neutral-950 relative">
-              <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
-                {mealOptions.map((m) => (
-                  <div
-                    key={m.value}
-                    onClick={() => setSelectedCopyMeal(m.value)}
-                    className={`px-3 py-2.5 text-center rounded-lg cursor-pointer transition-colors text-sm font-medium ${selectedCopyMeal === m.value ? "bg-neutral-800 text-white shadow-sm border border-neutral-700" : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900/50 border border-transparent"}`}
-                  >
-                    {m.label}
-                  </div>
-                ))}
-              </div>
-              <div className="w-px bg-neutral-800 my-2"></div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
-                {dateOptions.map((d) => (
-                  <div
-                    key={d.value}
-                    ref={selectedCopyDate === d.value ? activeDateRef : null}
-                    onClick={() => setSelectedCopyDate(d.value)}
-                    className={`px-3 py-2.5 text-center rounded-lg cursor-pointer transition-colors text-sm font-medium ${selectedCopyDate === d.value ? "bg-neutral-800 text-white shadow-sm border border-neutral-700" : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900/50 border border-transparent"}`}
-                  >
-                    {d.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="p-5 border-t border-neutral-800 bg-neutral-900 rounded-b-xl">
-              <button
-                onClick={handleExecuteCopy}
-                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold tracking-wide shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
-              >
-                Log
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={isPromptOpen}
+        title="SAVE MEAL"
+        message={`Enter a name for this ${label} combination so you can easily log it later.`}
+        confirmText={isSaving ? "Saving..." : "Save Meal"}
+        isDestructive={false}
+        onClose={() => setIsPromptOpen(false)}
+        onConfirm={confirmSaveBundle}
+      />
 
-      {confirmConfig?.isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-xs w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
-            <h3
-              className={`text-lg font-bold font-mono tracking-wider mb-2 ${confirmConfig.isDestructive ? "text-rose-500" : "text-emerald-400"}`}
-            >
-              {confirmConfig.title}
-            </h3>
-            <p className="text-sm text-neutral-400 mb-6 font-mono leading-relaxed">
-              {confirmConfig.message}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmConfig(null)}
-                className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmConfig.action}
-                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${confirmConfig.isDestructive ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
-              >
-                {confirmConfig.confirmText}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={confirmConfig?.isOpen || false}
+        title={confirmConfig?.title || ""}
+        message={confirmConfig?.message || ""}
+        confirmText={confirmConfig?.confirmText || ""}
+        isDestructive={confirmConfig?.isDestructive || false}
+        onClose={() => setConfirmConfig(null)}
+        onConfirm={() => confirmConfig?.action()}
+      />
     </>
   );
 }

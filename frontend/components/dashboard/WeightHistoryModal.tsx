@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   LineChart,
@@ -10,6 +10,7 @@ import {
   XAxis,
 } from "recharts";
 import toast from "react-hot-toast";
+import CameraModal from "@/components/shared/CameraModal";
 
 export default function WeightHistoryModal({
   isOpen,
@@ -21,21 +22,14 @@ export default function WeightHistoryModal({
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [hasChanges, setHasChanges] = useState(false); // Tracks if we need to refresh the dashboard
+  const [hasChanges, setHasChanges] = useState(false);
 
-  // Webcam State
   const [showWebcam, setShowWebcam] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [facingMode, setFacingMode] = useState<"user" | "environment">(
-    "environment",
-  );
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [activeLog, setActiveLog] = useState<{
     date: string;
     weight_kg: number;
   } | null>(null);
 
-  // Weight Editing State
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [editWeight, setEditWeight] = useState<number | "">("");
   const [isUpdatingWeight, setIsUpdatingWeight] = useState(false);
@@ -65,96 +59,6 @@ export default function WeightHistoryModal({
     fetchLogs();
   }, [isOpen, refreshKey]);
 
-  // Clean up webcam stream on unmount
-  useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [stream]);
-
-  // Attach stream to video element when it opens
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream, showWebcam]);
-
-  const startWebcam = async (
-    date: string,
-    weight_kg: number,
-    mode: "user" | "environment" = "environment",
-  ) => {
-    setActiveLog({ date, weight_kg });
-    setFacingMode(mode);
-
-    // Stop any existing stream before requesting a new camera
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
-
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode },
-      });
-      setStream(mediaStream);
-      setShowWebcam(true);
-    } catch (err) {
-      console.error("Webcam error:", err);
-      toast.error("Could not access camera. Please check your permissions.");
-    }
-  };
-
-  const flipCamera = () => {
-    if (!activeLog) return;
-    const newMode = facingMode === "user" ? "environment" : "user";
-    startWebcam(activeLog.date, activeLog.weight_kg, newMode);
-  };
-
-  const stopWebcam = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
-    setStream(null);
-    setShowWebcam(false);
-    setActiveLog(null);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current && activeLog) {
-      const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext("2d");
-
-      if (ctx) {
-        // If front camera, we need to flip the canvas image horizontally so it saves correctly
-        if (facingMode === "user") {
-          ctx.translate(canvas.width, 0);
-          ctx.scale(-1, 1);
-        }
-
-        ctx.drawImage(videoRef.current, 0, 0);
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const file = new File(
-                [blob],
-                `physique-capture-${Date.now()}.jpg`,
-                { type: "image/jpeg" },
-              );
-              handlePhotoUpload(activeLog.date, activeLog.weight_kg, file);
-              stopWebcam();
-            }
-          },
-          "image/jpeg",
-          0.9,
-        );
-      }
-    }
-  };
-
   const handlePhotoUpload = async (
     date: string,
     weight_kg: number,
@@ -182,7 +86,6 @@ export default function WeightHistoryModal({
         const newName = file.name.replace(/\.heic|\.heif/gi, ".jpg");
         uploadFile = new File([finalBlob], newName, { type: "image/jpeg" });
       } catch (err) {
-        console.error("HEIC Conversion error:", err);
         toast.error("Failed to convert iPhone photo. Try a different image.", {
           id: "upload",
         });
@@ -246,7 +149,6 @@ export default function WeightHistoryModal({
         toast.error("Failed to save photo link to database", { id: "upload" });
       }
     } catch (err) {
-      console.error(err);
       toast.error("An unexpected error occurred", { id: "upload" });
     }
   };
@@ -256,7 +158,6 @@ export default function WeightHistoryModal({
       setEditingLogId(null);
       return;
     }
-
     setIsUpdatingWeight(true);
     try {
       const {
@@ -296,11 +197,8 @@ export default function WeightHistoryModal({
   };
 
   const handleCloseModal = () => {
-    if (hasChanges) {
-      window.location.reload();
-    } else {
-      onClose();
-    }
+    if (hasChanges) window.location.reload();
+    else onClose();
   };
 
   if (!isOpen) return null;
@@ -390,7 +288,6 @@ export default function WeightHistoryModal({
                 .reverse()
                 .map((log) => {
                   const displayImage = localPreviews[log.date] || log.photo_url;
-
                   return (
                     <div
                       key={log.id}
@@ -400,8 +297,6 @@ export default function WeightHistoryModal({
                         <span className="text-xs text-neutral-400 font-mono">
                           {log.date}
                         </span>
-
-                        {/* Edit weight input */}
                         {editingLogId === log.id ? (
                           <div className="flex items-center gap-1">
                             <input
@@ -508,7 +403,6 @@ export default function WeightHistoryModal({
                           </span>
                         )}
 
-                        {/* Overlay: active state on mobile, but keep hover on desktop */}
                         <div
                           className={`absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 transition-opacity ${activePhotoLogId === log.id ? "opacity-100 z-20" : "opacity-0 z-0"} md:opacity-0 md:group-hover:opacity-100 md:z-20`}
                         >
@@ -535,11 +429,11 @@ export default function WeightHistoryModal({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              startWebcam(
-                                log.date,
-                                log.weight_kg,
-                                "environment",
-                              );
+                              setActiveLog({
+                                date: log.date,
+                                weight_kg: log.weight_kg,
+                              });
+                              setShowWebcam(true);
                             }}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-3 py-1.5 rounded cursor-pointer transition-colors w-24 text-center flex items-center justify-center gap-1"
                           >
@@ -586,82 +480,19 @@ export default function WeightHistoryModal({
         </div>
       </div>
 
-      {/* Webcam Overlay Modal */}
-      {showWebcam && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-          <div className="bg-neutral-900 border border-emerald-500/50 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl animate-in zoom-in-95 flex flex-col items-center">
-            <h3 className="text-lg font-bold font-mono tracking-wider mb-4 w-full text-center text-emerald-400">
-              CAPTURE PROGRESS
-            </h3>
-
-            <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden border border-neutral-800 mb-6 shadow-inner group">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
-              />
-              <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-lg pointer-events-none" />
-
-              {/* Flip Camera Button */}
-              <button
-                onClick={flipCamera}
-                className="absolute top-3 right-3 bg-black/50 hover:bg-black/80 text-white p-2.5 rounded-full backdrop-blur-sm transition-all border border-neutral-700 active:scale-95"
-                title="Switch Camera"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex w-full gap-3">
-              <button
-                onClick={stopWebcam}
-                className="flex-1 py-3 rounded-lg font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={capturePhoto}
-                className="flex-1 py-3 rounded-lg font-mono text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                Capture
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CameraModal
+        isOpen={showWebcam}
+        onClose={() => {
+          setShowWebcam(false);
+          setActiveLog(null);
+        }}
+        onCapture={(file) => {
+          if (activeLog)
+            handlePhotoUpload(activeLog.date, activeLog.weight_kg, file);
+        }}
+        title="CAPTURE PROGRESS"
+        initialFacingMode="environment"
+      />
     </>
   );
 }

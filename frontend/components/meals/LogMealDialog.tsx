@@ -18,6 +18,7 @@ import FoodForm from "./FoodForm";
 import FoodList from "./FoodList";
 import CollectionList from "./CollectionList";
 import BarcodeScanner from "./BarcodeScanner";
+import ConfirmModal from "@/components/shared/ConfirmModal";
 
 interface LogMealModalProps {
   isOpen: boolean;
@@ -203,8 +204,6 @@ export default function LogMealModal({
   if (!isOpen) return null;
 
   const safeSearch = searchQuery.toLowerCase().trim();
-
-  // Search logic
   const matchesSearch = (item: any) => {
     const nameMatch = (item.name || item.food_name || "")
       .toLowerCase()
@@ -220,7 +219,6 @@ export default function LogMealModal({
   const filteredCustom = customFoods.filter(
     (f) => f.user_id !== null && matchesSearch(f),
   );
-
   const filteredMeals = savedMeals.filter((m) =>
     (m.name || "").toLowerCase().includes(safeSearch),
   );
@@ -263,7 +261,6 @@ export default function LogMealModal({
         parsedServings = matchParsed;
       }
     }
-
     if (parsedServings && Array.isArray(parsedServings)) {
       const custom = parsedServings.find(
         (s: any) => s.description.toLowerCase() === cleanUnit,
@@ -286,13 +283,11 @@ export default function LogMealModal({
 
     let enrichedFood = { ...food };
     let parsedServings = [];
-
     try {
-      if (typeof food.custom_servings === "string") {
+      if (typeof food.custom_servings === "string")
         parsedServings = JSON.parse(food.custom_servings);
-      } else if (Array.isArray(food.custom_servings)) {
+      else if (Array.isArray(food.custom_servings))
         parsedServings = food.custom_servings;
-      }
     } catch (e) {}
 
     if (!isEditMode && parsedServings.length === 0) {
@@ -310,7 +305,6 @@ export default function LogMealModal({
         } catch (e) {}
       }
     }
-
     enrichedFood.custom_servings = parsedServings || [];
 
     const baseServing =
@@ -380,9 +374,7 @@ export default function LogMealModal({
         serving_unit: unit,
       }));
       return;
-    } else {
-      setUnknownUnit(null);
-    }
+    } else setUnknownUnit(null);
 
     if (activeContext && activeContext.baseServing > 0) {
       const baseMultiplier =
@@ -558,11 +550,13 @@ export default function LogMealModal({
           if (error) throw error;
           toast.success("Meal updated!");
         } else {
-          const { error } = await supabase.from("saved_meals").insert({
-            user_id: session.user.id,
-            name: stagedName,
-            foods: stagedFoods,
-          });
+          const { error } = await supabase
+            .from("saved_meals")
+            .insert({
+              user_id: session.user.id,
+              name: stagedName,
+              foods: stagedFoods,
+            });
           if (error) throw error;
           toast.success("Meal saved!");
         }
@@ -636,13 +630,15 @@ export default function LogMealModal({
           if (error) throw error;
           toast.success("Recipe updated!");
         } else {
-          const { error } = await supabase.from("recipes").insert({
-            user_id: session.user.id,
-            name: stagedName,
-            servings,
-            ingredients: stagedFoods,
-            macros_per_serving,
-          });
+          const { error } = await supabase
+            .from("recipes")
+            .insert({
+              user_id: session.user.id,
+              name: stagedName,
+              servings,
+              ingredients: stagedFoods,
+              macros_per_serving,
+            });
           if (error) throw error;
           toast.success("Recipe saved!");
         }
@@ -732,14 +728,12 @@ export default function LogMealModal({
             setSavedMeals((prev) => prev.filter((m) => m.id !== id));
           else setRecipes((prev) => prev.filter((r) => r.id !== id));
           toast.success("Deleted successfully!");
-        } else {
-          toast.error("Failed to delete.");
-        }
+        } else toast.error("Failed to delete.");
       },
     });
   };
 
-  // Dynamic Available Units Calculation during render!
+  // Dynamic Available Units Calculation
   let parsedBaseServings = baseFood?.custom_servings || [];
   if (typeof parsedBaseServings === "string") {
     try {
@@ -920,7 +914,6 @@ export default function LogMealModal({
                 onSelect={handleSelectFood}
               />
             )}
-
             {activeTab === "global" && (
               <FoodList
                 foods={filteredGlobal}
@@ -929,7 +922,6 @@ export default function LogMealModal({
                 showAppBadge
               />
             )}
-
             {activeTab === "custom" && (
               <FoodList
                 foods={filteredCustom}
@@ -939,7 +931,6 @@ export default function LogMealModal({
                 showActions
               />
             )}
-
             {activeTab === "meals" && (
               <div className="space-y-4">
                 {builderMode === "meal" ? (
@@ -983,7 +974,6 @@ export default function LogMealModal({
                 )}
               </div>
             )}
-
             {activeTab === "recipes" && (
               <div className="space-y-4">
                 {builderMode === "recipe" ? (
@@ -1029,7 +1019,6 @@ export default function LogMealModal({
                 )}
               </div>
             )}
-
             {activeTab === "scan" && (
               <BarcodeScanner
                 onProductFound={(foodData) => {
@@ -1037,7 +1026,6 @@ export default function LogMealModal({
                 }}
               />
             )}
-
             {activeTab === "manual" && (
               <FoodForm
                 formData={formData}
@@ -1060,34 +1048,15 @@ export default function LogMealModal({
         </div>
       </div>
 
-      {confirmConfig && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-xs w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
-            <h3
-              className={`text-lg font-bold font-mono tracking-wider mb-2 ${confirmConfig.isDestructive ? "text-rose-500" : "text-emerald-400"}`}
-            >
-              {confirmConfig.title}
-            </h3>
-            <p className="text-sm text-neutral-400 mb-6 font-mono leading-relaxed">
-              {confirmConfig.message}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmConfig(null)}
-                className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmConfig.action}
-                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${confirmConfig.isDestructive ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
-              >
-                {confirmConfig.confirmText}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={confirmConfig?.isOpen || false}
+        title={confirmConfig?.title || ""}
+        message={confirmConfig?.message || ""}
+        confirmText={confirmConfig?.confirmText || ""}
+        isDestructive={confirmConfig?.isDestructive || false}
+        onClose={() => setConfirmConfig(null)}
+        onConfirm={() => confirmConfig?.action()}
+      />
     </>
   );
 }

@@ -37,19 +37,20 @@ export default function FoodList({
         >
           <div>
             <h4 className="text-sm font-medium text-neutral-200 flex items-center gap-2">
-              {item.name || item.food_name}
+              <span>{item.name || item.food_name}</span>
+
+              {item.brand && (
+                <span className="text-[12px] text-neutral-500 font-mono tracking-wider font-normal">
+                  {item.brand}
+                </span>
+              )}
+
               {showAppBadge && (
                 <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
                   APP
                 </span>
               )}
             </h4>
-
-            {item.brand && (
-              <p className="text-[11px] text-neutral-500 font-mono mt-0.5 tracking-wider">
-                {item.brand}
-              </p>
-            )}
 
             <p className="text-[11px] sm:text-xs text-neutral-500 font-mono mt-1">
               {item.serving_size} {item.serving_unit} • {item.calories} kcal |

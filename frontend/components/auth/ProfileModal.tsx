@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/supabase";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import CameraModal from "@/components/shared/CameraModal";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -38,7 +39,8 @@ export default function ProfileModal({
   const [saving, setSaving] = useState(false);
   const [unitSystem, setUnitSystem] = useState<"metric" | "imperial">("metric");
 
-  // Custom Confirm Dialog State
+  const [showWebcam, setShowWebcam] = useState(false);
+
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -47,12 +49,6 @@ export default function ProfileModal({
     isDestructive: boolean;
     action: () => void;
   } | null>(null);
-
-  // Webcam State
-  const [showWebcam, setShowWebcam] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   const inputClass =
     "w-full py-2 px-3 rounded-lg font-mono text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]";
@@ -74,15 +70,12 @@ export default function ProfileModal({
           const res = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/profile/me`,
             {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
+              headers: { Authorization: `Bearer ${session.access_token}` },
             },
           );
 
           if (res.ok) {
             const data = await res.json();
-
             setFirstName(data.first_name || "");
             setLastName(data.last_name || "");
             setWeight(data.weight_kg || "");
@@ -116,98 +109,13 @@ export default function ProfileModal({
           console.error("Failed to load profile", error);
         }
       };
-
       fetchProfile();
     } else {
       setConfirmConfig(null);
-      stopWebcam();
+      setShowWebcam(false);
     }
   }, [isOpen]);
 
-  // Clean up webcam stream on unmount
-  useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [stream]);
-
-  // Attach stream to video element when it opens
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream, showWebcam]);
-
-  const startWebcam = async (mode: "user" | "environment" = "user") => {
-    setFacingMode(mode);
-
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
-
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode },
-      });
-      setStream(mediaStream);
-      setShowWebcam(true);
-    } catch (err) {
-      console.error("Webcam error:", err);
-      toast.error("Could not access camera. Please check your permissions.");
-    }
-  };
-
-  const flipCamera = () => {
-    const newMode = facingMode === "user" ? "environment" : "user";
-    startWebcam(newMode);
-  };
-
-  const stopWebcam = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
-    setStream(null);
-    setShowWebcam(false);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current) {
-      const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext("2d");
-
-      if (ctx) {
-        // If front camera, flip the canvas image horizontally so it saves correctly
-        if (facingMode === "user") {
-          ctx.translate(canvas.width, 0);
-          ctx.scale(-1, 1);
-        }
-
-        ctx.drawImage(videoRef.current, 0, 0);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const file = new File(
-                [blob],
-                `camera-capture-${Date.now()}.jpg`,
-                { type: "image/jpeg" },
-              );
-              uploadFile(file);
-              stopWebcam();
-            }
-          },
-          "image/jpeg",
-          0.9,
-        );
-      }
-    }
-  };
-
-  // Reusable core upload logic
   const uploadFile = async (file: File) => {
     toast.loading("Uploading photo...", { id: "upload" });
     try {
@@ -235,9 +143,7 @@ export default function ProfileModal({
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
       setAvatarUrl(publicUrl);
-      if (onProfileUpdate) {
-        onProfileUpdate(publicUrl);
-      }
+      if (onProfileUpdate) onProfileUpdate(publicUrl);
 
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
         method: "PUT",
@@ -302,7 +208,6 @@ export default function ProfileModal({
         return;
       }
 
-      // Update authentication
       let requireEmailConfirm = false;
       if (email !== originalEmail || newPassword) {
         const authUpdates: { email?: string; password?: string } = {};
@@ -316,12 +221,9 @@ export default function ProfileModal({
           return;
         }
         await supabase.auth.refreshSession();
-        if (email !== originalEmail) {
-          requireEmailConfirm = true;
-        }
+        if (email !== originalEmail) requireEmailConfirm = true;
       }
 
-      // Update profile metrics
       const finalWeightKg =
         unitSystem === "imperial" && weight !== ""
           ? Number((Number(weight) / 2.20462).toFixed(2))
@@ -355,15 +257,14 @@ export default function ProfileModal({
       });
 
       if (res.ok) {
-        if (requireEmailConfirm) {
+        if (requireEmailConfirm)
           toast.success(
             "Check your new email address for a confirmation link!",
           );
-        } else if (newPassword) {
+        else if (newPassword)
           toast.success("Profile and password updated successfully!");
-        } else {
-          toast.success("Profile saved successfully!");
-        }
+        else toast.success("Profile saved successfully!");
+
         onClose();
         router.refresh();
       } else {
@@ -377,7 +278,6 @@ export default function ProfileModal({
     }
   };
 
-  // Handle Account Deletion
   const handleDeleteAccountClick = () => {
     setConfirmConfig({
       isOpen: true,
@@ -420,7 +320,6 @@ export default function ProfileModal({
             router.replace("/login");
           }
         } catch (err) {
-          console.error(err);
           toast.error("Network failed. Is the backend running?", {
             id: "deleteAccount",
           });
@@ -436,7 +335,6 @@ export default function ProfileModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-3xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
-          {/* Header & Close Button */}
           <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
             <h2 className="text-lg font-bold font-mono tracking-wider">
               PROFILE SETTINGS
@@ -473,15 +371,12 @@ export default function ProfileModal({
             </div>
           </div>
 
-          {/* Scrollable Content Area */}
           <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-            {/* Personal Details Section */}
             <div className="space-y-3">
               <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
                 Personal Details
               </h3>
 
-              {/* Avatar Upload */}
               <div className="flex items-center gap-4 py-2">
                 <div className="w-14 h-14 bg-neutral-950 border border-neutral-800 rounded-full flex items-center justify-center text-neutral-400 text-sm shrink-0 overflow-hidden relative group cursor-pointer">
                   {avatarUrl ? (
@@ -523,7 +418,7 @@ export default function ProfileModal({
                     </label>
                     <button
                       type="button"
-                      onClick={() => startWebcam("user")}
+                      onClick={() => setShowWebcam(true)}
                       className="text-[10px] sm:text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white px-2.5 py-1.5 rounded transition-colors cursor-pointer active:scale-95 flex items-center gap-1.5"
                     >
                       <svg
@@ -577,12 +472,10 @@ export default function ProfileModal({
               </div>
             </div>
 
-            {/* Physical Metrics Section */}
             <div className="space-y-3 pt-2 border-t border-neutral-800">
               <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
                 Physical Metrics
               </h3>
-
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-mono text-neutral-400 mb-1">
@@ -666,8 +559,6 @@ export default function ProfileModal({
                   </select>
                 </div>
               </div>
-
-              {/* Preferred Units Toggle */}
               <div className="pt-2">
                 <label className="block text-xs font-mono text-neutral-400 mb-1">
                   Measurement System
@@ -685,7 +576,6 @@ export default function ProfileModal({
               </div>
             </div>
 
-            {/* Goals & Activity Section */}
             <div className="space-y-3 pt-2 border-t border-neutral-800 pb-2">
               <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
                 Goals & Activity
@@ -706,8 +596,6 @@ export default function ProfileModal({
                   </option>
                   <option value={1.725}>Very Active (6-7 days/week)</option>
                 </select>
-
-                {/* Safety Measure for Muscle Gain + Sedentary */}
                 {activityLevel === 1.2 && goalType === "bulk" && (
                   <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-2 text-amber-400 text-xs font-mono animate-in fade-in">
                     <svg
@@ -757,7 +645,6 @@ export default function ProfileModal({
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row justify-between gap-3 pt-6 border-t border-neutral-800 mt-2">
             <button
               onClick={handleDeleteAccountClick}
@@ -774,7 +661,7 @@ export default function ProfileModal({
                 Cancel
               </button>
               <button
-                onClick={() => handleSave()}
+                onClick={handleSave}
                 disabled={saving}
                 className="px-4 py-2 rounded font-mono text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50 text-center"
               >
@@ -785,84 +672,14 @@ export default function ProfileModal({
         </div>
       </div>
 
-      {/* Webcam Overlay Modal */}
-      {showWebcam && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-          <div className="bg-neutral-900 border border-emerald-500/50 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl animate-in zoom-in-95 flex flex-col items-center">
-            <h3 className="text-lg font-bold font-mono tracking-wider mb-4 w-full text-center text-emerald-400">
-              CAPTURE PHOTO
-            </h3>
+      <CameraModal
+        isOpen={showWebcam}
+        onClose={() => setShowWebcam(false)}
+        onCapture={(file) => uploadFile(file)}
+        title="CAPTURE PHOTO"
+        initialFacingMode="user"
+      />
 
-            <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden border border-neutral-800 mb-6 shadow-inner group">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
-              />
-              <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-lg pointer-events-none" />
-
-              {/* Flip Camera Button */}
-              <button
-                onClick={flipCamera}
-                className="absolute top-3 right-3 bg-black/50 hover:bg-black/80 text-white p-2.5 rounded-full backdrop-blur-sm transition-all border border-neutral-700 active:scale-95"
-                title="Switch Camera"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex w-full gap-3">
-              <button
-                onClick={stopWebcam}
-                className="flex-1 py-3 rounded-lg font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={capturePhoto}
-                className="flex-1 py-3 rounded-lg font-mono text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                Capture
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom confirmation modal for deletion */}
       {confirmConfig?.isOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-xs w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
@@ -883,11 +700,7 @@ export default function ProfileModal({
               </button>
               <button
                 onClick={confirmConfig.action}
-                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${
-                  confirmConfig.isDestructive
-                    ? "bg-rose-600 hover:bg-rose-500 text-white"
-                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                }`}
+                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${confirmConfig.isDestructive ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
               >
                 {confirmConfig.confirmText}
               </button>
