@@ -14,9 +14,17 @@ export default function BarcodeScanner({
   const [manualCode, setManualCode] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
+  // Upgraded scanner config to force high-res back camera
   const { ref } = useZxing({
     onDecodeResult(result) {
       handleSearch(result.getText());
+    },
+    constraints: {
+      video: {
+        facingMode: "environment",
+        width: { min: 640, ideal: 1280, max: 1920 },
+        height: { min: 480, ideal: 720, max: 1080 },
+      },
     },
   });
 
@@ -65,7 +73,13 @@ export default function BarcodeScanner({
   return (
     <div className="space-y-4 animate-in fade-in flex flex-col h-full">
       <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-neutral-800 shadow-inner">
-        <video ref={ref} className="w-full h-full object-cover" />
+        <video
+          ref={ref}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+        />
         <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-xl pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-32 border-2 border-emerald-500 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] pointer-events-none" />
         <div className="absolute top-2 left-0 right-0 text-center">
