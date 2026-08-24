@@ -1,56 +1,191 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List
-from datetime import date
+from datetime import datetime
 from uuid import UUID
 
 from core.database import get_db
 from core.security import get_current_user
-from models.profile import WorkoutEntry # Adjust import based on where you put the model
-from schemas.workouts import WorkoutEntryCreate, WorkoutEntryResponse
+from models.workouts import WorkoutSession, Exercise, WorkoutTemplate
+from schemas.workouts import (
+    WorkoutSessionCreate,
+    WorkoutSessionUpdate,
+    WorkoutSessionResponse,
+    ExerciseCreate,
+    ExerciseResponse,
+    WorkoutTemplateCreate,
+    WorkoutTemplateResponse,
+)
 
 router = APIRouter(prefix="/workouts", tags=["Workouts"])
 
-@router.get("/{log_date}", response_model=List[WorkoutEntryResponse])
-def get_workouts_by_date(
-    log_date: date,
-    current_user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Retrieve all exercises logged on a specific date."""
-    return db.query(WorkoutEntry).filter(
-        WorkoutEntry.user_id == current_user_id,
-        WorkoutEntry.date == log_date
-    ).all()
 
-@router.post("/", response_model=WorkoutEntryResponse)
-def log_exercise(
-    payload: WorkoutEntryCreate,
-    current_user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db)
+@router.get("/", response_model=List[WorkoutSessionResponse])
+def get_all_sessions(
+    current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Log a new lifting or cardio exercise."""
-    new_entry = WorkoutEntry(**payload.model_dump(), user_id=current_user_id)
-    db.add(new_entry)
+    """Retrieve all workout sessions for the user, ordered by newest first."""
+    return (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.user_id == current_user_id)
+        .order_by(WorkoutSession.start_time.desc())
+        .all()
+    )
+
+
+@router.get("/active", response_model=WorkoutSessionResponse)
+def get_active_session(
+    current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Check if the user has a workout currently in progress."""
+    session = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.user_id == current_user_id,
+            WorkoutSession.status == "in_progress",
+        )
+        .order_by(WorkoutSession.start_time.desc())
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="No active session found")
+    return session
+
+
+@router.post("/", response_model=WorkoutSessionResponse)
+def create_session(
+    payload: WorkoutSessionCreate,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Start a new live workout session or log a completed past one."""
+    new_session = WorkoutSession(
+        **payload.model_dump(exclude_unset=True), user_id=current_user_id
+    )
+    db.add(new_session)
     db.commit()
-    db.refresh(new_entry)
-    return new_entry
+    db.refresh(new_session)
+    return new_session
 
-@router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_exercise(
-    entry_id: UUID,
+
+@router.put("/{session_id}", response_model=WorkoutSessionResponse)
+def update_session(
+    session_id: UUID,
+    payload: WorkoutSessionUpdate,
     current_user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Delete a logged exercise."""
-    entry = db.query(WorkoutEntry).filter(
-        WorkoutEntry.id == entry_id,
-        WorkoutEntry.user_id == current_user_id
-    ).first()
-    
-    if not entry:
-        raise HTTPException(status_code=404, detail="Exercise not found")
-        
-    db.delete(entry)
+    """Sync live exercises, update the timer duration, or finish the workout."""
+    workout = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.id == session_id, WorkoutSession.user_id == current_user_id
+        )
+        .first()
+    )
+    if not workout:
+        raise HTTPException(status_code=404, detail="Session not found")
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(workout, key, value)
+    db.commit()
+    db.refresh(workout)
+    return workout
+
+
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_session(
+    session_id: UUID,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cancel a live workout or delete a past session."""
+    workout = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.id == session_id, WorkoutSession.user_id == current_user_id
+        )
+        .first()
+    )
+    if not workout:
+        raise HTTPException(status_code=404, detail="Session not found")
+    db.delete(workout)
+    db.commit()
+    return None
+
+
+@router.get("/exercises", response_model=List[ExerciseResponse])
+def get_exercises(
+    current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Retrieve global exercises + the user's custom exercises."""
+    return (
+        db.query(Exercise)
+        .filter(or_(Exercise.user_id == current_user_id, Exercise.user_id.is_(None)))
+        .order_by(Exercise.name.asc())
+        .all()
+    )
+
+
+@router.post("/exercises", response_model=ExerciseResponse)
+def create_exercise(
+    payload: ExerciseCreate,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new custom exercise for the user."""
+    new_ex = Exercise(**payload.model_dump(), user_id=current_user_id)
+    db.add(new_ex)
+    db.commit()
+    db.refresh(new_ex)
+    return new_ex
+
+
+@router.get("/templates", response_model=List[WorkoutTemplateResponse])
+def get_templates(
+    current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Retrieve saved workout routines."""
+    return (
+        db.query(WorkoutTemplate)
+        .filter(WorkoutTemplate.user_id == current_user_id)
+        .order_by(WorkoutTemplate.created_at.desc())
+        .all()
+    )
+
+
+@router.post("/templates", response_model=WorkoutTemplateResponse)
+def create_template(
+    payload: WorkoutTemplateCreate,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Save a custom routine."""
+    new_template = WorkoutTemplate(**payload.model_dump(), user_id=current_user_id)
+    db.add(new_template)
+    db.commit()
+    db.refresh(new_template)
+    return new_template
+
+
+@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_template(
+    template_id: UUID,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a custom routine."""
+    template = (
+        db.query(WorkoutTemplate)
+        .filter(
+            WorkoutTemplate.id == template_id,
+            WorkoutTemplate.user_id == current_user_id,
+        )
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    db.delete(template)
     db.commit()
     return None

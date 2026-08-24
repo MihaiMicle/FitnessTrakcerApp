@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { useState, useEffect, FormEvent } from "react";
-import { MEAL_TYPES, MEAL_TYPE_LABELS, SERVING_UNITS } from "@/lib/constants";
-import { LogMealPayload, CustomFood } from "@/types/nutrition";
+import { useState, useEffect, FormEvent } from 'react';
+import { MEAL_TYPES, MEAL_TYPE_LABELS, SERVING_UNITS } from '@/lib/constants';
+import { LogMealPayload, CustomFood } from '@/types/nutrition';
 import {
   getCustomFoods,
   getRecentFoods,
   createCustomFood,
   deleteCustomFood,
   updateCustomFood,
-} from "@/lib/api";
-import { supabase } from "@/lib/supabase";
-import toast from "react-hot-toast";
-
-import BundleBuilder from "./BundleBuilder";
-import FoodForm from "./FoodForm";
-import FoodList from "./FoodList";
-import CollectionList from "./CollectionList";
-import BarcodeScanner from "./BarcodeScanner";
-import ConfirmModal from "@/components/shared/ConfirmModal";
+} from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
+import { Plus } from 'lucide-react'; // <-- Added Plus icon
+import BundleBuilder from './BundleBuilder';
+import FoodForm from './FoodForm';
+import FoodList from './FoodList';
+import CollectionList from './CollectionList';
+import BarcodeScanner from './BarcodeScanner';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 interface LogMealModalProps {
   isOpen: boolean;
@@ -46,29 +46,27 @@ export default function LogMealModal({
   onUpdateLog,
 }: LogMealModalProps) {
   const [activeTab, setActiveTab] = useState<
-    "recent" | "global" | "custom" | "meals" | "recipes" | "manual" | "scan"
-  >("recent");
-  const [searchQuery, setSearchQuery] = useState("");
+    'recent' | 'global' | 'custom' | 'meals' | 'recipes' | 'manual' | 'scan'
+  >('recent');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentFoods, setRecentFoods] = useState<any[]>([]);
   const [customFoods, setCustomFoods] = useState<CustomFood[]>([]);
-
   const [savedMeals, setSavedMeals] = useState<any[]>([]);
   const [recipes, setRecipes] = useState<any[]>([]);
 
-  const [builderMode, setBuilderMode] = useState<"meal" | "recipe" | null>(
+  const [builderMode, setBuilderMode] = useState<'meal' | 'recipe' | null>(
     null,
   );
   const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
   const [stagedFoods, setStagedFoods] = useState<any[]>([]);
-  const [stagedName, setStagedName] = useState("");
-  const [stagedServings, setStagedServings] = useState<number | string>("");
+  const [stagedName, setStagedName] = useState('');
+  const [stagedServings, setStagedServings] = useState<number | string>('');
 
   const [saveAsCustom, setSaveAsCustom] = useState(false);
   const [logMealToDiary, setLogMealToDiary] = useState(true);
   const [editingFoodId, setEditingFoodId] = useState<string | null>(null);
-
   const [unknownUnit, setUnknownUnit] = useState<string | null>(null);
   const [baseFood, setBaseFood] = useState<any | null>(null);
 
@@ -82,30 +80,30 @@ export default function LogMealModal({
   } | null>(null);
 
   const [formData, setFormData] = useState<any>({
-    meal_type: "lunch",
-    food_name: "",
-    brand: "",
-    serving_size: "",
-    serving_unit: "g",
-    calories: "",
-    protein_g: "",
-    carbs_g: "",
-    fats_g: "",
-    saturated_fats_g: "",
-    fiber_g: "",
-    sugar_g: "",
-    potassium_mg: "",
-    sodium_mg: "",
-    iron_mg: "",
-    vitamin_d_mcg: "",
-    zinc_mg: "",
-    magnesium_mg: "",
-    calcium_mg: "",
-    cholesterol_mg: "",
+    meal_type: 'lunch',
+    food_name: '',
+    brand: '',
+    serving_size: '',
+    serving_unit: 'g',
+    calories: '',
+    protein_g: '',
+    carbs_g: '',
+    fats_g: '',
+    saturated_fats_g: '',
+    fiber_g: '',
+    sugar_g: '',
+    potassium_mg: '',
+    sodium_mg: '',
+    iron_mg: '',
+    vitamin_d_mcg: '',
+    zinc_mg: '',
+    magnesium_mg: '',
+    calcium_mg: '',
+    cholesterol_mg: '',
   });
 
   useEffect(() => {
-    setSearchQuery("");
+    setSearchQuery('');
   }, [activeTab]);
 
   const fetchData = async () => {
@@ -113,17 +111,19 @@ export default function LogMealModal({
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
+
     supabase
-      .from("saved_meals")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false })
+      .from('saved_meals')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
       .then(({ data }) => data && setSavedMeals(data));
+
     supabase
-      .from("recipes")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false })
+      .from('recipes')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
       .then(({ data }) => data && setRecipes(data));
   };
 
@@ -131,51 +131,54 @@ export default function LogMealModal({
     if (isOpen) {
       if (editingLog) {
         setFormData({
-          meal_type: editingLog.meal_type || initialMealType || "lunch",
+          meal_type: editingLog.meal_type || initialMealType || 'lunch',
           food_name: editingLog.food_name || editingLog.name,
-          brand: editingLog.brand || "",
+          brand: editingLog.brand || '',
           serving_size: editingLog.serving_size,
           serving_unit: editingLog.serving_unit,
-          calories: editingLog.calories ?? "",
-          protein_g: editingLog.protein_g ?? "",
-          carbs_g: editingLog.carbs_g ?? "",
-          fats_g: editingLog.fats_g ?? "",
-          saturated_fats_g: editingLog.saturated_fats_g ?? "",
-          fiber_g: editingLog.fiber_g ?? "",
-          sugar_g: editingLog.sugar_g ?? "",
-          potassium_mg: editingLog.potassium_mg ?? "",
-          sodium_mg: editingLog.sodium_mg ?? "",
-          iron_mg: editingLog.iron_mg ?? "",
-          vitamin_d_mcg: editingLog.vitamin_d_mcg ?? "",
-          zinc_mg: editingLog.zinc_mg ?? "",
-          magnesium_mg: editingLog.magnesium_mg ?? "",
-          calcium_mg: editingLog.calcium_mg ?? "",
-          cholesterol_mg: editingLog.cholesterol_mg ?? "",
+          calories: editingLog.calories ?? '',
+          protein_g: editingLog.protein_g ?? '',
+          carbs_g: editingLog.carbs_g ?? '',
+          fats_g: editingLog.fats_g ?? '',
+          saturated_fats_g: editingLog.saturated_fats_g ?? '',
+          fiber_g: editingLog.fiber_g ?? '',
+          sugar_g: editingLog.sugar_g ?? '',
+          potassium_mg: editingLog.potassium_mg ?? '',
+          sodium_mg: editingLog.sodium_mg ?? '',
+          iron_mg: editingLog.iron_mg ?? '',
+          vitamin_d_mcg: editingLog.vitamin_d_mcg ?? '',
+          zinc_mg: editingLog.zinc_mg ?? '',
+          magnesium_mg: editingLog.magnesium_mg ?? '',
+          calcium_mg: editingLog.calcium_mg ?? '',
+          cholesterol_mg: editingLog.cholesterol_mg ?? '',
         });
         const baseServing =
           editingLog.serving_size || editingLog.quantity_g || 100;
-        const defaultUnit = editingLog.serving_unit || "g";
+        const defaultUnit = editingLog.serving_unit || 'g';
         setBaseFood({ ...editingLog, baseServing, defaultUnit });
-        setActiveTab("manual");
+        setActiveTab('manual');
         setLogMealToDiary(true);
         setSaveAsCustom(false);
       } else {
         setFormData((prev: any) => ({
           ...prev,
-          meal_type: initialMealType || "lunch",
+          meal_type: initialMealType || 'lunch',
         }));
       }
+
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) return;
         getRecentFoods(session.access_token)
           .then(setRecentFoods)
           .catch(console.error);
+
         fetchData();
+
         getCustomFoods(session.access_token)
           .then((data: CustomFood[]) => {
             const uniqueFoods = new Map<string, CustomFood>();
             data.forEach((item) => {
-              const rawName = item.name || (item as any).food_name || "";
+              const rawName = item.name || (item as any).food_name || '';
               const nameKey = rawName.toLowerCase().trim();
               if (!uniqueFoods.has(nameKey) || item.user_id !== null)
                 uniqueFoods.set(nameKey, item);
@@ -193,10 +196,10 @@ export default function LogMealModal({
       setBaseFood(null);
       setBuilderMode(null);
       setStagedFoods([]);
-      setStagedName("");
-      setStagedServings("");
-      setActiveTab("recent");
-      setSearchQuery("");
+      setStagedName('');
+      setStagedServings('');
+      setActiveTab('recent');
+      setSearchQuery('');
       setConfirmConfig(null);
     }
   }, [isOpen, initialMealType, editingLog]);
@@ -204,11 +207,12 @@ export default function LogMealModal({
   if (!isOpen) return null;
 
   const safeSearch = searchQuery.toLowerCase().trim();
+
   const matchesSearch = (item: any) => {
-    const nameMatch = (item.name || item.food_name || "")
+    const nameMatch = (item.name || item.food_name || '')
       .toLowerCase()
       .includes(safeSearch);
-    const brandMatch = (item.brand || "").toLowerCase().includes(safeSearch);
+    const brandMatch = (item.brand || '').toLowerCase().includes(safeSearch);
     return nameMatch || brandMatch;
   };
 
@@ -220,10 +224,24 @@ export default function LogMealModal({
     (f) => f.user_id !== null && matchesSearch(f),
   );
   const filteredMeals = savedMeals.filter((m) =>
-    (m.name || "").toLowerCase().includes(safeSearch),
+    (m.name || '').toLowerCase().includes(safeSearch),
   );
   const filteredRecipes = recipes.filter((r) =>
-    (r.name || "").toLowerCase().includes(safeSearch),
+    (r.name || '').toLowerCase().includes(safeSearch),
+  );
+
+  // --- NEW: Exact match checks to dynamically show/hide the "Create" buttons ---
+  const exactGlobalMatch = filteredGlobal.some(
+    (f) => (f.name || (f as any).food_name || '').toLowerCase() === safeSearch,
+  );
+  const exactCustomMatch = filteredCustom.some(
+    (f) => (f.name || (f as any).food_name || '').toLowerCase() === safeSearch,
+  );
+  const exactMealMatch = filteredMeals.some(
+    (m) => (m.name || '').toLowerCase() === safeSearch,
+  );
+  const exactRecipeMatch = filteredRecipes.some(
+    (r) => (r.name || '').toLowerCase() === safeSearch,
   );
 
   const getGramsMultiplier = (unit: string, foodContext: any = baseFood) => {
@@ -232,7 +250,7 @@ export default function LogMealModal({
     if (UNIT_TO_G[cleanUnit]) return UNIT_TO_G[cleanUnit];
 
     let parsedServings = foodContext?.custom_servings || [];
-    if (typeof parsedServings === "string") {
+    if (typeof parsedServings === 'string') {
       try {
         parsedServings = JSON.parse(parsedServings);
       } catch (e) {
@@ -246,12 +264,13 @@ export default function LogMealModal({
     ) {
       const matchedCustom = customFoods.find(
         (cf) =>
-          (cf.name || "").toLowerCase() ===
-          (foodContext.name || foodContext.food_name || "").toLowerCase(),
+          (cf.name || '').toLowerCase() ===
+          (foodContext.name || foodContext.food_name || '').toLowerCase(),
       );
+
       if (matchedCustom && matchedCustom.custom_servings) {
         let matchParsed = matchedCustom.custom_servings;
-        if (typeof matchParsed === "string") {
+        if (typeof matchParsed === 'string') {
           try {
             matchParsed = JSON.parse(matchParsed);
           } catch (e) {
@@ -261,6 +280,7 @@ export default function LogMealModal({
         parsedServings = matchParsed;
       }
     }
+
     if (parsedServings && Array.isArray(parsedServings)) {
       const custom = parsedServings.find(
         (s: any) => s.description.toLowerCase() === cleanUnit,
@@ -284,7 +304,7 @@ export default function LogMealModal({
     let enrichedFood = { ...food };
     let parsedServings = [];
     try {
-      if (typeof food.custom_servings === "string")
+      if (typeof food.custom_servings === 'string')
         parsedServings = JSON.parse(food.custom_servings);
       else if (Array.isArray(food.custom_servings))
         parsedServings = food.custom_servings;
@@ -293,13 +313,13 @@ export default function LogMealModal({
     if (!isEditMode && parsedServings.length === 0) {
       const matchedCustom = customFoods.find(
         (cf) =>
-          (cf.name || "").toLowerCase() ===
-          (food.name || food.food_name || "").toLowerCase(),
+          (cf.name || '').toLowerCase() ===
+          (food.name || food.food_name || '').toLowerCase(),
       );
       if (matchedCustom && matchedCustom.custom_servings) {
         try {
           parsedServings =
-            typeof matchedCustom.custom_servings === "string"
+            typeof matchedCustom.custom_servings === 'string'
               ? JSON.parse(matchedCustom.custom_servings)
               : matchedCustom.custom_servings;
         } catch (e) {}
@@ -309,42 +329,45 @@ export default function LogMealModal({
 
     const baseServing =
       enrichedFood.serving_size || enrichedFood.quantity_g || 100;
-    const defaultUnit = enrichedFood.serving_unit || "g";
+    const defaultUnit = enrichedFood.serving_unit || 'g';
+
     setBaseFood({ ...enrichedFood, baseServing, defaultUnit });
     setUnknownUnit(null);
+
     setFormData({
       meal_type: formData.meal_type,
       food_name: enrichedFood.name || enrichedFood.food_name,
-      brand: enrichedFood.brand || "",
+      brand: enrichedFood.brand || '',
       serving_size: baseServing,
       serving_unit: defaultUnit,
-      calories: enrichedFood.calories ?? "",
-      protein_g: enrichedFood.protein_g ?? "",
-      carbs_g: enrichedFood.carbs_g ?? "",
-      fats_g: enrichedFood.fats_g ?? "",
-      saturated_fats_g: enrichedFood.saturated_fats_g ?? "",
-      fiber_g: enrichedFood.fiber_g ?? "",
-      sugar_g: enrichedFood.sugar_g ?? "",
-      potassium_mg: enrichedFood.potassium_mg ?? "",
-      sodium_mg: enrichedFood.sodium_mg ?? "",
-      iron_mg: enrichedFood.iron_mg ?? "",
-      vitamin_d_mcg: enrichedFood.vitamin_d_mcg ?? "",
-      zinc_mg: enrichedFood.zinc_mg ?? "",
-      magnesium_mg: enrichedFood.magnesium_mg ?? "",
-      calcium_mg: enrichedFood.calcium_mg ?? "",
-      cholesterol_mg: enrichedFood.cholesterol_mg ?? "",
+      calories: enrichedFood.calories ?? '',
+      protein_g: enrichedFood.protein_g ?? '',
+      carbs_g: enrichedFood.carbs_g ?? '',
+      fats_g: enrichedFood.fats_g ?? '',
+      saturated_fats_g: enrichedFood.saturated_fats_g ?? '',
+      fiber_g: enrichedFood.fiber_g ?? '',
+      sugar_g: enrichedFood.sugar_g ?? '',
+      potassium_mg: enrichedFood.potassium_mg ?? '',
+      sodium_mg: enrichedFood.sodium_mg ?? '',
+      iron_mg: enrichedFood.iron_mg ?? '',
+      vitamin_d_mcg: enrichedFood.vitamin_d_mcg ?? '',
+      zinc_mg: enrichedFood.zinc_mg ?? '',
+      magnesium_mg: enrichedFood.magnesium_mg ?? '',
+      calcium_mg: enrichedFood.calcium_mg ?? '',
+      cholesterol_mg: enrichedFood.cholesterol_mg ?? '',
     });
-    setActiveTab("manual");
+
+    setActiveTab('manual');
   };
 
   const handleLogRecipe = (recipe: any) => {
     const mappedFood = {
       name: `[Recipe] ${recipe.name}`,
-      brand: "",
+      brand: '',
       serving_size: 1,
-      serving_unit: "serving",
+      serving_unit: 'serving',
       ...recipe.macros_per_serving,
-      custom_servings: [{ description: "serving", equivalent_g: 1 }],
+      custom_servings: [{ description: 'serving', equivalent_g: 1 }],
     };
     handleSelectFood(mappedFood, false);
   };
@@ -354,19 +377,20 @@ export default function LogMealModal({
     unit: string,
     contextOverride: any = null,
   ) => {
-    if (size === "") {
+    if (size === '') {
       setFormData((prev: any) => ({
         ...prev,
-        serving_size: "",
+        serving_size: '',
         serving_unit: unit,
       }));
       return;
     }
+
     const amount = Number(size);
     const activeContext = contextOverride || baseFood;
     const multiplier = getGramsMultiplier(unit, activeContext);
 
-    if (multiplier === null && unit.trim() !== "") {
+    if (multiplier === null && unit.trim() !== '') {
       setUnknownUnit(unit.trim());
       setFormData((prev: any) => ({
         ...prev,
@@ -382,6 +406,7 @@ export default function LogMealModal({
       const requestedGrams = amount * multiplier;
       const baseGrams = activeContext.baseServing * baseMultiplier;
       const ratio = requestedGrams / baseGrams;
+
       setFormData((prev: any) => ({
         ...prev,
         serving_size: size,
@@ -424,14 +449,16 @@ export default function LogMealModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
+
       const cleanPayload: any = {
         food_name: formData.food_name,
-        brand: formData.brand || "",
+        brand: formData.brand || '',
         serving_size: Number(formData.serving_size) || 0,
         serving_unit: formData.serving_unit,
         calories: Number(formData.calories) || 0,
@@ -463,7 +490,7 @@ export default function LogMealModal({
       if (builderMode && logMealToDiary) {
         setStagedFoods([...stagedFoods, cleanPayload]);
         toast.success(`Added ${cleanPayload.food_name} to ${builderMode}`);
-        setActiveTab(builderMode === "meal" ? "meals" : "recipes");
+        setActiveTab(builderMode === 'meal' ? 'meals' : 'recipes');
         setIsSubmitting(false);
         return;
       }
@@ -473,7 +500,7 @@ export default function LogMealModal({
           name: cleanPayload.food_name,
           brand: cleanPayload.brand,
           serving_size: cleanPayload.serving_size || 1,
-          serving_unit: cleanPayload.serving_unit || "serving",
+          serving_unit: cleanPayload.serving_unit || 'serving',
           custom_servings: baseFood?.custom_servings
             ? [...baseFood.custom_servings]
             : [],
@@ -500,18 +527,19 @@ export default function LogMealModal({
             editingFoodId,
             dbPayload,
           );
-          toast.success("Food updated successfully!");
+          toast.success('Food updated successfully!');
         } else {
           await createCustomFood(session.access_token, dbPayload);
-          toast.success("Food saved successfully!");
+          toast.success('Food saved successfully!');
         }
       }
 
       if (logMealToDiary && !editingLog)
         await onAddMeal({ ...cleanPayload, meal_type: formData.meal_type });
+
       onClose();
     } catch (err: any) {
-      alert("Failed to process request.");
+      alert('Failed to process request.');
     } finally {
       setIsSubmitting(false);
     }
@@ -519,18 +547,18 @@ export default function LogMealModal({
 
   const handleSaveBuilder = async () => {
     if (!stagedName.trim()) {
-      toast.error("Please enter a name.");
+      toast.error('Please enter a name.');
       return;
     }
     if (stagedFoods.length === 0) {
-      toast.error("Add some foods first!");
+      toast.error('Add some foods first!');
       return;
     }
     if (
-      builderMode === "recipe" &&
+      builderMode === 'recipe' &&
       (!stagedServings || Number(stagedServings) <= 0)
     ) {
-      toast.error("Please enter total servings.");
+      toast.error('Please enter total servings.');
       return;
     }
 
@@ -541,26 +569,24 @@ export default function LogMealModal({
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      if (builderMode === "meal") {
+      if (builderMode === 'meal') {
         if (editingBundleId) {
           const { error } = await supabase
-            .from("saved_meals")
+            .from('saved_meals')
             .update({ name: stagedName, foods: stagedFoods })
-            .eq("id", editingBundleId);
+            .eq('id', editingBundleId);
           if (error) throw error;
-          toast.success("Meal updated!");
+          toast.success('Meal updated!');
         } else {
-          const { error } = await supabase
-            .from("saved_meals")
-            .insert({
-              user_id: session.user.id,
-              name: stagedName,
-              foods: stagedFoods,
-            });
+          const { error } = await supabase.from('saved_meals').insert({
+            user_id: session.user.id,
+            name: stagedName,
+            foods: stagedFoods,
+          });
           if (error) throw error;
-          toast.success("Meal saved!");
+          toast.success('Meal saved!');
         }
-      } else if (builderMode === "recipe") {
+      } else if (builderMode === 'recipe') {
         const servings = Number(stagedServings);
         const totals = stagedFoods.reduce(
           (acc, f) => ({
@@ -598,6 +624,7 @@ export default function LogMealModal({
             cholesterol_mg: 0,
           },
         );
+
         const macros_per_serving = {
           calories: Math.round(totals.calories / servings),
           protein_g: Number((totals.protein_g / servings).toFixed(1)),
@@ -617,40 +644,40 @@ export default function LogMealModal({
           calcium_mg: Number((totals.calcium_mg / servings).toFixed(1)),
           cholesterol_mg: Number((totals.cholesterol_mg / servings).toFixed(1)),
         };
+
         if (editingBundleId) {
           const { error } = await supabase
-            .from("recipes")
+            .from('recipes')
             .update({
               name: stagedName,
               servings,
               ingredients: stagedFoods,
               macros_per_serving,
             })
-            .eq("id", editingBundleId);
+            .eq('id', editingBundleId);
           if (error) throw error;
-          toast.success("Recipe updated!");
+          toast.success('Recipe updated!');
         } else {
-          const { error } = await supabase
-            .from("recipes")
-            .insert({
-              user_id: session.user.id,
-              name: stagedName,
-              servings,
-              ingredients: stagedFoods,
-              macros_per_serving,
-            });
+          const { error } = await supabase.from('recipes').insert({
+            user_id: session.user.id,
+            name: stagedName,
+            servings,
+            ingredients: stagedFoods,
+            macros_per_serving,
+          });
           if (error) throw error;
-          toast.success("Recipe saved!");
+          toast.success('Recipe saved!');
         }
       }
+
       setBuilderMode(null);
       setEditingBundleId(null);
       setStagedFoods([]);
-      setStagedName("");
-      setStagedServings("");
+      setStagedName('');
+      setStagedServings('');
       fetchData();
     } catch (e) {
-      toast.error("Failed to save " + builderMode);
+      toast.error('Failed to save ' + builderMode);
     } finally {
       setIsSubmitting(false);
     }
@@ -660,9 +687,9 @@ export default function LogMealModal({
     e.stopPropagation();
     setConfirmConfig({
       isOpen: true,
-      title: "DELETE CUSTOM FOOD",
-      message: "Are you sure you want to permanently delete this custom food?",
-      confirmText: "Delete",
+      title: 'DELETE CUSTOM FOOD',
+      message: 'Are you sure you want to permanently delete this custom food?',
+      confirmText: 'Delete',
       isDestructive: true,
       action: async () => {
         setConfirmConfig(null);
@@ -671,13 +698,13 @@ export default function LogMealModal({
             data: { session },
           } = await supabase.auth.getSession();
           if (session) {
-            toast.loading("Deleting...", { id: "deleteFood" });
+            toast.loading('Deleting...', { id: 'deleteFood' });
             await deleteCustomFood(session.access_token, foodId);
             setCustomFoods((prev) => prev.filter((food) => food.id !== foodId));
-            toast.success("Custom food deleted", { id: "deleteFood" });
+            toast.success('Custom food deleted', { id: 'deleteFood' });
           }
         } catch (err) {
-          toast.error("Failed to delete food", { id: "deleteFood" });
+          toast.error('Failed to delete food', { id: 'deleteFood' });
         }
       },
     });
@@ -686,21 +713,21 @@ export default function LogMealModal({
   const handleLogSavedMealClick = (meal: any) => {
     setConfirmConfig({
       isOpen: true,
-      title: "LOG MEAL",
+      title: 'LOG MEAL',
       message: `Log all items from '${meal.name}' into ${MEAL_TYPE_LABELS[formData.meal_type as keyof typeof MEAL_TYPE_LABELS]}?`,
-      confirmText: "Log Items",
+      confirmText: 'Log Items',
       isDestructive: false,
       action: async () => {
         setConfirmConfig(null);
         setIsSubmitting(true);
-        toast.loading(`Unpacking ${meal.name}...`, { id: "logBundle" });
+        toast.loading(`Unpacking ${meal.name}...`, { id: 'logBundle' });
         try {
           for (const food of meal.foods)
             await onAddMeal({ ...food, meal_type: formData.meal_type });
-          toast.success("Meal completely logged!", { id: "logBundle" });
+          toast.success('Meal completely logged!', { id: 'logBundle' });
           onClose();
         } catch (e) {
-          toast.error("Failed to log some items", { id: "logBundle" });
+          toast.error('Failed to log some items', { id: 'logBundle' });
         } finally {
           setIsSubmitting(false);
         }
@@ -711,31 +738,31 @@ export default function LogMealModal({
   const handleDeleteSavedEntityClick = (
     e: React.MouseEvent,
     id: string,
-    table: "saved_meals" | "recipes",
+    table: 'saved_meals' | 'recipes',
   ) => {
     e.stopPropagation();
     setConfirmConfig({
       isOpen: true,
-      title: table === "recipes" ? "DELETE RECIPE" : "DELETE MEAL",
-      message: `Are you sure you want to permanently delete this ${table === "recipes" ? "recipe" : "saved meal"}?`,
-      confirmText: "Delete",
+      title: table === 'recipes' ? 'DELETE RECIPE' : 'DELETE MEAL',
+      message: `Are you sure you want to permanently delete this ${table === 'recipes' ? 'recipe' : 'saved meal'}?`,
+      confirmText: 'Delete',
       isDestructive: true,
       action: async () => {
         setConfirmConfig(null);
-        const { error } = await supabase.from(table).delete().eq("id", id);
+        const { error } = await supabase.from(table).delete().eq('id', id);
         if (!error) {
-          if (table === "saved_meals")
+          if (table === 'saved_meals')
             setSavedMeals((prev) => prev.filter((m) => m.id !== id));
           else setRecipes((prev) => prev.filter((r) => r.id !== id));
-          toast.success("Deleted successfully!");
-        } else toast.error("Failed to delete.");
+          toast.success('Deleted successfully!');
+        } else toast.error('Failed to delete.');
       },
     });
   };
 
   // Dynamic Available Units Calculation
   let parsedBaseServings = baseFood?.custom_servings || [];
-  if (typeof parsedBaseServings === "string") {
+  if (typeof parsedBaseServings === 'string') {
     try {
       parsedBaseServings = JSON.parse(parsedBaseServings);
     } catch (e) {
@@ -749,12 +776,12 @@ export default function LogMealModal({
   ) {
     const matchedCustom = customFoods.find(
       (cf) =>
-        (cf.name || "").toLowerCase() ===
-        (baseFood.name || baseFood.food_name || "").toLowerCase(),
+        (cf.name || '').toLowerCase() ===
+        (baseFood.name || baseFood.food_name || '').toLowerCase(),
     );
     if (matchedCustom && matchedCustom.custom_servings) {
       let matchParsed = matchedCustom.custom_servings;
-      if (typeof matchParsed === "string") {
+      if (typeof matchParsed === 'string') {
         try {
           matchParsed = JSON.parse(matchParsed);
         } catch (e) {
@@ -773,11 +800,11 @@ export default function LogMealModal({
   );
 
   const activeTabClass =
-    "bg-emerald-900/40 text-emerald-400 font-bold border border-emerald-800/50";
+    'bg-emerald-900/40 text-emerald-400 font-bold border border-emerald-800/50';
   const inactiveTabClass =
-    "text-neutral-400 hover:text-white border border-transparent";
+    'text-neutral-400 hover:text-white border border-transparent';
   const inputClass =
-    "w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-emerald-500 outline-none transition-colors";
+    'w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-emerald-500 outline-none transition-colors';
 
   return (
     <>
@@ -787,14 +814,14 @@ export default function LogMealModal({
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
               {builderMode ? (
                 <span className="text-amber-400 animate-pulse">
-                  ● {builderMode === "meal" ? "Meal Builder" : "Recipe Builder"}
+                  {builderMode === 'meal' ? 'Meal Builder' : 'Recipe Builder'}
                 </span>
               ) : editingFoodId ? (
-                "Edit Custom Food"
+                'Edit Custom Food'
               ) : editingLog ? (
-                "Update Diary Entry"
+                'Update Diary Entry'
               ) : (
-                "Log Food"
+                'Log Food'
               )}
             </h3>
             <button
@@ -805,7 +832,7 @@ export default function LogMealModal({
             </button>
           </div>
 
-          {(!builderMode || activeTab === "manual") && (
+          {(!builderMode || activeTab === 'manual') && (
             <div className="flex items-center justify-between bg-neutral-950 p-2 rounded-lg border border-neutral-800 shrink-0">
               <span className="text-xs text-neutral-400 font-mono ml-2">
                 Target Section:
@@ -833,71 +860,71 @@ export default function LogMealModal({
           <div className="flex bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-[11px] sm:text-[10px] md:text-xs font-mono overflow-x-auto custom-scrollbar shrink-0">
             <button
               type="button"
-              onClick={() => setActiveTab("recent")}
-              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recent" ? activeTabClass : inactiveTabClass}`}
+              onClick={() => setActiveTab('recent')}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === 'recent' ? activeTabClass : inactiveTabClass}`}
             >
               Recent
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("global")}
-              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "global" ? activeTabClass : inactiveTabClass}`}
+              onClick={() => setActiveTab('global')}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === 'global' ? activeTabClass : inactiveTabClass}`}
             >
               Database
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("custom")}
-              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "custom" ? activeTabClass : inactiveTabClass}`}
+              onClick={() => setActiveTab('custom')}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === 'custom' ? activeTabClass : inactiveTabClass}`}
             >
               My Foods
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("meals")}
-              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "meals" ? activeTabClass : inactiveTabClass}`}
+              onClick={() => setActiveTab('meals')}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === 'meals' ? activeTabClass : inactiveTabClass}`}
             >
               Meals
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("recipes")}
-              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "recipes" ? activeTabClass : inactiveTabClass}`}
+              onClick={() => setActiveTab('recipes')}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === 'recipes' ? activeTabClass : inactiveTabClass}`}
             >
               Recipes
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("scan")}
-              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "scan" ? activeTabClass : inactiveTabClass}`}
+              onClick={() => setActiveTab('scan')}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === 'scan' ? activeTabClass : inactiveTabClass}`}
             >
               Scan
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("manual")}
-              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === "manual" ? activeTabClass : inactiveTabClass}`}
+              onClick={() => setActiveTab('manual')}
+              className={`flex-1 py-2 sm:py-1.5 px-2 whitespace-nowrap rounded-md transition-colors ${activeTab === 'manual' ? activeTabClass : inactiveTabClass}`}
             >
               Form
             </button>
           </div>
 
-          {activeTab !== "manual" &&
-            activeTab !== "meals" &&
-            activeTab !== "recipes" &&
-            activeTab !== "scan" && (
+          {activeTab !== 'manual' &&
+            activeTab !== 'meals' &&
+            activeTab !== 'recipes' &&
+            activeTab !== 'scan' && (
               <div className="relative shrink-0">
                 <input
                   type="text"
-                  placeholder={`Search ${activeTab === "global" ? "database" : activeTab === "custom" ? "my foods" : "recent"}...`}
+                  placeholder={`Search ${activeTab === 'global' ? 'database' : activeTab === 'custom' ? 'my foods' : 'recent'}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={inputClass + " font-mono"}
+                  className={inputClass + ' font-mono'}
                 />
                 {searchQuery && (
                   <button
                     type="button"
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono text-xs p-2"
                   >
                     ✕
@@ -907,33 +934,108 @@ export default function LogMealModal({
             )}
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-2">
-            {activeTab === "recent" && (
+            {activeTab === 'recent' && (
               <FoodList
                 foods={filteredRecent}
                 emptyMessage="No recent foods."
                 onSelect={handleSelectFood}
               />
             )}
-            {activeTab === "global" && (
-              <FoodList
-                foods={filteredGlobal}
-                emptyMessage="No database foods match."
-                onSelect={handleSelectFood}
-                showAppBadge
-              />
+
+            {activeTab === 'global' && (
+              <div className="space-y-2">
+                <FoodList
+                  foods={filteredGlobal}
+                  emptyMessage="No database foods match."
+                  onSelect={handleSelectFood}
+                  showAppBadge
+                />
+                {/* Creation fallback for Global tab */}
+                {searchQuery.trim() && !exactGlobalMatch && (
+                  <button
+                    onClick={() => {
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        food_name: searchQuery.trim(),
+                        calories: '',
+                        protein_g: '',
+                        carbs_g: '',
+                        fats_g: '',
+                        serving_size: 100,
+                        serving_unit: 'g',
+                      }));
+                      setEditingFoodId(null);
+                      setSaveAsCustom(true);
+                      setLogMealToDiary(true);
+                      setActiveTab('manual');
+                    }}
+                    className="w-full mt-2 p-4 rounded-xl border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/80 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors flex items-center gap-3 text-left"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                      <Plus size={16} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-emerald-300 text-sm">
+                        Create "{searchQuery.trim()}"
+                      </h4>
+                      <span className="text-[10px] font-mono text-emerald-500/70">
+                        Add to your custom database
+                      </span>
+                    </div>
+                  </button>
+                )}
+              </div>
             )}
-            {activeTab === "custom" && (
-              <FoodList
-                foods={filteredCustom}
-                emptyMessage="No custom foods match."
-                onSelect={handleSelectFood}
-                onDelete={handleDeleteCustomFoodClick}
-                showActions
-              />
+
+            {activeTab === 'custom' && (
+              <div className="space-y-2">
+                <FoodList
+                  foods={filteredCustom}
+                  emptyMessage="No custom foods match."
+                  onSelect={handleSelectFood}
+                  onDelete={handleDeleteCustomFoodClick}
+                  showActions
+                />
+                {/* Creation fallback for Custom tab */}
+                {searchQuery.trim() && !exactCustomMatch && (
+                  <button
+                    onClick={() => {
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        food_name: searchQuery.trim(),
+                        calories: '',
+                        protein_g: '',
+                        carbs_g: '',
+                        fats_g: '',
+                        serving_size: 100,
+                        serving_unit: 'g',
+                      }));
+                      setEditingFoodId(null);
+                      setSaveAsCustom(true);
+                      setLogMealToDiary(true);
+                      setActiveTab('manual');
+                    }}
+                    className="w-full mt-2 p-4 rounded-xl border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/80 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors flex items-center gap-3 text-left"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                      <Plus size={16} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-emerald-300 text-sm">
+                        Create "{searchQuery.trim()}"
+                      </h4>
+                      <span className="text-[10px] font-mono text-emerald-500/70">
+                        Add to your custom database
+                      </span>
+                    </div>
+                  </button>
+                )}
+              </div>
             )}
-            {activeTab === "meals" && (
+
+            {activeTab === 'meals' && (
               <div className="space-y-4">
-                {builderMode === "meal" ? (
+                {builderMode === 'meal' ? (
                   <BundleBuilder
                     builderMode="meal"
                     stagedFoods={stagedFoods}
@@ -946,37 +1048,64 @@ export default function LogMealModal({
                       setStagedFoods([]);
                       setEditingBundleId(null);
                     }}
-                    onAddFood={() => setActiveTab("recent")}
+                    onAddFood={() => setActiveTab('recent')}
                     onSave={handleSaveBuilder}
                     isSubmitting={isSubmitting}
                   />
                 ) : (
-                  <CollectionList
-                    type="meal"
-                    items={filteredMeals}
-                    emptyMessage="No saved meals."
-                    onLog={handleLogSavedMealClick}
-                    onEdit={(e, meal) => {
-                      e.stopPropagation();
-                      setBuilderMode("meal");
-                      setEditingBundleId(meal.id);
-                      setStagedName(meal.name);
-                      setStagedFoods(meal.foods || []);
-                    }}
-                    onDelete={handleDeleteSavedEntityClick}
-                    onCreateNew={() => {
-                      setBuilderMode("meal");
-                      setEditingBundleId(null);
-                      setStagedName("");
-                      setStagedFoods([]);
-                    }}
-                  />
+                  <>
+                    <CollectionList
+                      type="meal"
+                      items={filteredMeals}
+                      emptyMessage="No saved meals."
+                      onLog={handleLogSavedMealClick}
+                      onEdit={(e, meal) => {
+                        e.stopPropagation();
+                        setBuilderMode('meal');
+                        setEditingBundleId(meal.id);
+                        setStagedName(meal.name);
+                        setStagedFoods(meal.foods || []);
+                      }}
+                      onDelete={handleDeleteSavedEntityClick}
+                      onCreateNew={() => {
+                        setBuilderMode('meal');
+                        setEditingBundleId(null);
+                        setStagedName('');
+                        setStagedFoods([]);
+                      }}
+                    />
+                    {/* Creation fallback for Meals tab */}
+                    {searchQuery.trim() && !exactMealMatch && (
+                      <button
+                        onClick={() => {
+                          setBuilderMode('meal');
+                          setEditingBundleId(null);
+                          setStagedName(searchQuery.trim());
+                          setStagedFoods([]);
+                        }}
+                        className="w-full mt-2 p-4 rounded-xl border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/80 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors flex items-center gap-3 text-left"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                          <Plus size={16} />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-emerald-300 text-sm">
+                            Create Meal: "{searchQuery.trim()}"
+                          </h4>
+                          <span className="text-[10px] font-mono text-emerald-500/70">
+                            Build a new meal combination
+                          </span>
+                        </div>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
-            {activeTab === "recipes" && (
+
+            {activeTab === 'recipes' && (
               <div className="space-y-4">
-                {builderMode === "recipe" ? (
+                {builderMode === 'recipe' ? (
                   <BundleBuilder
                     builderMode="recipe"
                     stagedFoods={stagedFoods}
@@ -989,44 +1118,73 @@ export default function LogMealModal({
                       setStagedFoods([]);
                       setEditingBundleId(null);
                     }}
-                    onAddFood={() => setActiveTab("recent")}
+                    onAddFood={() => setActiveTab('recent')}
                     onSave={handleSaveBuilder}
                     isSubmitting={isSubmitting}
                   />
                 ) : (
-                  <CollectionList
-                    type="recipe"
-                    items={filteredRecipes}
-                    emptyMessage="No recipes created."
-                    onLog={handleLogRecipe}
-                    onEdit={(e, recipe) => {
-                      e.stopPropagation();
-                      setBuilderMode("recipe");
-                      setEditingBundleId(recipe.id);
-                      setStagedName(recipe.name);
-                      setStagedFoods(recipe.ingredients || []);
-                      setStagedServings(recipe.servings);
-                    }}
-                    onDelete={handleDeleteSavedEntityClick}
-                    onCreateNew={() => {
-                      setBuilderMode("recipe");
-                      setEditingBundleId(null);
-                      setStagedName("");
-                      setStagedFoods([]);
-                      setStagedServings("");
-                    }}
-                  />
+                  <>
+                    <CollectionList
+                      type="recipe"
+                      items={filteredRecipes}
+                      emptyMessage="No recipes created."
+                      onLog={handleLogRecipe}
+                      onEdit={(e, recipe) => {
+                        e.stopPropagation();
+                        setBuilderMode('recipe');
+                        setEditingBundleId(recipe.id);
+                        setStagedName(recipe.name);
+                        setStagedFoods(recipe.ingredients || []);
+                        setStagedServings(recipe.servings);
+                      }}
+                      onDelete={handleDeleteSavedEntityClick}
+                      onCreateNew={() => {
+                        setBuilderMode('recipe');
+                        setEditingBundleId(null);
+                        setStagedName('');
+                        setStagedFoods([]);
+                        setStagedServings('');
+                      }}
+                    />
+                    {/* Creation fallback for Recipes tab */}
+                    {searchQuery.trim() && !exactRecipeMatch && (
+                      <button
+                        onClick={() => {
+                          setBuilderMode('recipe');
+                          setEditingBundleId(null);
+                          setStagedName(searchQuery.trim());
+                          setStagedFoods([]);
+                          setStagedServings('');
+                        }}
+                        className="w-full mt-2 p-4 rounded-xl border-2 border-dashed border-amber-500/30 hover:border-amber-500/80 bg-amber-500/5 hover:bg-amber-500/10 transition-colors flex items-center gap-3 text-left"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                          <Plus size={16} />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-amber-300 text-sm">
+                            Create Recipe: "{searchQuery.trim()}"
+                          </h4>
+                          <span className="text-[10px] font-mono text-amber-500/70">
+                            Build a new multi-serving recipe
+                          </span>
+                        </div>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
-            {activeTab === "scan" && (
+
+            {activeTab === 'scan' && (
               <BarcodeScanner
                 onProductFound={(foodData) => {
                   handleSelectFood(foodData, false);
                 }}
               />
             )}
-            {activeTab === "manual" && (
+
+            {activeTab === 'manual' && (
               <FoodForm
                 formData={formData}
                 setFormData={setFormData}
@@ -1050,9 +1208,9 @@ export default function LogMealModal({
 
       <ConfirmModal
         isOpen={confirmConfig?.isOpen || false}
-        title={confirmConfig?.title || ""}
-        message={confirmConfig?.message || ""}
-        confirmText={confirmConfig?.confirmText || ""}
+        title={confirmConfig?.title || ''}
+        message={confirmConfig?.message || ''}
+        confirmText={confirmConfig?.confirmText || ''}
         isDestructive={confirmConfig?.isDestructive || false}
         onClose={() => setConfirmConfig(null)}
         onConfirm={() => confirmConfig?.action()}

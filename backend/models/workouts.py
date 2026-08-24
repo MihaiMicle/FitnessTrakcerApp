@@ -1,24 +1,52 @@
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Boolean
+import uuid
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.sql import func
+from core.database import Base
 
-class WorkoutEntry(Base):
-    __tablename__ = "workout_entries"
-    
+
+class WorkoutSession(Base):
+    __tablename__ = "workout_sessions"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(String, ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=False)
-    date = Column(Date, nullable=False)
-    
-    # E.g., "Barbell Bench Press", "Romanian Deadlift", or "Treadmill"
-    exercise_name = Column(String, nullable=False) 
-    
-    # Lifting Metrics
-    # Stored as a list of dicts: [{"set": 1, "weight_kg": 120, "reps": 5, "rpe": 8}]
-    working_sets = Column(JSONB, default=list) 
-    
-    # Cardio Metrics
-    is_cardio = Column(Boolean, default=False)
-    duration_minutes = Column(Integer, nullable=True) # e.g., 30
-    incline = Column(Float, nullable=True)            # e.g., 13.5
-    speed = Column(Float, nullable=True)              # e.g., 4.1
-    
+    user_id = Column(
+        String, ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    name = Column(String, default="Workout")
+    status = Column(String, default="in_progress")
+    start_time = Column(DateTime(timezone=True), default=func.now())
+    end_time = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Integer, default=0)
+    exercises = Column(JSONB, default=list)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+
+class Exercise(Base):
+    __tablename__ = "exercises"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        String, ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=True
+    )
+    name = Column(String, nullable=False)
+    type = Column(String, nullable=False)  # 'strength' or 'cardio'
+
+    # Detailed fields
+    photo_url = Column(String, nullable=True)
+    equipment = Column(String, nullable=True)
+    primary_muscle = Column(String, nullable=True)
+    secondary_muscles = Column(JSONB, default=list)
+    tracking_fields = Column(
+        JSONB, default=list
+    )  # Dictates UI inputs (e.g. ["weight", "reps"])
+
+    created_at = Column(DateTime(timezone=True), default=func.now())
+
+
+class WorkoutTemplate(Base):
+    __tablename__ = "workout_templates"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        String, ForeignKey("user_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    name = Column(String, nullable=False)
+    exercises = Column(JSONB, default=list)
     created_at = Column(DateTime(timezone=True), default=func.now())

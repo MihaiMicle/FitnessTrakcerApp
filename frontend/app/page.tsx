@@ -170,6 +170,12 @@ export default function Dashboard() {
                 >
                   Goals
                 </button>
+                <button
+                  onClick={() => router.push("/workouts")}
+                  className="text-[10px] sm:text-xs bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-white px-2 sm:px-2.5 py-1 rounded transition-colors ml-2"
+                >
+                  Training
+                </button>
               </div>
 
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -25,7 +25,7 @@ export default function ConfirmModal({
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-xs w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
         <h3
-          className={`text-lg font-bold font-mono tracking-wider mb-2 ${isDestructive ? "text-rose-500" : "text-emerald-400"}`}
+          className={`text-lg font-bold font-mono tracking-wider mb-2 ${isDestructive ? 'text-rose-500' : 'text-emerald-400'}`}
         >
           {title}
         </h3>
@@ -41,11 +41,7 @@ export default function ConfirmModal({
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${
-              isDestructive
-                ? "bg-rose-600 hover:bg-rose-500 text-white"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white"
-            }`}
+            className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${isDestructive ? 'bg-rose-600 hover:bg-rose-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
           >
             {confirmText}
           </button>
