@@ -310,6 +310,27 @@ def log_weight(
     return log_entry
 
 
+@router.delete("/weight/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_weight_log(
+    log_id: UUID,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a specific weight log."""
+    weight_log = (
+        db.query(WeightLog)
+        .filter(WeightLog.id == log_id, WeightLog.user_id == current_user_id)
+        .first()
+    )
+
+    if not weight_log:
+        raise HTTPException(status_code=404, detail="Weight log not found")
+
+    db.delete(weight_log)
+    db.commit()
+    return None
+
+
 @router.get("/weight", response_model=List[WeightLogResponse])
 def get_weight_logs(
     current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)

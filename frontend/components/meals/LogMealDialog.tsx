@@ -12,7 +12,7 @@ import {
 } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-import { Plus } from 'lucide-react'; // <-- Added Plus icon
+import { Plus } from 'lucide-react';
 import BundleBuilder from './BundleBuilder';
 import FoodForm from './FoodForm';
 import FoodList from './FoodList';
@@ -230,7 +230,6 @@ export default function LogMealModal({
     (r.name || '').toLowerCase().includes(safeSearch),
   );
 
-  // --- NEW: Exact match checks to dynamically show/hide the "Create" buttons ---
   const exactGlobalMatch = filteredGlobal.some(
     (f) => (f.name || (f as any).food_name || '').toLowerCase() === safeSearch,
   );
@@ -760,7 +759,6 @@ export default function LogMealModal({
     });
   };
 
-  // Dynamic Available Units Calculation
   let parsedBaseServings = baseFood?.custom_servings || [];
   if (typeof parsedBaseServings === 'string') {
     try {
@@ -909,29 +907,36 @@ export default function LogMealModal({
             </button>
           </div>
 
-          {activeTab !== 'manual' &&
-            activeTab !== 'meals' &&
-            activeTab !== 'recipes' &&
-            activeTab !== 'scan' && (
-              <div className="relative shrink-0">
-                <input
-                  type="text"
-                  placeholder={`Search ${activeTab === 'global' ? 'database' : activeTab === 'custom' ? 'my foods' : 'recent'}...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={inputClass + ' font-mono'}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono text-xs p-2"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            )}
+          {activeTab !== 'manual' && activeTab !== 'scan' && (
+            <div className="relative shrink-0">
+              <input
+                type="text"
+                placeholder={
+                  activeTab === 'global'
+                    ? 'Search database...'
+                    : activeTab === 'custom'
+                      ? 'Search my foods...'
+                      : activeTab === 'meals'
+                        ? 'Search meals...'
+                        : activeTab === 'recipes'
+                          ? 'Search recipes...'
+                          : 'Search recent...'
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={inputClass + ' font-mono'}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white font-mono text-xs p-2"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-2">
             {activeTab === 'recent' && (
@@ -950,7 +955,6 @@ export default function LogMealModal({
                   onSelect={handleSelectFood}
                   showAppBadge
                 />
-                {/* Creation fallback for Global tab */}
                 {searchQuery.trim() && !exactGlobalMatch && (
                   <button
                     onClick={() => {
@@ -996,7 +1000,6 @@ export default function LogMealModal({
                   onDelete={handleDeleteCustomFoodClick}
                   showActions
                 />
-                {/* Creation fallback for Custom tab */}
                 {searchQuery.trim() && !exactCustomMatch && (
                   <button
                     onClick={() => {
@@ -1074,7 +1077,6 @@ export default function LogMealModal({
                         setStagedFoods([]);
                       }}
                     />
-                    {/* Creation fallback for Meals tab */}
                     {searchQuery.trim() && !exactMealMatch && (
                       <button
                         onClick={() => {
@@ -1146,7 +1148,6 @@ export default function LogMealModal({
                         setStagedServings('');
                       }}
                     />
-                    {/* Creation fallback for Recipes tab */}
                     {searchQuery.trim() && !exactRecipeMatch && (
                       <button
                         onClick={() => {

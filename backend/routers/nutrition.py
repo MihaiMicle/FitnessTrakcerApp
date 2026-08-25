@@ -371,6 +371,84 @@ def get_meals_by_date(
     return meals
 
 
+@router.put("/meals/{meal_id}", response_model=MealResponse)
+def update_meal(
+    meal_id: UUID,
+    payload: MealCreate,
+    db: Session = Depends(get_db),
+    current_user_id: str = Depends(get_current_user),
+):
+    """Update an already logged meal and adjust daily totals using the delta."""
+    meal = db.query(Meal).filter(Meal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=404, detail="Meal not found")
+
+    daily_log = db.query(DailyLog).filter(DailyLog.id == meal.daily_log_id).first()
+
+    if daily_log:
+        # Calculate the difference between the old macros and the new macros
+        daily_log.total_calories += payload.calories - meal.calories
+        daily_log.total_protein_g = max(
+            0.0, daily_log.total_protein_g + (payload.protein_g - meal.protein_g)
+        )
+        daily_log.total_carbs_g = max(
+            0.0, daily_log.total_carbs_g + (payload.carbs_g - meal.carbs_g)
+        )
+        daily_log.total_fats_g = max(
+            0.0, daily_log.total_fats_g + (payload.fats_g - meal.fats_g)
+        )
+        daily_log.total_saturated_fats_g = max(
+            0.0,
+            daily_log.total_saturated_fats_g
+            + (payload.saturated_fats_g - meal.saturated_fats_g),
+        )
+        daily_log.total_fiber_g = max(
+            0.0, daily_log.total_fiber_g + (payload.fiber_g - meal.fiber_g)
+        )
+        daily_log.total_sugar_g = max(
+            0.0, daily_log.total_sugar_g + (payload.sugar_g - meal.sugar_g)
+        )
+        daily_log.total_potassium_mg = max(
+            0.0,
+            daily_log.total_potassium_mg + (payload.potassium_mg - meal.potassium_mg),
+        )
+        daily_log.total_sodium_mg = max(
+            0.0, daily_log.total_sodium_mg + (payload.sodium_mg - meal.sodium_mg)
+        )
+        daily_log.total_iron_mg = max(
+            0.0, daily_log.total_iron_mg + (payload.iron_mg - meal.iron_mg)
+        )
+        daily_log.total_vitamin_d_mcg = max(
+            0.0,
+            daily_log.total_vitamin_d_mcg
+            + (payload.vitamin_d_mcg - meal.vitamin_d_mcg),
+        )
+        daily_log.total_zinc_mg = max(
+            0.0, daily_log.total_zinc_mg + (payload.zinc_mg - meal.zinc_mg)
+        )
+        daily_log.total_magnesium_mg = max(
+            0.0,
+            daily_log.total_magnesium_mg + (payload.magnesium_mg - meal.magnesium_mg),
+        )
+        daily_log.total_calcium_mg = max(
+            0.0, daily_log.total_calcium_mg + (payload.calcium_mg - meal.calcium_mg)
+        )
+        daily_log.total_cholesterol_mg = max(
+            0.0,
+            daily_log.total_cholesterol_mg
+            + (payload.cholesterol_mg - meal.cholesterol_mg),
+        )
+
+    # Apply the new payload data to the meal record
+    update_data = payload.model_dump(exclude={"date"})
+    for key, value in update_data.items():
+        setattr(meal, key, value)
+
+    db.commit()
+    db.refresh(meal)
+    return meal
+
+
 @router.delete("/meals/{meal_id}", status_code=200)
 def delete_meal(
     meal_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)

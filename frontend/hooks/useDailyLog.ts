@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
 import {
   getDailyLog,
   logMeal as apiLogMeal,
   deleteMeal as apiDeleteMeal,
-} from "@/lib/api";
-import { DailySummary, LogMealPayload, MealEntry } from "@/types/nutrition";
+} from '@/lib/api';
+import { DailySummary, LogMealPayload, MealEntry } from '@/types/nutrition';
 
 export function useDailyLog(date: string) {
   const [dailyLog, setDailyLog] = useState<DailySummary | null>(null);
@@ -16,24 +16,21 @@ export function useDailyLog(date: string) {
 
   const fetchLog = useCallback(async () => {
     if (!date) return;
-
-    // Check if we actually have a logged-in user before calling FastAPI!
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) {
       setLoading(false);
-      return; // Silently abort so Uvicorn never throws a 401 Unauthorized
+      return;
     }
-
     setLoading(true);
     setError(null);
     try {
       const data = await getDailyLog(date);
       setDailyLog(data);
     } catch (err: any) {
-      console.error("Error fetching daily log:", err);
-      setError(err.message || "Failed to load daily log.");
+      console.error('Error fetching daily log:', err);
+      setError(err.message || 'Failed to load daily log.');
       setDailyLog(null);
     } finally {
       setLoading(false);
@@ -51,7 +48,7 @@ export function useDailyLog(date: string) {
       await fetchLog();
       return newMeal;
     } catch (err: any) {
-      console.error("Error adding meal:", err);
+      console.error('Error adding meal:', err);
       throw err;
     }
   };
@@ -61,7 +58,35 @@ export function useDailyLog(date: string) {
       await apiDeleteMeal(mealId);
       await fetchLog();
     } catch (err: any) {
-      console.error("Error deleting meal:", err);
+      console.error('Error deleting meal:', err);
+      throw err;
+    }
+  };
+
+  // Update an existing logged meal
+  const updateMeal = async (mealId: string, payload: any): Promise<void> => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/meals/${mealId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ ...payload, date: payload.date || date }),
+        },
+      );
+
+      if (!res.ok) throw new Error('Failed to update meal');
+      await fetchLog(); 
+    } catch (err: any) {
+      console.error('Error updating meal:', err);
       throw err;
     }
   };
@@ -73,6 +98,7 @@ export function useDailyLog(date: string) {
     refetch: fetchLog,
     addMeal,
     removeMeal,
+    updateMeal,
     refreshLog: fetchLog,
   };
 }

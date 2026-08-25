@@ -1,8 +1,8 @@
-import { supabase } from "@/lib/supabase";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
-import CameraModal from "@/components/shared/CameraModal";
+import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import CameraModal from '@/components/shared/CameraModal';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -19,25 +19,25 @@ export default function ProfileModal({
 }: ProfileModalProps) {
   const router = useRouter();
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
 
-  const [email, setEmail] = useState("");
-  const [originalEmail, setOriginalEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [originalEmail, setOriginalEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
-  const [weight, setWeight] = useState<number | "">("");
-  const [height, setHeight] = useState<number | "">("");
-  const [birthDate, setBirthDate] = useState<string>("");
-  const [gender, setGender] = useState<"male" | "female">("male");
-  const [bodyFat, setBodyFat] = useState<number | "">("");
+  const [weight, setWeight] = useState<number | ''>('');
+  const [height, setHeight] = useState<number | ''>('');
+  const [birthDate, setBirthDate] = useState<string>('');
+  const [gender, setGender] = useState<'male' | 'female'>('male');
+  const [bodyFat, setBodyFat] = useState<number | ''>('');
 
   const [activityLevel, setActivityLevel] = useState<number>(1.2);
-  const [goalType, setGoalType] = useState<string>("maintain");
+  const [goalType, setGoalType] = useState<string>('maintain');
 
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [saving, setSaving] = useState(false);
-  const [unitSystem, setUnitSystem] = useState<"metric" | "imperial">("metric");
+  const [unitSystem, setUnitSystem] = useState<'metric' | 'imperial'>('metric');
 
   const [showWebcam, setShowWebcam] = useState(false);
 
@@ -51,7 +51,7 @@ export default function ProfileModal({
   } | null>(null);
 
   const inputClass =
-    "w-full py-2 px-3 rounded-lg font-mono text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]";
+    'w-full py-2 px-3 rounded-lg font-mono text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white transition-colors disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]';
 
   useEffect(() => {
     if (isOpen) {
@@ -76,10 +76,10 @@ export default function ProfileModal({
 
           if (res.ok) {
             const data = await res.json();
-            setFirstName(data.first_name || "");
-            setLastName(data.last_name || "");
-            setWeight(data.weight_kg || "");
-            setHeight(data.height_cm || "");
+            setFirstName(data.first_name || '');
+            setLastName(data.last_name || '');
+            setWeight(data.weight_kg || '');
+            setHeight(data.height_cm || '');
             if (data.body_fat_percentage) setBodyFat(data.body_fat_percentage);
 
             if (data.birth_date) {
@@ -91,8 +91,8 @@ export default function ProfileModal({
                 const d = new Date(dateString);
                 if (!isNaN(d.getTime())) {
                   const yyyy = d.getFullYear();
-                  const mm = String(d.getMonth() + 1).padStart(2, "0");
-                  const dd = String(d.getDate()).padStart(2, "0");
+                  const mm = String(d.getMonth() + 1).padStart(2, '0');
+                  const dd = String(d.getDate()).padStart(2, '0');
                   setBirthDate(`${yyyy}-${mm}-${dd}`);
                 }
               }
@@ -102,11 +102,11 @@ export default function ProfileModal({
             if (data.goal_type) setGoalType(data.goal_type);
             if (data.avatar_url) setAvatarUrl(data.avatar_url);
 
-            setUnitSystem("metric");
-            setNewPassword("");
+            setUnitSystem('metric');
+            setNewPassword('');
           }
         } catch (error) {
-          console.error("Failed to load profile", error);
+          console.error('Failed to load profile', error);
         }
       };
       fetchProfile();
@@ -117,48 +117,48 @@ export default function ProfileModal({
   }, [isOpen]);
 
   const uploadFile = async (file: File) => {
-    toast.loading("Uploading photo...", { id: "upload" });
+    toast.loading('Uploading photo...', { id: 'upload' });
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        toast.error("You must be logged in to upload an avatar.", {
-          id: "upload",
+        toast.error('You must be logged in to upload an avatar.', {
+          id: 'upload',
         });
         return;
       }
 
-      const fileExt = file.name.split(".").pop();
+      const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `public/${fileName}`;
       const { error: uploadError } = await supabase.storage
-        .from("avatars")
+        .from('avatars')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
       setAvatarUrl(publicUrl);
       if (onProfileUpdate) onProfileUpdate(publicUrl);
 
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
-        method: "PUT",
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ avatar_url: publicUrl }),
       });
 
-      toast.success("Photo updated successfully!", { id: "upload" });
+      toast.success('Photo updated successfully!', { id: 'upload' });
     } catch (error) {
-      console.error("Error uploading avatar:", error);
-      toast.error("Could not upload image. Please try again.", {
-        id: "upload",
+      console.error('Error uploading avatar:', error);
+      toast.error('Could not upload image. Please try again.', {
+        id: 'upload',
       });
     }
   };
@@ -169,18 +169,18 @@ export default function ProfileModal({
     }
   };
 
-  const handleUnitToggle = (newUnit: "metric" | "imperial") => {
+  const handleUnitToggle = (newUnit: 'metric' | 'imperial') => {
     if (newUnit === unitSystem) return;
-    if (newUnit === "imperial") {
+    if (newUnit === 'imperial') {
       setWeight((w) =>
-        w === "" ? "" : Number((Number(w) * 2.20462).toFixed(1)),
+        w === '' ? '' : Number((Number(w) * 2.20462).toFixed(1)),
       );
-      setHeight((h) => (h === "" ? "" : Number((Number(h) / 2.54).toFixed(1))));
+      setHeight((h) => (h === '' ? '' : Number((Number(h) / 2.54).toFixed(1))));
     } else {
       setWeight((w) =>
-        w === "" ? "" : Number((Number(w) / 2.20462).toFixed(1)),
+        w === '' ? '' : Number((Number(w) / 2.20462).toFixed(1)),
       );
-      setHeight((h) => (h === "" ? "" : Number((Number(h) * 2.54).toFixed(1))));
+      setHeight((h) => (h === '' ? '' : Number((Number(h) * 2.54).toFixed(1))));
     }
     setUnitSystem(newUnit);
   };
@@ -204,7 +204,7 @@ export default function ProfileModal({
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        toast.error("Authentication error. Please log in again.");
+        toast.error('Authentication error. Please log in again.');
         return;
       }
 
@@ -225,11 +225,11 @@ export default function ProfileModal({
       }
 
       const finalWeightKg =
-        unitSystem === "imperial" && weight !== ""
+        unitSystem === 'imperial' && weight !== ''
           ? Number((Number(weight) / 2.20462).toFixed(2))
           : Number(weight);
       const finalHeightCm =
-        unitSystem === "imperial" && height !== ""
+        unitSystem === 'imperial' && height !== ''
           ? Number((Number(height) * 2.54).toFixed(2))
           : Number(height);
 
@@ -244,13 +244,13 @@ export default function ProfileModal({
         activity_level: activityLevel,
         goal_type: goalType,
         avatar_url: avatarUrl,
-        body_fat_percentage: bodyFat === "" ? null : Number(bodyFat),
+        body_fat_percentage: bodyFat === '' ? null : Number(bodyFat),
       };
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
-        method: "PUT",
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(payload),
@@ -259,20 +259,20 @@ export default function ProfileModal({
       if (res.ok) {
         if (requireEmailConfirm)
           toast.success(
-            "Check your new email address for a confirmation link!",
+            'Check your new email address for a confirmation link!',
           );
         else if (newPassword)
-          toast.success("Profile and password updated successfully!");
-        else toast.success("Profile saved successfully!");
+          toast.success('Profile and password updated successfully!');
+        else toast.success('Profile saved successfully!');
 
         onClose();
         router.refresh();
       } else {
-        throw new Error("Server returned an error");
+        throw new Error('Server returned an error');
       }
     } catch (error) {
-      console.error("Failed to save profile:", error);
-      toast.error("Failed to save profile. Please try again.");
+      console.error('Failed to save profile:', error);
+      toast.error('Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -281,15 +281,15 @@ export default function ProfileModal({
   const handleDeleteAccountClick = () => {
     setConfirmConfig({
       isOpen: true,
-      title: "DELETE ACCOUNT",
+      title: 'DELETE ACCOUNT',
       message:
-        "Are you absolutely sure you want to permanently delete your account and all associated data? This action cannot be undone.",
-      confirmText: "Delete My Account",
+        'Are you absolutely sure you want to permanently delete your account and all associated data? This action cannot be undone.',
+      confirmText: 'Delete My Account',
       isDestructive: true,
       action: async () => {
         setConfirmConfig(null);
         setSaving(true);
-        toast.loading("Deleting account...", { id: "deleteAccount" });
+        toast.loading('Deleting account...', { id: 'deleteAccount' });
         try {
           const {
             data: { session },
@@ -298,30 +298,30 @@ export default function ProfileModal({
             const res = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/profile/me`,
               {
-                method: "DELETE",
+                method: 'DELETE',
                 headers: { Authorization: `Bearer ${session.access_token}` },
               },
             );
 
             if (!res.ok) {
               const errText = await res.text();
-              toast.error(`Backend Error: ${errText || "Route missing"}`, {
-                id: "deleteAccount",
+              toast.error(`Backend Error: ${errText || 'Route missing'}`, {
+                id: 'deleteAccount',
               });
               setSaving(false);
               return;
             }
 
             await supabase.auth.signOut();
-            toast.success("Account deleted successfully.", {
-              id: "deleteAccount",
+            toast.success('Account deleted successfully.', {
+              id: 'deleteAccount',
             });
             onClose();
-            router.replace("/login");
+            router.replace('/login');
           }
         } catch (err) {
-          toast.error("Network failed. Is the backend running?", {
-            id: "deleteAccount",
+          toast.error('Network failed. Is the backend running?', {
+            id: 'deleteAccount',
           });
           setSaving(false);
         }
@@ -333,17 +333,19 @@ export default function ProfileModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg max-w-3xl w-full p-6 text-white font-sans relative my-8 shadow-2xl">
-          <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
+      {/* Container switches from items-center to items-end on mobile */}
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
+        <div className="bg-neutral-900 border-t sm:border border-neutral-800 rounded-t-2xl sm:rounded-xl max-w-3xl w-full p-5 sm:p-6 text-white font-sans relative shadow-2xl max-h-[90dvh] sm:max-h-[85vh] flex flex-col">
+          {/* Header (Pinned) */}
+          <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4 shrink-0">
             <h2 className="text-lg font-bold font-mono tracking-wider">
               PROFILE SETTINGS
             </h2>
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4 sm:gap-5">
               <button
                 onClick={async () => {
                   await supabase.auth.signOut();
-                  router.replace("/login");
+                  router.replace('/login');
                 }}
                 className="text-xs font-mono text-neutral-400 hover:text-white transition-colors flex items-center gap-1.5"
               >
@@ -364,14 +366,15 @@ export default function ProfileModal({
               </button>
               <button
                 onClick={onClose}
-                className="text-neutral-400 hover:text-white font-mono text-sm ml-2"
+                className="text-neutral-400 hover:text-white font-mono text-xl sm:text-sm ml-1"
               >
                 ✕
               </button>
             </div>
           </div>
 
-          <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+          {/* Body (Scrollable) */}
+          <div className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
             <div className="space-y-3">
               <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
                 Personal Details
@@ -479,7 +482,7 @@ export default function ProfileModal({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Weight ({unitSystem === "metric" ? "kg" : "lbs"})
+                    Weight ({unitSystem === 'metric' ? 'kg' : 'lbs'})
                   </label>
                   <input
                     type="number"
@@ -487,7 +490,7 @@ export default function ProfileModal({
                     value={weight}
                     onChange={(e) =>
                       setWeight(
-                        e.target.value === "" ? "" : Number(e.target.value),
+                        e.target.value === '' ? '' : Number(e.target.value),
                       )
                     }
                     className={inputClass}
@@ -495,7 +498,7 @@ export default function ProfileModal({
                 </div>
                 <div>
                   <label className="block text-xs font-mono text-neutral-400 mb-1">
-                    Height ({unitSystem === "metric" ? "cm" : "in"})
+                    Height ({unitSystem === 'metric' ? 'cm' : 'in'})
                   </label>
                   <input
                     type="number"
@@ -503,7 +506,7 @@ export default function ProfileModal({
                     value={height}
                     onChange={(e) =>
                       setHeight(
-                        e.target.value === "" ? "" : Number(e.target.value),
+                        e.target.value === '' ? '' : Number(e.target.value),
                       )
                     }
                     className={inputClass}
@@ -520,7 +523,7 @@ export default function ProfileModal({
                     value={bodyFat}
                     onChange={(e) =>
                       setBodyFat(
-                        e.target.value === "" ? "" : Number(e.target.value),
+                        e.target.value === '' ? '' : Number(e.target.value),
                       )
                     }
                     placeholder="e.g. 15"
@@ -550,7 +553,7 @@ export default function ProfileModal({
                   <select
                     value={gender}
                     onChange={(e) =>
-                      setGender(e.target.value as "male" | "female")
+                      setGender(e.target.value as 'male' | 'female')
                     }
                     className={inputClass}
                   >
@@ -566,7 +569,7 @@ export default function ProfileModal({
                 <select
                   value={unitSystem}
                   onChange={(e) =>
-                    handleUnitToggle(e.target.value as "metric" | "imperial")
+                    handleUnitToggle(e.target.value as 'metric' | 'imperial')
                   }
                   className={inputClass}
                 >
@@ -596,7 +599,7 @@ export default function ProfileModal({
                   </option>
                   <option value={1.725}>Very Active (6-7 days/week)</option>
                 </select>
-                {activityLevel === 1.2 && goalType === "bulk" && (
+                {activityLevel === 1.2 && goalType === 'bulk' && (
                   <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-2 text-amber-400 text-xs font-mono animate-in fade-in">
                     <svg
                       className="w-4 h-4 shrink-0 mt-0.5"
@@ -608,11 +611,11 @@ export default function ProfileModal({
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        d="M13 16h-1v-4h-1m1-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
                     <p>
-                      <strong>Tip:</strong> Your current goal is{" "}
+                      <strong>Tip:</strong> Your current goal is{' '}
                       <strong>Muscle Gain</strong>. A sedentary activity level
                       may lead to excess fat gain instead of muscle.
                     </p>
@@ -645,7 +648,8 @@ export default function ProfileModal({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between gap-3 pt-6 border-t border-neutral-800 mt-2">
+          {/* Footer (Pinned) */}
+          <div className="flex flex-col sm:flex-row justify-between gap-3 pt-5 border-t border-neutral-800 mt-2 shrink-0">
             <button
               onClick={handleDeleteAccountClick}
               disabled={saving}
@@ -665,7 +669,7 @@ export default function ProfileModal({
                 disabled={saving}
                 className="px-4 py-2 rounded font-mono text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50 text-center"
               >
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -684,7 +688,7 @@ export default function ProfileModal({
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl max-w-xs w-full p-6 text-white shadow-2xl animate-in fade-in zoom-in-95">
             <h3
-              className={`text-lg font-bold font-mono tracking-wider mb-2 ${confirmConfig.isDestructive ? "text-rose-500" : "text-emerald-400"}`}
+              className={`text-lg font-bold font-mono tracking-wider mb-2 ${confirmConfig.isDestructive ? 'text-rose-500' : 'text-emerald-400'}`}
             >
               {confirmConfig.title}
             </h3>
@@ -700,7 +704,7 @@ export default function ProfileModal({
               </button>
               <button
                 onClick={confirmConfig.action}
-                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${confirmConfig.isDestructive ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"}`}
+                className={`px-4 py-2 rounded font-mono text-xs font-bold transition ${confirmConfig.isDestructive ? 'bg-rose-600 hover:bg-rose-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
               >
                 {confirmConfig.confirmText}
               </button>

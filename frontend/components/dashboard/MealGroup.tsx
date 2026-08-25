@@ -1,11 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import toast from "react-hot-toast";
-
-import ConfirmModal from "@/components/shared/ConfirmModal";
-import CopyMealModal from "@/components/shared/CopyMealModal";
+import { useState, useRef, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import CopyMealModal from '@/components/shared/CopyMealModal';
 
 interface MealGroupProps {
   label: string;
@@ -13,7 +12,7 @@ interface MealGroupProps {
   selectedDate: string;
   isToday: boolean;
   meals: any[];
-  onDeleteMeal: (id: string) => void;
+  onDeleteMeal: (id: string) => Promise<void> | void;
   onAddMeal: (payload: any) => Promise<any>;
   onAddMealClick: () => void;
   onEditMeal?: (meal: any) => void;
@@ -31,17 +30,16 @@ export default function MealGroup({
 }: MealGroupProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
   const [isPromptOpen, setIsPromptOpen] = useState(false);
-  const [bundleName, setBundleName] = useState("");
+  const [bundleName, setBundleName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const [copyModalConfig, setCopyModalConfig] = useState<{
     isOpen: boolean;
-    mode: "from" | "to";
-  }>({ isOpen: false, mode: "from" });
+    mode: 'from' | 'to';
+  }>({ isOpen: false, mode: 'from' });
 
-  const [selectedCopyDate, setSelectedCopyDate] = useState("");
+  const [selectedCopyDate, setSelectedCopyDate] = useState('');
   const [selectedCopyMeal, setSelectedCopyMeal] = useState(mealType);
 
   const [localMeals, setLocalMeals] = useState<any[]>([]);
@@ -50,7 +48,7 @@ export default function MealGroup({
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<"above" | "below" | null>(
+  const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(
     null,
   );
   const [isDragOverContainer, setIsDragOverContainer] = useState(false);
@@ -68,11 +66,11 @@ export default function MealGroup({
     const currentIds = localMeals
       .map((m) => m.id)
       .sort()
-      .join(",");
+      .join(',');
     const newIds = meals
       .map((m) => m.id)
       .sort()
-      .join(",");
+      .join(',');
     if (currentIds !== newIds) {
       setLocalMeals(meals);
     }
@@ -84,14 +82,14 @@ export default function MealGroup({
         setIsMenuOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const extractCleanPayload = (m: any, overrideMealType?: string) => ({
     meal_type: overrideMealType || mealType,
     food_name: m.food_name || m.name,
-    brand: m.brand || "",
+    brand: m.brand || '',
     serving_size: m.serving_size,
     serving_unit: m.serving_unit,
     calories: m.calories,
@@ -114,7 +112,7 @@ export default function MealGroup({
   const handleSaveAsMealClick = () => {
     setIsMenuOpen(false);
     if (!meals || meals.length === 0) {
-      toast.error("No foods logged here yet!");
+      toast.error('No foods logged here yet!');
       return;
     }
     setBundleName(`My ${label}`);
@@ -123,49 +121,45 @@ export default function MealGroup({
 
   const confirmSaveBundle = async () => {
     if (!bundleName.trim()) {
-      toast.error("Please enter a name for the bundle.");
+      toast.error('Please enter a name for the bundle.');
       return;
     }
     setIsSaving(true);
-    toast.loading("Saving bundle...", { id: "saveMeal" });
-
+    toast.loading('Saving bundle...', { id: 'saveMeal' });
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session) throw new Error("No session");
+      if (!session) throw new Error('No session');
 
       const cleanFoods = localMeals.map((m) => extractCleanPayload(m));
-
-      const { error } = await supabase.from("saved_meals").insert({
+      const { error } = await supabase.from('saved_meals').insert({
         user_id: session.user.id,
         name: bundleName.trim(),
         foods: cleanFoods,
       });
 
       if (error) throw error;
-      toast.success("Bundle saved successfully!", { id: "saveMeal" });
+      toast.success('Bundle saved successfully!', { id: 'saveMeal' });
       setIsPromptOpen(false);
     } catch (err: any) {
-      toast.error("Failed to save meal", { id: "saveMeal" });
+      toast.error('Failed to save meal', { id: 'saveMeal' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const openCopyModal = (mode: "from" | "to") => {
+  const openCopyModal = (mode: 'from' | 'to') => {
     setIsMenuOpen(false);
-    if (mode === "to" && (!meals || meals.length === 0)) {
-      toast.error("No foods to copy!");
+    if (mode === 'to' && (!meals || meals.length === 0)) {
+      toast.error('No foods to copy!');
       return;
     }
     const baseDate = new Date(selectedDate);
-    baseDate.setDate(baseDate.getDate() + (mode === "from" ? -1 : 1));
-
+    baseDate.setDate(baseDate.getDate() + (mode === 'from' ? -1 : 1));
     const year = baseDate.getFullYear();
-    const month = String(baseDate.getMonth() + 1).padStart(2, "0");
-    const day = String(baseDate.getDate()).padStart(2, "0");
-
+    const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+    const day = String(baseDate.getDate()).padStart(2, '0');
     setSelectedCopyDate(`${year}-${month}-${day}`);
     setSelectedCopyMeal(mealType);
     setCopyModalConfig({ isOpen: true, mode });
@@ -174,34 +168,31 @@ export default function MealGroup({
   const handleExecuteCopy = async () => {
     setCopyModalConfig({ ...copyModalConfig, isOpen: false });
     const { mode } = copyModalConfig;
-    toast.loading(mode === "from" ? `Fetching meals...` : `Copying meals...`, {
-      id: "copyMeal",
+    toast.loading(mode === 'from' ? `Fetching meals...` : `Copying meals...`, {
+      id: 'copyMeal',
     });
-
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      if (mode === "from") {
+      if (mode === 'from') {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/logs/${selectedCopyDate}`,
           {
             headers: { Authorization: `Bearer ${session.access_token}` },
           },
         );
-
         if (res.status === 404) {
           toast.error(`No logs found for ${selectedCopyDate}.`, {
-            id: "copyMeal",
+            id: 'copyMeal',
           });
           return;
         }
+        if (!res.ok) throw new Error('Failed to fetch');
 
-        if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
-
         const foodsToCopy = (data.meals || []).filter(
           (m: any) =>
             m.meal_type?.toLowerCase() === selectedCopyMeal.toLowerCase(),
@@ -209,19 +200,17 @@ export default function MealGroup({
 
         if (foodsToCopy.length === 0) {
           toast.error(`No foods logged on ${selectedCopyDate}.`, {
-            id: "copyMeal",
+            id: 'copyMeal',
           });
           return;
         }
 
         toast.loading(`Copying ${foodsToCopy.length} items...`, {
-          id: "copyMeal",
+          id: 'copyMeal',
         });
-
         for (const food of foodsToCopy)
           await onAddMeal(extractCleanPayload(food));
-
-        toast.success(`Copied into ${label}!`, { id: "copyMeal" });
+        toast.success(`Copied into ${label}!`, { id: 'copyMeal' });
       } else {
         await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/logs/${selectedCopyDate}`,
@@ -232,13 +221,12 @@ export default function MealGroup({
 
         for (const food of localMeals) {
           const cleanFood = extractCleanPayload(food, selectedCopyMeal);
-
           let res = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/logs/${selectedCopyDate}/meals`,
             {
-              method: "POST",
+              method: 'POST',
               headers: {
-                "Content-Type": "application/json",
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${session.access_token}`,
               },
               body: JSON.stringify(cleanFood),
@@ -247,9 +235,9 @@ export default function MealGroup({
 
           if (res.status === 404 || res.status === 405) {
             res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/meals`, {
-              method: "POST",
+              method: 'POST',
               headers: {
-                "Content-Type": "application/json",
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${session.access_token}`,
               },
               body: JSON.stringify({ ...cleanFood, date: selectedCopyDate }),
@@ -257,11 +245,11 @@ export default function MealGroup({
           }
           if (!res.ok) throw new Error(await res.text());
         }
-        toast.success(`Copied to ${selectedCopyDate}!`, { id: "copyMeal" });
+        toast.success(`Copied to ${selectedCopyDate}!`, { id: 'copyMeal' });
       }
     } catch (err: any) {
-      toast.error(`Failed: ${err.message || "Could not copy meal"}`, {
-        id: "copyMeal",
+      toast.error(`Failed: ${err.message || 'Could not copy meal'}`, {
+        id: 'copyMeal',
       });
     }
   };
@@ -272,16 +260,34 @@ export default function MealGroup({
     );
   };
 
+  const handleSelectAll = () => {
+    if (selectedIds.length === localMeals.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(localMeals.map((m) => m.id));
+    }
+  };
+
   const handleBulkDeleteClick = () => {
     if (selectedIds.length === 0) return;
     setConfirmConfig({
       isOpen: true,
-      title: "DELETE ITEMS",
+      title: 'DELETE ITEMS',
       message: `Are you sure you want to delete ${selectedIds.length} items from your diary? This cannot be undone.`,
-      confirmText: "Delete Items",
+      confirmText: 'Delete Items',
       isDestructive: true,
-      action: () => {
-        for (const id of selectedIds) onDeleteMeal(id);
+      action: async () => {
+        toast.loading(`Deleting ${selectedIds.length} items...`, {
+          id: 'bulkDelete',
+        });
+        try {
+          for (const id of selectedIds) {
+            await onDeleteMeal(id);
+          }
+          toast.success('Items deleted successfully!', { id: 'bulkDelete' });
+        } catch (error) {
+          toast.error('Failed to delete some items.', { id: 'bulkDelete' });
+        }
         setSelectedIds([]);
         setIsManageMode(false);
         setConfirmConfig(null);
@@ -292,29 +298,28 @@ export default function MealGroup({
   const handleDragStart = (e: React.DragEvent, index: number, meal: any) => {
     e.stopPropagation();
     setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("application/json", JSON.stringify(meal));
-    e.dataTransfer.setData("sourceMealType", mealType);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/json', JSON.stringify(meal));
+    e.dataTransfer.setData('sourceMealType', mealType);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = 'move';
     if (draggedIndex === index) return;
-
     setDragOverIndex(index);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const relativeY = e.clientY - rect.top;
-    setDropPosition(relativeY > rect.height / 2 ? "below" : "above");
+    setDropPosition(relativeY > rect.height / 2 ? 'below' : 'above');
   };
 
   const handleDrop = async (e: React.DragEvent, index?: number) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const sourceMealType = e.dataTransfer.getData("sourceMealType");
-    const foodDataStr = e.dataTransfer.getData("application/json");
+    const sourceMealType = e.dataTransfer.getData('sourceMealType');
+    const foodDataStr = e.dataTransfer.getData('application/json');
 
     const finalDragOverIndex = dragOverIndex;
     const finalDropPosition = dropPosition;
@@ -328,35 +333,34 @@ export default function MealGroup({
 
     if (sourceMealType !== mealType) {
       const foodItem = JSON.parse(foodDataStr);
-      toast.loading(`Moving to ${label}...`, { id: "moveMeal" });
-
+      toast.loading(`Moving to ${label}...`, { id: 'moveMeal' });
       try {
         let insertIndex =
           finalDragOverIndex !== null
             ? finalDragOverIndex
             : (index ?? localMeals.length);
-        if (finalDropPosition === "below") insertIndex += 1;
+        if (finalDropPosition === 'below') insertIndex += 1;
 
         const newLocalMeals = [...localMeals];
         const cleanFood = extractCleanPayload(foodItem, mealType);
+
         newLocalMeals.splice(insertIndex, 0, {
           ...foodItem,
           ...cleanFood,
-          id: "temp-" + Date.now(),
+          id: 'temp-' + Date.now(),
         });
-
         setLocalMeals(newLocalMeals);
-        onDeleteMeal(foodItem.id);
+
+        await onDeleteMeal(foodItem.id);
         await onAddMeal(cleanFood);
-        toast.success("Moved successfully!", { id: "moveMeal" });
+        toast.success('Moved successfully!', { id: 'moveMeal' });
       } catch (err) {
-        toast.error("Failed to move item", { id: "moveMeal" });
+        toast.error('Failed to move item', { id: 'moveMeal' });
       }
     } else {
       if (draggedIndex === null || index === undefined) return;
-
       let newIndex = finalDragOverIndex !== null ? finalDragOverIndex : index;
-      if (finalDropPosition === "below") newIndex += 1;
+      if (finalDropPosition === 'below') newIndex += 1;
       if (draggedIndex < newIndex) newIndex -= 1;
 
       if (draggedIndex !== newIndex) {
@@ -402,9 +406,18 @@ export default function MealGroup({
               </div>
             )}
           </div>
+
           <div className="flex items-center gap-2 mt-1 sm:mt-0">
             {isManageMode ? (
               <>
+                <button
+                  onClick={handleSelectAll}
+                  className="text-[10px] sm:text-xs font-mono font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white px-3 py-1.5 rounded transition-colors"
+                >
+                  {selectedIds.length === localMeals.length
+                    ? 'Deselect All'
+                    : 'Select All'}
+                </button>
                 <button
                   onClick={() => {
                     setIsManageMode(false);
@@ -456,16 +469,16 @@ export default function MealGroup({
                         + Save as a Meal
                       </button>
                       <button
-                        onClick={() => openCopyModal("from")}
+                        onClick={() => openCopyModal('from')}
                         className="w-full flex justify-between items-center px-4 py-3 text-xs font-mono text-blue-400 hover:bg-neutral-900 transition-colors border-b border-neutral-800"
                       >
-                        <span>⬇ Copy From...</span>
+                        <span>« Copy From...</span>
                       </button>
                       <button
-                        onClick={() => openCopyModal("to")}
+                        onClick={() => openCopyModal('to')}
                         className="w-full flex justify-between items-center px-4 py-3 text-xs font-mono text-purple-400 hover:bg-neutral-900 transition-colors"
                       >
-                        <span>⬆ Copy To...</span>
+                        <span>» Copy To...</span>
                       </button>
                     </div>
                   )}
@@ -478,13 +491,13 @@ export default function MealGroup({
         <div
           className={`flex-1 space-y-2 min-h-[60px] pb-4 relative transition-colors rounded-lg -mx-1 px-1 ${
             isDragOverContainer && localMeals.length === 0
-              ? "bg-emerald-950/20 border border-dashed border-emerald-500/30"
-              : ""
+              ? 'bg-emerald-950/20 border border-dashed border-emerald-500/30'
+              : ''
           }`}
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            e.dataTransfer.dropEffect = "move";
+            e.dataTransfer.dropEffect = 'move';
             setIsDragOverContainer(true);
           }}
           onDragLeave={(e) => {
@@ -500,7 +513,7 @@ export default function MealGroup({
         >
           {localMeals.length === 0 ? (
             <p className="text-[11px] sm:text-xs text-neutral-600 font-mono italic pointer-events-none mt-2">
-              No foods logged for {(label || "").toLowerCase()} yet.
+              No foods logged for {(label || '').toLowerCase()} yet.
             </p>
           ) : (
             localMeals.map((meal, idx) => (
@@ -524,20 +537,20 @@ export default function MealGroup({
                   else if (onEditMeal) onEditMeal(meal);
                 }}
                 className={`group relative flex justify-between items-center p-2.5 rounded-lg border transition-all ${
-                  isManageMode || onEditMeal ? "cursor-pointer" : ""
+                  isManageMode || onEditMeal ? 'cursor-pointer' : ''
                 } ${
                   draggedIndex === idx
-                    ? "opacity-40 bg-emerald-950/30 border-emerald-500/50 border-dashed"
-                    : "bg-transparent border-transparent hover:bg-neutral-950 hover:border-neutral-800/80"
+                    ? 'opacity-40 bg-emerald-950/30 border-emerald-500/50 border-dashed'
+                    : 'bg-transparent border-transparent hover:bg-neutral-950 hover:border-neutral-800/80'
                 }`}
               >
                 {dragOverIndex === idx &&
-                  dropPosition === "above" &&
+                  dropPosition === 'above' &&
                   draggedIndex !== idx && (
                     <div className="absolute -top-1.5 left-0 right-0 h-1 bg-emerald-500 rounded-full z-10 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                   )}
                 {dragOverIndex === idx &&
-                  dropPosition === "below" &&
+                  dropPosition === 'below' &&
                   draggedIndex !== idx && (
                     <div className="absolute -bottom-1.5 left-0 right-0 h-1 bg-emerald-500 rounded-full z-10 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                   )}
@@ -573,19 +586,19 @@ export default function MealGroup({
                   <div>
                     <div className="flex items-center gap-2">
                       <p
-                        className={`text-xs sm:text-sm font-medium ${selectedIds.includes(meal.id) ? "text-emerald-400" : "text-neutral-200"} transition-colors`}
+                        className={`text-xs sm:text-sm font-medium ${selectedIds.includes(meal.id) ? 'text-emerald-400' : 'text-neutral-200'} transition-colors`}
                       >
                         {meal.food_name || meal.name}
                       </p>
                       {meal.brand && (
-                        <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">
+                        <span className="text-[10px] text-neutral-500 font-mono tracking-wider">
                           {meal.brand}
                         </span>
                       )}
                     </div>
                     <p className="text-[10px] sm:text-[11px] text-neutral-500 font-mono mt-0.5">
-                      {meal.serving_size} {meal.serving_unit} • {meal.calories}{" "}
-                      kcal | P: {meal.protein_g}g | C: {meal.carbs_g}g | F:{" "}
+                      {meal.serving_size} {meal.serving_unit} • {meal.calories}{' '}
+                      kcal | P: {meal.protein_g}g | C: {meal.carbs_g}g | F:{' '}
                       {meal.fats_g}g
                     </p>
                   </div>
@@ -625,21 +638,50 @@ export default function MealGroup({
         onExecuteCopy={handleExecuteCopy}
       />
 
-      <ConfirmModal
-        isOpen={isPromptOpen}
-        title="SAVE MEAL"
-        message={`Enter a name for this ${label} combination so you can easily log it later.`}
-        confirmText={isSaving ? "Saving..." : "Save Meal"}
-        isDestructive={false}
-        onClose={() => setIsPromptOpen(false)}
-        onConfirm={confirmSaveBundle}
-      />
+      {/* Custom save meal modal*/}
+      {isPromptOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-emerald-400 tracking-wider font-mono uppercase">
+              Save Meal
+            </h3>
+            <p className="text-neutral-400 text-sm font-mono leading-relaxed">
+              Enter a name for this {label} combination so you can easily log it
+              later.
+            </p>
+            <input
+              type="text"
+              value={bundleName}
+              onChange={(e) => setBundleName(e.target.value)}
+              placeholder={`e.g., My ${label}`}
+              autoFocus
+              className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-3 text-white font-mono text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsPromptOpen(false)}
+                disabled={isSaving}
+                className="flex-1 py-3 px-4 bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSaveBundle}
+                disabled={isSaving || !bundleName.trim()}
+                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center"
+              >
+                {isSaving ? 'Saving...' : 'Save Meal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={confirmConfig?.isOpen || false}
-        title={confirmConfig?.title || ""}
-        message={confirmConfig?.message || ""}
-        confirmText={confirmConfig?.confirmText || ""}
+        title={confirmConfig?.title || ''}
+        message={confirmConfig?.message || ''}
+        confirmText={confirmConfig?.confirmText || ''}
         isDestructive={confirmConfig?.isDestructive || false}
         onClose={() => setConfirmConfig(null)}
         onConfirm={() => confirmConfig?.action()}

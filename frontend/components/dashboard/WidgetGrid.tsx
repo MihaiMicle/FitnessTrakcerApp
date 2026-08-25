@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import WaterTracker from "@/components/dashboard/WaterTracker";
-import WeightChart from "@/components/dashboard/WeightChart";
-import MealGroup from "@/components/dashboard/MealGroup";
-import { NUTRITION_METRICS, FEATURE_METRICS } from "@/hooks/useDashboardLayout";
-import { MEAL_TYPES, MEAL_TYPE_LABELS } from "@/lib/constants";
+import { useState, useEffect } from 'react';
+import WaterTracker from '@/components/dashboard/WaterTracker';
+import WeightChart from '@/components/dashboard/WeightChart';
+import MealGroup from '@/components/dashboard/MealGroup';
+import { NUTRITION_METRICS, FEATURE_METRICS } from '@/hooks/useDashboardLayout';
+import { MEAL_TYPES, MEAL_TYPE_LABELS } from '@/lib/constants';
 
 interface WidgetGridProps {
   layout: any[];
@@ -20,6 +20,7 @@ interface WidgetGridProps {
   setIsWeightModalOpen: (val: boolean) => void;
   setSelectedMealTypeForModal: (val: string) => void;
   setIsModalOpen: (val: boolean) => void;
+  onEditMeal: (meal: any) => void;
 }
 
 export default function WidgetGrid({
@@ -35,6 +36,7 @@ export default function WidgetGrid({
   setIsWeightModalOpen,
   setSelectedMealTypeForModal,
   setIsModalOpen,
+  onEditMeal,
 }: WidgetGridProps) {
   const [resizingIndex, setResizingIndex] = useState<number | null>(null);
   const [startMouseY, setStartMouseY] = useState(0);
@@ -42,9 +44,8 @@ export default function WidgetGrid({
   const [liveHeight, setLiveHeight] = useState<number | null>(null);
   const [openWidgetMenu, setOpenWidgetMenu] = useState<number | null>(null);
 
-  const getTodayString = () => new Date().toISOString().split("T")[0];
+  const getTodayString = () => new Date().toISOString().split('T')[0];
 
-  // Auto-close widget menus if the user exits Edit Mode
   useEffect(() => {
     if (!isEditingLayout) {
       setOpenWidgetMenu(null);
@@ -59,7 +60,7 @@ export default function WidgetGrid({
     e.stopPropagation();
     e.preventDefault();
     const clientY =
-      "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+      'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     const element = document.getElementById(`widget-${index}`);
     if (!element) return;
     setResizingIndex(index);
@@ -73,7 +74,7 @@ export default function WidgetGrid({
     if (resizingIndex === null) return;
     const handleMove = (e: MouseEvent | TouchEvent) => {
       const clientY =
-        "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+        'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
       const delta = clientY - startMouseY;
       setLiveHeight(Math.max(80, startHeight + delta));
     };
@@ -88,16 +89,16 @@ export default function WidgetGrid({
       setLiveHeight(null);
     };
 
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleEnd);
-    window.addEventListener("touchmove", handleMove, { passive: false });
-    window.addEventListener("touchend", handleEnd);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
 
     return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleEnd);
-      window.removeEventListener("touchmove", handleMove);
-      window.removeEventListener("touchend", handleEnd);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
     };
   }, [
     resizingIndex,
@@ -110,33 +111,33 @@ export default function WidgetGrid({
 
   const handleDragStart = (
     e: React.DragEvent,
-    source: "grid" | "palette",
-    type: "goal" | "meal" | "feature",
+    source: 'grid' | 'palette',
+    type: 'goal' | 'meal' | 'feature',
     id: string,
     index?: number,
   ) => {
-    e.dataTransfer.setData("source", source);
-    e.dataTransfer.setData("type", type);
-    e.dataTransfer.setData("id", id);
-    if (index !== undefined) e.dataTransfer.setData("index", index.toString());
+    e.dataTransfer.setData('source', source);
+    e.dataTransfer.setData('type', type);
+    e.dataTransfer.setData('id', id);
+    if (index !== undefined) e.dataTransfer.setData('index', index.toString());
   };
 
   const handleDrop = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
-    const source = e.dataTransfer.getData("source");
-    const type = e.dataTransfer.getData("type") as "goal" | "meal" | "feature";
-    const id = e.dataTransfer.getData("id");
+    const source = e.dataTransfer.getData('source');
+    const type = e.dataTransfer.getData('type') as 'goal' | 'meal' | 'feature';
+    const id = e.dataTransfer.getData('id');
     const newLayout = [...layout];
 
-    if (source === "palette") {
+    if (source === 'palette') {
       newLayout.splice(targetIndex, 0, {
         id,
         type,
-        size: type === "goal" ? "half" : "full",
+        size: type === 'goal' ? 'half' : 'full',
       });
       updateLayout(newLayout);
-    } else if (source === "grid") {
-      const sourceIndex = parseInt(e.dataTransfer.getData("index"));
+    } else if (source === 'grid') {
+      const sourceIndex = parseInt(e.dataTransfer.getData('index'));
       if (sourceIndex === targetIndex) return;
       const [moved] = newLayout.splice(sourceIndex, 1);
       let adjustedTarget = targetIndex;
@@ -148,7 +149,7 @@ export default function WidgetGrid({
 
   const toggleSize = (index: number) => {
     const newLayout = [...layout];
-    newLayout[index].size = newLayout[index].size === "full" ? "half" : "full";
+    newLayout[index].size = newLayout[index].size === 'full' ? 'half' : 'full';
     updateLayout(newLayout);
   };
 
@@ -159,13 +160,13 @@ export default function WidgetGrid({
   };
 
   const unusedMetrics = Object.keys(NUTRITION_METRICS).filter(
-    (k) => !layout.some((w) => w.type === "goal" && w.id === k),
+    (k) => !layout.some((w) => w.type === 'goal' && w.id === k),
   );
   const unusedMeals = MEAL_TYPES.filter(
-    (t) => !layout.some((w) => w.type === "meal" && w.id === t),
+    (t) => !layout.some((w) => w.type === 'meal' && w.id === t),
   );
   const unusedFeatures = Object.keys(FEATURE_METRICS).filter(
-    (k) => !layout.some((w) => w.type === "feature" && w.id === k),
+    (k) => !layout.some((w) => w.type === 'feature' && w.id === k),
   );
 
   return (
@@ -181,7 +182,7 @@ export default function WidgetGrid({
               <div
                 key={`pal-goal-${key}`}
                 draggable
-                onDragStart={(e) => handleDragStart(e, "palette", "goal", key)}
+                onDragStart={(e) => handleDragStart(e, 'palette', 'goal', key)}
                 className="bg-neutral-950 border border-neutral-700 px-3 py-1.5 rounded-full text-xs font-mono cursor-grab active:cursor-grabbing hover:border-emerald-500 transition-colors shadow-sm"
               >
                 + {NUTRITION_METRICS[key].label}
@@ -191,11 +192,11 @@ export default function WidgetGrid({
               <div
                 key={`pal-meal-${key}`}
                 draggable
-                onDragStart={(e) => handleDragStart(e, "palette", "meal", key)}
+                onDragStart={(e) => handleDragStart(e, 'palette', 'meal', key)}
                 className="bg-neutral-950 border border-neutral-700 px-3 py-1.5 rounded-full text-xs font-mono cursor-grab active:cursor-grabbing hover:border-blue-500 transition-colors shadow-sm"
               >
-                +{" "}
-                {MEAL_TYPE_LABELS[key as keyof typeof MEAL_TYPE_LABELS] || key}{" "}
+                +{' '}
+                {MEAL_TYPE_LABELS[key as keyof typeof MEAL_TYPE_LABELS] || key}{' '}
                 Meal
               </div>
             ))}
@@ -204,7 +205,7 @@ export default function WidgetGrid({
                 key={`pal-feat-${key}`}
                 draggable
                 onDragStart={(e) =>
-                  handleDragStart(e, "palette", "feature", key)
+                  handleDragStart(e, 'palette', 'feature', key)
                 }
                 className="bg-neutral-950 border border-neutral-700 px-3 py-1.5 rounded-full text-xs font-mono cursor-grab active:cursor-grabbing hover:border-indigo-500 transition-colors shadow-sm"
               >
@@ -223,13 +224,13 @@ export default function WidgetGrid({
       )}
 
       <div
-        className={`grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 ${isEditingLayout ? "pb-8 bg-neutral-950/40 p-2 sm:p-4 rounded-xl border border-dashed border-neutral-800" : ""}`}
+        className={`grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 ${isEditingLayout ? 'pb-8 bg-neutral-950/40 p-2 sm:p-4 rounded-xl border border-dashed border-neutral-800' : ''}`}
       >
         {layout.map((widget, index) => {
-          const isFull = widget.size === "full";
+          const isFull = widget.size === 'full';
           const colSpanClass = isFull
-            ? "col-span-2 lg:col-span-4"
-            : "col-span-1 lg:col-span-2";
+            ? 'col-span-2 lg:col-span-4'
+            : 'col-span-1 lg:col-span-2';
           const currentHeight =
             resizingIndex === index ? liveHeight : widget.height;
 
@@ -239,23 +240,23 @@ export default function WidgetGrid({
               key={`${widget.type}-${widget.id}-${index}`}
               draggable={isEditingLayout && resizingIndex === null}
               onDragStart={(e) =>
-                handleDragStart(e, "grid", widget.type, widget.id, index)
+                handleDragStart(e, 'grid', widget.type, widget.id, index)
               }
               onDragOver={(e) => {
                 e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
+                e.dataTransfer.dropEffect = 'move';
               }}
               onDrop={(e) => handleDrop(e, index)}
               style={{
                 minHeight: currentHeight ? `${currentHeight}px` : undefined,
               }}
-              className={`${colSpanClass} flex flex-col relative group transition-all duration-200 ${isEditingLayout ? "ring-1 ring-emerald-500/30 hover:ring-emerald-500 rounded-xl bg-neutral-900/50" : ""} ${isEditingLayout && resizingIndex === null ? "cursor-grab active:cursor-grabbing" : ""}`}
+              className={`${colSpanClass} flex flex-col relative group transition-all duration-200 ${isEditingLayout ? 'ring-1 ring-emerald-500/30 hover:ring-emerald-500 rounded-xl bg-neutral-900/50' : ''} ${isEditingLayout && resizingIndex === null ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               {isEditingLayout && (
                 <div
                   onMouseDown={(e) => handleResizeStart(e, index)}
                   onTouchStart={(e) => handleResizeStart(e, index)}
-                  style={{ touchAction: "none" }}
+                  style={{ touchAction: 'none' }}
                   className="absolute -bottom-4 left-0 right-0 h-12 md:bottom-0 md:h-6 bg-transparent md:hover:bg-emerald-500/10 cursor-ns-resize flex items-center md:items-end justify-center rounded-b-xl z-50 transition-all touch-none"
                 >
                   <div className="w-16 h-1.5 md:w-12 md:h-1 bg-emerald-500 rounded-full mb-0 md:mb-1.5 opacity-60 md:opacity-0 group-hover:opacity-80 transition-all shadow-md pointer-events-none" />
@@ -300,9 +301,9 @@ export default function WidgetGrid({
                         }}
                         className="px-4 py-3 text-xs font-mono text-white hover:bg-neutral-800 text-left border-b border-neutral-800 flex items-center justify-between"
                       >
-                        {isFull ? "Make Half" : "Make Full"}
+                        {isFull ? 'Make Half' : 'Make Full'}{' '}
                         <span className="text-neutral-500">
-                          {isFull ? "><" : "<>"}
+                          {isFull ? '><' : '<>'}
                         </span>
                       </button>
                       <button
@@ -314,7 +315,7 @@ export default function WidgetGrid({
                         }}
                         className="px-4 py-3 text-xs font-mono font-bold text-rose-500 hover:bg-rose-950/30 text-left flex items-center justify-between"
                       >
-                        Remove
+                        Remove{' '}
                         <span className="text-rose-500 text-lg leading-none">
                           ×
                         </span>
@@ -325,9 +326,9 @@ export default function WidgetGrid({
               )}
 
               <div
-                className={`flex-1 w-full [&>div]:h-full ${isEditingLayout && widget.type === "meal" ? "pointer-events-none opacity-60 pl-8 sm:pl-12 transition-all" : ""} ${isEditingLayout && widget.type === "goal" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && widget.type === "feature" ? "pointer-events-none opacity-60 transition-all" : ""} ${isEditingLayout && resizingIndex !== null ? "select-none" : ""}`}
+                className={`flex-1 w-full [&>div]:h-full ${isEditingLayout && widget.type === 'meal' ? 'pointer-events-none opacity-60 pl-8 sm:pl-12 transition-all' : ''} ${isEditingLayout && widget.type === 'goal' ? 'pointer-events-none opacity-60 transition-all' : ''} ${isEditingLayout && widget.type === 'feature' ? 'pointer-events-none opacity-60 transition-all' : ''} ${isEditingLayout && resizingIndex !== null ? 'select-none' : ''}`}
               >
-                {widget.type === "feature" && widget.id === "weight_chart" && (
+                {widget.type === 'feature' && widget.id === 'weight_chart' && (
                   <WeightChart
                     selectedDate={selectedDate}
                     onClick={() =>
@@ -336,8 +337,8 @@ export default function WidgetGrid({
                   />
                 )}
 
-                {widget.type === "goal" &&
-                  (widget.id === "water" ? (
+                {widget.type === 'goal' &&
+                  (widget.id === 'water' ? (
                     <WaterTracker
                       summary={dailyLog}
                       onWaterUpdated={() => refreshLog && refreshLog()}
@@ -358,7 +359,7 @@ export default function WidgetGrid({
                           onClick={() =>
                             !isEditingLayout && setIsDetailedModalOpen(true)
                           }
-                          className={`bg-neutral-900 p-4 sm:p-6 rounded-xl border border-neutral-800 space-y-2 sm:space-y-3 flex flex-col justify-center shadow-sm ${!isEditingLayout ? "cursor-pointer hover:border-emerald-700" : ""}`}
+                          className={`bg-neutral-900 p-4 sm:p-6 rounded-xl border border-neutral-800 space-y-2 sm:space-y-3 flex flex-col justify-center shadow-sm ${!isEditingLayout ? 'cursor-pointer hover:border-emerald-700' : ''}`}
                         >
                           <div className="flex flex-col sm:flex-row sm:justify-between text-xs sm:text-sm gap-1">
                             <span className="text-neutral-400">
@@ -379,7 +380,7 @@ export default function WidgetGrid({
                     })()
                   ))}
 
-                {widget.type === "meal" && (
+                {widget.type === 'meal' && (
                   <MealGroup
                     label={
                       MEAL_TYPE_LABELS[
@@ -398,6 +399,7 @@ export default function WidgetGrid({
                       setSelectedMealTypeForModal(widget.id);
                       setIsModalOpen(true);
                     }}
+                    onEditMeal={onEditMeal}
                   />
                 )}
               </div>
@@ -409,7 +411,7 @@ export default function WidgetGrid({
           <div
             onDragOver={(e) => {
               e.preventDefault();
-              e.dataTransfer.dropEffect = "copy";
+              e.dataTransfer.dropEffect = 'copy';
             }}
             onDrop={(e) => handleDrop(e, layout.length)}
             className="col-span-2 lg:col-span-4 h-16 border-2 border-dashed border-neutral-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 rounded-xl flex items-center justify-center text-neutral-500 font-mono text-xs transition-colors mt-2"

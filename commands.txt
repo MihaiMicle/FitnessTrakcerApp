@@ -5,8 +5,8 @@ uvicorn main:app --reload
 frontend:
 npm run dev
 
-https://github.com/MihaiMicle/FitnessTrakcerApp
 
+https://github.com/MihaiMicle/FitnessTrakcerApp/tree/main 
 https://fitnesstrakcerapp.onrender.com
 
 
