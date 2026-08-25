@@ -1,255 +1,47 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import {
-  LineChart,
-  Line,
-  ResponsiveContainer,
-  YAxis,
-  Tooltip,
-  XAxis,
-} from 'recharts';
-import toast from 'react-hot-toast';
+
+import { useState } from 'react';
 import CameraModal from '@/components/shared/CameraModal';
+import DeleteWeightLogModal from './DeleteWeightLogModal';
+import WeightHistoryChart from './WeightHistoryChart';
+import WeightLogCard from './WeightLogCard';
+import { useWeightHistory } from './hooks/useWeightHistory';
+
+interface WeightHistoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
 export default function WeightHistoryModal({
   isOpen,
   onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [hasChanges, setHasChanges] = useState(false);
+}: WeightHistoryModalProps) {
+  const history = useWeightHistory(isOpen);
 
   const [showWebcam, setShowWebcam] = useState(false);
-  const [activeLog, setActiveLog] = useState<{
+  const [cameraTarget, setCameraTarget] = useState<{
     date: string;
     weight_kg: number;
   } | null>(null);
 
-  const [editingLogId, setEditingLogId] = useState<string | null>(null);
-  const [editWeight, setEditWeight] = useState<number | ''>('');
-  const [isUpdatingWeight, setIsUpdatingWeight] = useState(false);
-
-  // Custom modal states for deletion
   const [logToDelete, setLogToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>(
-    {},
-  );
-  const [activePhotoLogId, setActivePhotoLogId] = useState<string | null>(null);
+  if (!isOpen) return null;
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const fetchLogs = async () => {
-      setLoading(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/weight`,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
-      if (res.ok) setLogs(await res.json());
-      setLoading(false);
-    };
-    fetchLogs();
-  }, [isOpen, refreshKey]);
-
-  const handlePhotoUpload = async (
-    date: string,
-    weight_kg: number,
-    file: File,
-  ) => {
-    let uploadFile = file;
-    const filenameLower = file.name.toLowerCase();
-
-    if (
-      filenameLower.endsWith('.heic') ||
-      filenameLower.endsWith('.heif') ||
-      file.type === 'image/heic'
-    ) {
-      toast.loading('Converting Apple photo...', { id: 'upload' });
-      try {
-        const heic2any = (await import('heic2any')).default;
-        const convertedBlob = await heic2any({
-          blob: file,
-          toType: 'image/jpeg',
-          quality: 0.8,
-        });
-        const finalBlob = Array.isArray(convertedBlob)
-          ? convertedBlob[0]
-          : convertedBlob;
-        const newName = file.name.replace(/\.heic|\.heif/gi, '.jpg');
-        uploadFile = new File([finalBlob], newName, { type: 'image/jpeg' });
-      } catch (err) {
-        toast.error('Failed to convert iPhone photo. Try a different image.', {
-          id: 'upload',
-        });
-        return;
-      }
-    }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return;
-
-    const objectUrl = URL.createObjectURL(uploadFile);
-    setLocalPreviews((prev) => ({ ...prev, [date]: objectUrl }));
-
-    let mimeType = uploadFile.type || 'image/jpeg';
-    let fileExt = 'jpg';
-    if (mimeType.includes('png')) fileExt = 'png';
-    else if (mimeType.includes('webp')) fileExt = 'webp';
-    else mimeType = 'image/jpeg';
-
-    const finalName = `physique-${session.user.id}-${date}-${Date.now()}.${fileExt}`;
-
-    toast.loading('Uploading photo...', { id: 'upload' });
-
-    try {
-      const arrayBuffer = await uploadFile.arrayBuffer();
-      const { error: uploadError } = await supabase.storage
-        .from('physique_photos')
-        .upload(finalName, arrayBuffer, {
-          upsert: true,
-          contentType: mimeType,
-        });
-
-      if (uploadError) {
-        toast.error('Upload failed: ' + uploadError.message, { id: 'upload' });
-        return;
-      }
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('physique_photos').getPublicUrl(finalName);
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/weight`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ date, weight_kg, photo_url: publicUrl }),
-        },
-      );
-
-      if (res.ok) {
-        toast.success('Photo saved successfully!', { id: 'upload' });
-        setRefreshKey((k) => k + 1);
-        setHasChanges(true);
-      } else {
-        toast.error('Failed to save photo link to database', { id: 'upload' });
-      }
-    } catch (err) {
-      toast.error('An unexpected error occurred', { id: 'upload' });
-    }
-  };
-
-  const saveWeightEdit = async (log: any) => {
-    if (!editWeight || isNaN(Number(editWeight))) {
-      setEditingLogId(null);
-      return;
-    }
-    setIsUpdatingWeight(true);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/weight`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            date: log.date,
-            weight_kg: Number(editWeight),
-            photo_url: log.photo_url,
-          }),
-        },
-      );
-
-      if (res.ok) {
-        toast.success('Weight updated!');
-        setEditingLogId(null);
-        setRefreshKey((k) => k + 1);
-        setHasChanges(true);
-      } else {
-        toast.error('Failed to update weight.');
-      }
-    } catch (err) {
-      toast.error('An error occurred while updating.');
-    } finally {
-      setIsUpdatingWeight(false);
-    }
-  };
-
-  const confirmDeleteWeightLog = async () => {
-    if (!logToDelete) return;
-
-    setIsDeleting(true);
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/weight/${logToDelete}`,
-        {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
-
-      if (res.ok) {
-        toast.success('Weight log deleted!');
-        setRefreshKey((k) => k + 1);
-        setHasChanges(true);
-      } else {
-        toast.error('Failed to delete log.');
-      }
-    } catch (err) {
-      toast.error('An error occurred while deleting.');
-    } finally {
-      setIsDeleting(false);
-      setLogToDelete(null);
-    }
-  };
-
-  const handleCloseModal = () => {
-    if (hasChanges) window.location.reload();
+  // Edits here feed the dashboard's own weight state, so reload to resync.
+  const handleClose = () => {
+    if (history.hasChanges) window.location.reload();
     else onClose();
   };
 
-  if (!isOpen) return null;
-
-  const chartData = logs.map((log) => ({
-    date: log.date,
-    weight: log.weight_kg,
-  }));
-  const minWeight = logs.length
-    ? Math.min(...logs.map((l) => l.weight_kg)) - 2
-    : 0;
-  const maxWeight = logs.length
-    ? Math.max(...logs.map((l) => l.weight_kg)) + 2
-    : 100;
+  const confirmDelete = async () => {
+    if (!logToDelete) return;
+    setIsDeleting(true);
+    await history.deleteLog(logToDelete);
+    setIsDeleting(false);
+    setLogToDelete(null);
+  };
 
   return (
     <>
@@ -260,7 +52,7 @@ export default function WeightHistoryModal({
               PHYSIQUE HISTORY
             </h2>
             <button
-              onClick={handleCloseModal}
+              onClick={handleClose}
               className="text-neutral-400 hover:text-white font-mono text-sm px-2"
             >
               ✕
@@ -268,275 +60,29 @@ export default function WeightHistoryModal({
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
-            <div className="h-48 sm:h-64 w-full bg-neutral-950 border border-neutral-800 rounded-xl p-4">
-              {loading ? (
-                <div className="h-full flex items-center justify-center text-xs font-mono text-neutral-500">
-                  Loading chart...
-                </div>
-              ) : logs.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <XAxis
-                      dataKey="date"
-                      stroke="#525252"
-                      fontSize={10}
-                      tickMargin={10}
-                    />
-                    <YAxis
-                      domain={[minWeight, maxWeight]}
-                      stroke="#525252"
-                      fontSize={10}
-                      width={30}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0a0a0a',
-                        borderColor: '#262626',
-                        borderRadius: '8px',
-                      }}
-                      itemStyle={{ color: '#818cf8', fontWeight: 'bold' }}
-                      labelStyle={{ color: '#737373', fontSize: '12px' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="weight"
-                      stroke="#818cf8"
-                      strokeWidth={3}
-                      dot={{
-                        r: 4,
-                        fill: '#818cf8',
-                        strokeWidth: 2,
-                        stroke: '#171717',
-                      }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-xs font-mono text-neutral-500">
-                  No data available
-                </div>
-              )}
-            </div>
+            <WeightHistoryChart
+              logs={history.logs}
+              loading={history.loading}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {logs
+              {history.logs
                 .slice()
                 .reverse()
-                .map((log) => {
-                  const displayImage = localPreviews[log.date] || log.photo_url;
-                  return (
-                    <div
-                      key={log.id}
-                      className="bg-neutral-950 border border-neutral-800 rounded-xl p-3 flex flex-col gap-3 group relative overflow-hidden"
-                    >
-                      <div className="flex justify-between items-center z-10 h-7">
-                        <span className="text-xs text-neutral-400 font-mono">
-                          {log.date}
-                        </span>
-                        {editingLogId === log.id ? (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={editWeight}
-                              onChange={(e) =>
-                                setEditWeight(
-                                  e.target.value === ''
-                                    ? ''
-                                    : Number(e.target.value),
-                                )
-                              }
-                              onKeyDown={(e) =>
-                                e.key === 'Enter' && saveWeightEdit(log)
-                              }
-                              className="w-16 bg-neutral-900 border border-indigo-500/50 rounded px-1.5 py-0.5 text-xs font-mono text-white outline-none focus:border-indigo-400 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => saveWeightEdit(log)}
-                              disabled={isUpdatingWeight}
-                              className="text-emerald-400 hover:text-emerald-300 p-0.5"
-                            >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => setEditingLogId(null)}
-                              className="text-rose-400 hover:text-rose-300 p-0.5"
-                            >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <div
-                              className="flex items-center gap-1.5 cursor-pointer group/edit hover:bg-neutral-900 px-2 py-1 rounded transition-colors"
-                              onClick={() => {
-                                setEditingLogId(log.id);
-                                setEditWeight(log.weight_kg);
-                              }}
-                              title="Edit weight"
-                            >
-                              <span className="text-sm font-bold text-indigo-400 font-mono">
-                                {log.weight_kg} kg
-                              </span>
-                              <svg
-                                className="w-3 h-3 text-neutral-500 opacity-0 group-hover/edit:opacity-100 transition-opacity"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                />
-                              </svg>
-                            </div>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLogToDelete(log.id);
-                              }}
-                              className="text-neutral-600 hover:text-rose-500 transition-colors p-1 rounded opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                              title="Delete log"
-                            >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div
-                        className="aspect-square bg-neutral-900 rounded-lg border border-neutral-800 flex items-center justify-center overflow-hidden relative cursor-pointer md:cursor-default"
-                        onClick={() =>
-                          setActivePhotoLogId(
-                            activePhotoLogId === log.id ? null : log.id,
-                          )
-                        }
-                      >
-                        {displayImage ? (
-                          <img
-                            src={displayImage}
-                            alt="Physique"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-neutral-600 text-[10px] font-mono">
-                            No Photo
-                          </span>
-                        )}
-
-                        <div
-                          className={`absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 transition-opacity ${activePhotoLogId === log.id ? 'opacity-100 z-20' : 'opacity-0 z-0'} md:opacity-0 md:group-hover:opacity-100 md:z-20`}
-                        >
-                          <label className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded cursor-pointer transition-colors w-24 text-center">
-                            Upload Photo
-                            <input
-                              type="file"
-                              accept="image/png, image/jpeg, image/webp, image/heic, .heic, .heif"
-                              className="hidden"
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  handlePhotoUpload(
-                                    log.date,
-                                    log.weight_kg,
-                                    e.target.files[0],
-                                  );
-                                }
-                                e.target.value = '';
-                              }}
-                            />
-                          </label>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveLog({
-                                date: log.date,
-                                weight_kg: log.weight_kg,
-                              });
-                              setShowWebcam(true);
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-3 py-1.5 rounded cursor-pointer transition-colors w-24 text-center flex items-center justify-center gap-1"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                            </svg>
-                            Camera
-                          </button>
-
-                          {log.photo_url && (
-                            <a
-                              href={log.photo_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] font-mono text-neutral-300 hover:text-white underline bg-black/50 px-2 py-1 rounded mt-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Raw Link
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                .map((log) => (
+                  <WeightLogCard
+                    key={log.id}
+                    log={log}
+                    previewUrl={history.localPreviews[log.date]}
+                    onSaveWeight={history.updateWeight}
+                    onDelete={setLogToDelete}
+                    onUploadPhoto={history.uploadPhoto}
+                    onOpenCamera={(target) => {
+                      setCameraTarget(target);
+                      setShowWebcam(true);
+                    }}
+                  />
+                ))}
             </div>
           </div>
         </div>
@@ -546,63 +92,26 @@ export default function WeightHistoryModal({
         isOpen={showWebcam}
         onClose={() => {
           setShowWebcam(false);
-          setActiveLog(null);
+          setCameraTarget(null);
         }}
         onCapture={(file) => {
-          if (activeLog)
-            handlePhotoUpload(activeLog.date, activeLog.weight_kg, file);
+          if (cameraTarget)
+            history.uploadPhoto(
+              cameraTarget.date,
+              cameraTarget.weight_kg,
+              file,
+            );
         }}
         title="CAPTURE PROGRESS"
         initialFacingMode="environment"
       />
 
-      {/* Delete weight log modal */}
-      {logToDelete && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-sm w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="space-y-2 text-center">
-              <div className="w-12 h-12 rounded-full bg-rose-500/20 mx-auto flex items-center justify-center mb-4">
-                <svg
-                  className="w-6 h-6 text-rose-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-white tracking-tight">
-                Delete Weight Log?
-              </h3>
-              <p className="text-neutral-400 text-sm font-mono leading-relaxed">
-                Are you sure you want to permanently delete this weight log?
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setLogToDelete(null)}
-                disabled={isDeleting}
-                className="flex-1 py-3 px-4 bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteWeightLog}
-                disabled={isDeleting}
-                className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteWeightLogModal
+        isOpen={!!logToDelete}
+        isDeleting={isDeleting}
+        onCancel={() => setLogToDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }
