@@ -3,9 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ChevronLeft, Dumbbell, Play, Trash2, BookOpen } from 'lucide-react';
+import {
+  ChevronLeft,
+  Dumbbell,
+  Play,
+  Trash2,
+  BookOpen,
+  Plus,
+  Pencil,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import LiveWorkout from '@/components/workouts/LiveWorkout';
+import RoutineEditor from '@/components/workouts/RoutineEditor';
 
 export default function WorkoutsDashboard() {
   const router = useRouter();
@@ -14,10 +23,11 @@ export default function WorkoutsDashboard() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [activeSession, setActiveSession] = useState<any | null>(null);
 
-  // Custom Modal States
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -183,6 +193,23 @@ export default function WorkoutsDashboard() {
     );
   }
 
+  if (isRoutineEditorOpen) {
+    return (
+      <RoutineEditor
+        template={editingTemplate}
+        onClose={() => {
+          setIsRoutineEditorOpen(false);
+          setEditingTemplate(null);
+        }}
+        onSaved={() => {
+          setIsRoutineEditorOpen(false);
+          setEditingTemplate(null);
+          fetchSessions();
+        }}
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-6 md:p-12 pb-24 relative">
       <div className="max-w-3xl mx-auto space-y-8">
@@ -198,17 +225,25 @@ export default function WorkoutsDashboard() {
               Training Log
             </h1>
           </div>
-
-          <button
-            onClick={startEmptyWorkout}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-900/20 transition-all active:scale-95 flex justify-center items-center gap-2 font-mono text-sm tracking-widest"
-          >
-            <Play size={18} fill="currentColor" />
-            START EMPTY WORKOUT
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={startEmptyWorkout}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-900/20 transition-all active:scale-95 flex justify-center items-center gap-2 font-mono text-sm tracking-widest"
+            >
+              <Play size={18} fill="currentColor" />
+              START EMPTY WORKOUT
+            </button>
+            <button
+              onClick={() => setIsRoutineEditorOpen(true)}
+              className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-indigo-400 font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 font-mono text-sm tracking-widest border border-neutral-700 hover:border-indigo-500/50"
+            >
+              <Plus size={18} strokeWidth={3} />
+              CREATE ROUTINE
+            </button>
+          </div>
         </header>
 
-        {/* My Rroutines */}
+        {/* My routines */}
         <div className="space-y-4">
           <h2 className="text-xs font-mono text-neutral-500 tracking-wider">
             MY ROUTINES
@@ -234,15 +269,29 @@ export default function WorkoutsDashboard() {
                     <h3 className="font-bold text-white text-lg truncate pr-2">
                       {t.name}
                     </h3>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTemplateToDelete(t.id);
-                      }}
-                      className="text-neutral-600 hover:text-rose-500 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100 shrink-0"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTemplate(t);
+                          setIsRoutineEditorOpen(true);
+                        }}
+                        className="text-neutral-600 hover:text-blue-400 transition-colors"
+                        title="Edit Routine"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTemplateToDelete(t.id);
+                        }}
+                        className="text-neutral-600 hover:text-rose-500 transition-colors"
+                        title="Delete Routine"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-neutral-500 font-mono mb-4 flex-1">
                     {t.exercises.length} exercises
@@ -259,7 +308,7 @@ export default function WorkoutsDashboard() {
           )}
         </div>
 
-        {/* Past Sessions */}
+        {/* Past sessions */}
         <div className="space-y-4 pt-4 border-t border-neutral-800/50">
           <h2 className="text-xs font-mono text-neutral-500 tracking-wider">
             PAST SESSIONS
@@ -309,7 +358,7 @@ export default function WorkoutsDashboard() {
         </div>
       </div>
 
-      {/* Delete Past Session Modal */}
+      {/* Delete past session modal */}
       {sessionToDelete && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-sm w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
@@ -346,7 +395,7 @@ export default function WorkoutsDashboard() {
         </div>
       )}
 
-      {/* Delete Routine/Template Modal */}
+      {/* Delete routine/template modal */}
       {templateToDelete && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-sm w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">

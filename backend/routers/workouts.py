@@ -7,7 +7,7 @@ from uuid import UUID
 
 from core.database import get_db
 from core.security import get_current_user
-from models.workouts import WorkoutSession, Exercise, WorkoutTemplate
+from models.workouts import WorkoutSession, Exercise, WorkoutTemplate, WorkoutSet
 from schemas.workouts import (
     WorkoutSessionCreate,
     WorkoutSessionUpdate,
@@ -21,11 +21,47 @@ from schemas.workouts import (
 router = APIRouter(prefix="/workouts", tags=["Workouts"])
 
 
+def sync_workout_sets(db: Session, session: WorkoutSession):
+    """Synchronize the JSONB exercises array into the normalized WorkoutSet table"""
+    # Remove existing normalized sets for this session to prevent duplicates
+    db.query(WorkoutSet).filter(WorkoutSet.session_id == session.id).delete()
+
+    if not session.exercises:
+        return
+
+    new_sets = []
+    for ex in session.exercises:
+        ex_name = ex.get("name", "Unknown Exercise")
+        sets = ex.get("sets", [])
+
+        for s in sets:
+            new_sets.append(
+                WorkoutSet(
+                    session_id=session.id,
+                    user_id=session.user_id,
+                    exercise_name=ex_name,
+                    set_number=s.get("set", 1),
+                    completed=s.get("completed", False),
+                    weight_kg=s.get("weight_kg"),
+                    reps=s.get("reps"),
+                    rir=s.get("rir"),
+                    duration_minutes=s.get("duration_minutes"),
+                    distance_km=s.get("distance_km"),
+                    incline=s.get("incline"),
+                    speed=s.get("speed"),
+                    difficulty=s.get("difficulty"),
+                )
+            )
+
+    if new_sets:
+        db.bulk_save_objects(new_sets)
+
+
 @router.get("/", response_model=List[WorkoutSessionResponse])
 def get_all_sessions(
     current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Retrieve all workout sessions for the user, ordered by newest first."""
+    """Retrieve all workout sessions for the user, ordered by newest first"""
     return (
         db.query(WorkoutSession)
         .filter(WorkoutSession.user_id == current_user_id)
@@ -38,7 +74,7 @@ def get_all_sessions(
 def get_active_session(
     current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Check if the user has a workout currently in progress."""
+    """Check if the user has a workout currently in progress"""
     session = (
         db.query(WorkoutSession)
         .filter(
@@ -59,13 +95,18 @@ def create_session(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Start a new live workout session or log a completed past one."""
+    """Start a new live workout session or log a completed past one"""
     new_session = WorkoutSession(
         **payload.model_dump(exclude_unset=True), user_id=current_user_id
     )
     db.add(new_session)
     db.commit()
     db.refresh(new_session)
+
+    # Sync normalized sets
+    sync_workout_sets(db, new_session)
+    db.commit()
+
     return new_session
 
 
@@ -76,7 +117,7 @@ def update_session(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Sync live exercises, update the timer duration, or finish the workout."""
+    """Sync live exercises, update the timer duration, or finish the workout"""
     workout = (
         db.query(WorkoutSession)
         .filter(
@@ -86,11 +127,18 @@ def update_session(
     )
     if not workout:
         raise HTTPException(status_code=404, detail="Session not found")
+
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(workout, key, value)
+
     db.commit()
     db.refresh(workout)
+
+    # Sync normalized sets
+    sync_workout_sets(db, workout)
+    db.commit()
+
     return workout
 
 
@@ -100,7 +148,7 @@ def delete_session(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Cancel a live workout or delete a past session."""
+    """Cancel a live workout or delete a past session"""
     workout = (
         db.query(WorkoutSession)
         .filter(
@@ -119,7 +167,7 @@ def delete_session(
 def get_exercises(
     current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Retrieve global exercises + the user's custom exercises."""
+    """Retrieve global exercises + the user's custom exercises"""
     return (
         db.query(Exercise)
         .filter(or_(Exercise.user_id == current_user_id, Exercise.user_id.is_(None)))
@@ -134,7 +182,7 @@ def create_exercise(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Create a new custom exercise for the user."""
+    """Create a new custom exercise for the user"""
     new_ex = Exercise(**payload.model_dump(), user_id=current_user_id)
     db.add(new_ex)
     db.commit()
@@ -189,3 +237,29 @@ def delete_template(
     db.delete(template)
     db.commit()
     return None
+
+
+@router.put("/templates/{template_id}", response_model=WorkoutTemplateResponse)
+def update_template(
+    template_id: UUID,
+    payload: WorkoutTemplateCreate,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a custom routine."""
+    template = (
+        db.query(WorkoutTemplate)
+        .filter(
+            WorkoutTemplate.id == template_id,
+            WorkoutTemplate.user_id == current_user_id,
+        )
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    template.name = payload.name
+    template.exercises = payload.exercises
+    db.commit()
+    db.refresh(template)
+    return template
