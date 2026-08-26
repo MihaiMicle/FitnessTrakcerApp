@@ -1,12 +1,6 @@
-"""Seeds the global (user_id=None) food database.
-
-The food data itself lives in the `seeds.foods` package, one module per
-category. Import `DEFAULT_FOODS` from there if you just need the data.
-"""
-
 from core.database import SessionLocal
 from models.foods import CustomFood
-import models.profile  # noqa: F401  (registers the mapper)
+import models.profile
 
 from seeds.foods import DEFAULT_FOODS
 
