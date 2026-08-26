@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List
 from uuid import UUID
@@ -36,9 +36,16 @@ def create_custom_food(
     db: Session = Depends(get_db),
 ):
     user_uuid = UUID(current_user_id)
+    name_key = (food.name or "").strip().lower()
+    brand_key = (food.brand or "").strip().lower()
+
     existing_food = (
         db.query(CustomFood)
-        .filter(CustomFood.user_id == user_uuid, CustomFood.name.ilike(food.name))
+        .filter(
+            CustomFood.user_id == user_uuid,
+            func.lower(func.trim(CustomFood.name)) == name_key,
+            func.lower(func.trim(func.coalesce(CustomFood.brand, ""))) == brand_key,
+        )
         .first()
     )
 

@@ -95,7 +95,7 @@ export default function LogMealModal({
     } else {
       setEditingFoodId(null);
       setSaveAsCustom(false);
-      setLogMealToDiary(!builder.mode);
+      setLogMealToDiary(true);
     }
     form.selectFood(food, isEditMode);
     setActiveTab('manual');
@@ -190,6 +190,11 @@ export default function LogMealModal({
 
       if (logMealToDiary && !editingLog)
         await onAddMeal({ ...payload, meal_type: mealType } as any);
+
+      if (builder.mode) {
+        setActiveTab(builder.mode === 'meal' ? 'meals' : 'recipes');
+        return;
+      }
 
       onClose();
     } catch {

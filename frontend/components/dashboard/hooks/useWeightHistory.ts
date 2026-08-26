@@ -8,15 +8,17 @@ import { supabase } from '@/lib/supabase';
 const weightUrl = (suffix = '') =>
   `${process.env.NEXT_PUBLIC_API_URL}/profile/weight${suffix}`;
 
-/** Loads weight logs and handles editing, deleting and attaching photos. */
+/* Loads weight logs and handles editing, deleting and attaching photos */
 export function useWeightHistory(isOpen: boolean) {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Object URLs so a new photo shows instantly, before the server round-trip.
-  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
+  // Object URLs so a new photo shows instantly, before the server round-trip
+  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>(
+    {},
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -31,6 +33,7 @@ export function useWeightHistory(isOpen: boolean) {
       const res = await fetch(weightUrl(), {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
+
       if (res.ok) setLogs(await res.json());
       setLoading(false);
     };
@@ -43,7 +46,7 @@ export function useWeightHistory(isOpen: boolean) {
     setHasChanges(true);
   }, []);
 
-  /** Upserts a weight log; used by both the inline edit and photo upload. */
+  /* Upserts a weight log; used by both the inline edit and photo upload */
   const upsertLog = useCallback(
     async (
       accessToken: string,
@@ -91,6 +94,7 @@ export function useWeightHistory(isOpen: boolean) {
       const fileName = `physique-${session.user.id}-${date}-${Date.now()}.${extension}`;
 
       toast.loading('Uploading photo...', { id: 'upload' });
+
       try {
         const { error: uploadError } = await supabase.storage
           .from('physique_photos')
@@ -162,6 +166,36 @@ export function useWeightHistory(isOpen: boolean) {
     [markChanged, upsertLog],
   );
 
+  // Add a brand new weight log
+  const addWeight = useCallback(
+    async (date: string, weight: number) => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) return false;
+
+        const res = await upsertLog(session.access_token, {
+          date,
+          weight_kg: weight,
+        });
+
+        if (!res.ok) {
+          toast.error('Failed to log weight.');
+          return false;
+        }
+
+        toast.success('Weight logged!');
+        markChanged();
+        return true;
+      } catch {
+        toast.error('An error occurred.');
+        return false;
+      }
+    },
+    [markChanged, upsertLog],
+  );
+
   const deleteLog = useCallback(
     async (logId: string) => {
       try {
@@ -196,6 +230,7 @@ export function useWeightHistory(isOpen: boolean) {
     localPreviews,
     uploadPhoto,
     updateWeight,
+    addWeight,
     deleteLog,
   };
 }

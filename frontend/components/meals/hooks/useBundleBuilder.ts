@@ -8,8 +8,9 @@ import { supabase } from '@/lib/supabase';
 export type BuilderMode = 'meal' | 'recipe';
 
 /**
- * State for the saved-meal / recipe builders. Both collect a name and a list of
- * foods; recipes additionally divide their totals across a serving count.
+  State for the saved-meal / recipe builders.
+  Both collect a name and a list of
+  foods; recipes additionally divide their totals across a serving count
  */
 export function useBundleBuilder(onSaved: () => void) {
   const [mode, setMode] = useState<BuilderMode | null>(null);
@@ -30,7 +31,7 @@ export function useBundleBuilder(onSaved: () => void) {
     setServings('');
   }, []);
 
-  /** Opens an empty builder, optionally pre-named from the search box. */
+  /** Opens an empty builder, optionally pre-named from the search box */
   const startNew = useCallback((builderMode: BuilderMode, initialName = '') => {
     setMode(builderMode);
     setEditingId(null);
@@ -40,7 +41,7 @@ export function useBundleBuilder(onSaved: () => void) {
     setServings('');
   }, []);
 
-  /** Opens the builder on an existing saved meal or recipe. */
+  /** Opens the builder on an existing saved meal or recipe */
   const startEditing = useCallback((builderMode: BuilderMode, item: any) => {
     setMode(builderMode);
     setEditingId(item.id);
@@ -66,14 +67,14 @@ export function useBundleBuilder(onSaved: () => void) {
     setEditingFoodIndex(null);
   }, []);
 
-  /** Sends a staged food back to the manual form for tweaking. */
+  /** Sends a staged food back to the manual form for tweaking */
   const startEditingFood = useCallback((index: number) => {
     setEditingFoodIndex(index);
   }, []);
 
   const cancelFoodEdit = useCallback(() => setEditingFoodIndex(null), []);
 
-  /** Replaces a staged food in place rather than appending a duplicate. */
+  /** Replaces a staged food in place rather than appending a duplicate */
   const updateFood = useCallback((index: number, food: any) => {
     setFoods((prev) => prev.map((f, i) => (i === index ? food : f)));
     setEditingFoodIndex(null);
@@ -81,7 +82,7 @@ export function useBundleBuilder(onSaved: () => void) {
 
   const removeFood = useCallback((index: number) => {
     setFoods((prev) => prev.filter((_, i) => i !== index));
-    // Everything after the removed row shifts down one slot.
+    // Everything after the removed row shifts down one slot
     setEditingFoodIndex((current) => {
       if (current === null || current === index) return null;
       return current > index ? current - 1 : current;

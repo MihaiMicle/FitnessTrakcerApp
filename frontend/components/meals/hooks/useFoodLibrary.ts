@@ -6,21 +6,22 @@ import { supabase } from '@/lib/supabase';
 import { CustomFood } from '@/types/nutrition';
 
 const nameOf = (item: any) => item?.name || item?.food_name || '';
+const identityOf = (item: any) =>
+  `${nameOf(item).toLowerCase().trim()}|${(item?.brand || '').toLowerCase().trim()}`;
 
-/** Keeps one row per food name, preferring the user's own copy over the global one. */
-function dedupeByName(foods: CustomFood[]): CustomFood[] {
+/* Keeps one row per food name, preferring the user's own copy over the global one */
+function dedupeByIdentity(foods: CustomFood[]): CustomFood[] {
   const unique = new Map<string, CustomFood>();
   foods.forEach((item) => {
-    const key = nameOf(item).toLowerCase().trim();
+    const key = identityOf(item);
     if (!unique.has(key) || item.user_id !== null) unique.set(key, item);
   });
   return Array.from(unique.values());
 }
 
-/**
- * Loads everything the log-meal dialog can pick from, and refetches whenever
- * the dialog is reopened.
- */
+/* Loads everything the log-meal dialog can pick from, and refetches whenever
+  the dialog is reopened 
+*/
 export function useFoodLibrary(isOpen: boolean) {
   const [recentFoods, setRecentFoods] = useState<any[]>([]);
   const [customFoods, setCustomFoods] = useState<CustomFood[]>([]);
@@ -61,7 +62,7 @@ export function useFoodLibrary(isOpen: boolean) {
       refreshBundles();
 
       getCustomFoods(session.access_token)
-        .then((data: CustomFood[]) => setCustomFoods(dedupeByName(data)))
+        .then((data: CustomFood[]) => setCustomFoods(dedupeByIdentity(data)))
         .catch(console.error);
     });
   }, [isOpen, refreshBundles]);
@@ -91,7 +92,7 @@ export function useFoodLibrary(isOpen: boolean) {
 
 export type FoodLibrary = ReturnType<typeof useFoodLibrary>;
 
-/** Applies the search box to every list, and flags exact name matches. */
+/* Applies the search box to every list, and flags exact name matches */
 export function useFilteredLibrary(library: FoodLibrary, searchQuery: string) {
   const { recentFoods, customFoods, savedMeals, recipes } = library;
 

@@ -10,7 +10,7 @@ export type CopyMode = 'from' | 'to';
 const logsUrl = (date: string) =>
   `${process.env.NEXT_PUBLIC_API_URL}/logs/${date}`;
 
-/** yyyy-mm-dd for a date offset by `days` from `isoDate`. */
+/* yyyy-mm-dd for a date offset by `days` from `isoDate` */
 function shiftDate(isoDate: string, days: number): string {
   const date = new Date(isoDate);
   date.setDate(date.getDate() + days);
@@ -27,7 +27,7 @@ interface UseMealCopyOptions {
   onAddMeal: (payload: any) => Promise<any>;
 }
 
-/** Drives the copy-from / copy-to modal and performs the copy. */
+/* Drives the copy-from / copy-to modal and performs the copy */
 export function useMealCopy({
   mealType,
   label,
@@ -91,7 +91,7 @@ export function useMealCopy({
     [copyDate, copyMeal, mealType, label, onAddMeal],
   );
 
-  /** Pushes this section's meals onto the chosen day. */
+  /* Pushes this section's meals onto the chosen day */
   const copyToDay = useCallback(
     async (accessToken: string) => {
       const authHeaders = {
@@ -99,7 +99,7 @@ export function useMealCopy({
         Authorization: `Bearer ${accessToken}`,
       };
 
-      // Touch the target day first so its log row exists.
+      // Touch the target day first so its log row exists
       await fetch(logsUrl(copyDate), {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -113,7 +113,7 @@ export function useMealCopy({
           body: JSON.stringify(payload),
         });
 
-        // Older backends expose a flat /meals endpoint instead.
+        // Older backends expose a flat /meals endpoint instead
         if (res.status === 404 || res.status === 405) {
           res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/meals`, {
             method: 'POST',

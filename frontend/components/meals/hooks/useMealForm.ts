@@ -15,8 +15,8 @@ import {
 } from '@/lib/nutrition/servings';
 
 /**
- * Owns the manual-entry form. `baseFood` is the food the current values were
- * derived from, so changing the serving size can rescale every nutrient.
+  Owns the manual-entry form. `baseFood` is the food the current values were
+  derived from, so changing the serving size can rescale every nutrient
  */
 export function useMealForm(customFoods: any[]) {
   const [formData, setFormData] = useState<MealFormData>(createEmptyMealForm());
@@ -28,9 +28,9 @@ export function useMealForm(customFoods: any[]) {
   );
 
   /**
-   * Recalculates every nutrient for a new serving size/unit. Leaves the
-   * nutrients untouched when the unit has no known gram equivalent, or when
-   * there is no base food to scale from.
+    Recalculates every nutrient for a new serving size/unit. Leaves the
+    nutrients untouched when the unit has no known gram equivalent, or when
+    there is no base food to scale from
    */
   const updateServing = useCallback(
     (size: string, unit: string, contextOverride: any = null) => {
@@ -49,7 +49,7 @@ export function useMealForm(customFoods: any[]) {
       const context = contextOverride || baseFood;
       const multiplier = gramsPerUnit(unit, context);
 
-      // Unrecognised unit: keep what the user typed, don't guess at macros.
+      // Unrecognised unit: keep what the user typed, don't guess at macros
       if (multiplier === null && unit.trim() !== '') {
         setSizeOnly();
         return;
@@ -75,7 +75,7 @@ export function useMealForm(customFoods: any[]) {
     [baseFood, gramsPerUnit],
   );
 
-  /** Loads a food picked from any of the browse tabs into the form. */
+  /** Loads a food picked from any of the browse tabs into the form */
   const selectFood = useCallback(
     (food: any, isEditMode = false) => {
       const custom_servings = isEditMode
@@ -100,7 +100,7 @@ export function useMealForm(customFoods: any[]) {
     [customFoods],
   );
 
-  /** Loads an existing diary entry for editing. */
+  /** Loads an existing diary entry for editing */
   const loadDiaryEntry = useCallback((log: any, fallbackMealType?: string) => {
     setFormData(
       buildMealForm(log, {
@@ -117,7 +117,7 @@ export function useMealForm(customFoods: any[]) {
     });
   }, []);
 
-  /** Seeds the form from the search box when no matching food exists yet. */
+  /** Seeds the form from the search box when no matching food exists yet */
   const prefillNewFood = useCallback((name: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -137,7 +137,7 @@ export function useMealForm(customFoods: any[]) {
 
   const clearBaseFood = useCallback(() => setBaseFood(null), []);
 
-  /** Standard units plus any custom servings the base food defines. */
+  /** Standard units plus any custom servings the base food defines */
   const availableUnits = useMemo(
     () =>
       Array.from(

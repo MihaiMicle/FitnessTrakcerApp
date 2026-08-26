@@ -16,8 +16,8 @@ interface UseMealDragDropOptions {
 }
 
 /**
- * Drag-and-drop for meal rows: reordering within a section, and moving an item
- * in from another section (which is a delete + re-add on the server).
+  Drag-and-drop for meal rows: reordering within a section, and moving an item
+  in from another section (which is a delete + re-add on the server)
  */
 export function useMealDragDrop({
   mealType,
@@ -65,7 +65,7 @@ export function useMealDragDrop({
     [draggedIndex],
   );
 
-  /** Moves an item dragged in from a different meal section. */
+  /* Moves an item dragged in from a different meal section */
   const moveFromOtherSection = useCallback(
     async (foodItem: any, insertIndex: number) => {
       toast.loading(`Moving to ${label}...`, { id: 'moveMeal' });
@@ -89,7 +89,7 @@ export function useMealDragDrop({
     [label, mealType, meals, setMeals, onAddMeal, onDeleteMeal],
   );
 
-  /** Reorders within this section. */
+  /* Reorders within this section */
   const reorder = useCallback(
     (from: number, to: number) => {
       if (from === to) return;
@@ -109,7 +109,7 @@ export function useMealDragDrop({
       const sourceMealType = e.dataTransfer.getData('sourceMealType');
       const foodDataStr = e.dataTransfer.getData('application/json');
 
-      // Snapshot before clearing, since the handlers below still need it.
+      // Snapshot before clearing, since the handlers below still need it
       const overIndex = dragOverIndex;
       const position = dropPosition;
       const fromIndex = draggedIndex;
@@ -145,7 +145,7 @@ export function useMealDragDrop({
     ],
   );
 
-  /** Props for the container that accepts drops onto empty space. */
+  /* Props for the container that accepts drops onto empty space */
   const containerProps = {
     onDragOver: (e: React.DragEvent) => {
       e.preventDefault();
