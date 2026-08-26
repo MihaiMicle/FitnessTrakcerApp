@@ -28,6 +28,8 @@ interface BundleTabPanelProps {
   hasExactMatch: boolean;
   builder: BundleBuilderState;
   onAddFood: () => void;
+  onEditFood: (index: number) => void;
+  onRemoveFood: (index: number) => void;
   onLog: (item: any) => void;
   onDelete: (
     e: React.MouseEvent,
@@ -36,10 +38,6 @@ interface BundleTabPanelProps {
   ) => void;
 }
 
-/**
- * The "Meals" and "Recipes" tabs: either the builder, or the saved list plus a
- * card offering to create whatever the user just searched for.
- */
 export default function BundleTabPanel({
   type,
   items,
@@ -47,6 +45,8 @@ export default function BundleTabPanel({
   hasExactMatch,
   builder,
   onAddFood,
+  onEditFood,
+  onRemoveFood,
   onLog,
   onDelete,
 }: BundleTabPanelProps) {
@@ -63,6 +63,9 @@ export default function BundleTabPanel({
           setStagedName={builder.setName}
           stagedServings={builder.servings}
           setStagedServings={builder.setServings}
+          editingFoodIndex={builder.editingFoodIndex}
+          onEditFood={onEditFood}
+          onRemoveFood={onRemoveFood}
           onCancel={builder.cancel}
           onAddFood={onAddFood}
           onSave={builder.save}

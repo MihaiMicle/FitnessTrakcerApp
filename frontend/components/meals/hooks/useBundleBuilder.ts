@@ -15,6 +15,8 @@ export function useBundleBuilder(onSaved: () => void) {
   const [mode, setMode] = useState<BuilderMode | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [foods, setFoods] = useState<any[]>([]);
+  /** Index of the staged food currently open in the manual form, if any. */
+  const [editingFoodIndex, setEditingFoodIndex] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [servings, setServings] = useState<number | string>('');
   const [isSaving, setIsSaving] = useState(false);
@@ -23,6 +25,7 @@ export function useBundleBuilder(onSaved: () => void) {
     setMode(null);
     setEditingId(null);
     setFoods([]);
+    setEditingFoodIndex(null);
     setName('');
     setServings('');
   }, []);
@@ -33,6 +36,7 @@ export function useBundleBuilder(onSaved: () => void) {
     setEditingId(null);
     setName(initialName);
     setFoods([]);
+    setEditingFoodIndex(null);
     setServings('');
   }, []);
 
@@ -41,6 +45,7 @@ export function useBundleBuilder(onSaved: () => void) {
     setMode(builderMode);
     setEditingId(item.id);
     setName(item.name);
+    setEditingFoodIndex(null);
     if (builderMode === 'meal') {
       setFoods(item.foods || []);
     } else {
@@ -53,10 +58,34 @@ export function useBundleBuilder(onSaved: () => void) {
     setMode(null);
     setFoods([]);
     setEditingId(null);
+    setEditingFoodIndex(null);
   }, []);
 
   const addFood = useCallback((food: any) => {
     setFoods((prev) => [...prev, food]);
+    setEditingFoodIndex(null);
+  }, []);
+
+  /** Sends a staged food back to the manual form for tweaking. */
+  const startEditingFood = useCallback((index: number) => {
+    setEditingFoodIndex(index);
+  }, []);
+
+  const cancelFoodEdit = useCallback(() => setEditingFoodIndex(null), []);
+
+  /** Replaces a staged food in place rather than appending a duplicate. */
+  const updateFood = useCallback((index: number, food: any) => {
+    setFoods((prev) => prev.map((f, i) => (i === index ? food : f)));
+    setEditingFoodIndex(null);
+  }, []);
+
+  const removeFood = useCallback((index: number) => {
+    setFoods((prev) => prev.filter((_, i) => i !== index));
+    // Everything after the removed row shifts down one slot.
+    setEditingFoodIndex((current) => {
+      if (current === null || current === index) return null;
+      return current > index ? current - 1 : current;
+    });
   }, []);
 
   const save = useCallback(async () => {
@@ -137,6 +166,7 @@ export function useBundleBuilder(onSaved: () => void) {
     mode,
     editingId,
     foods,
+    editingFoodIndex,
     name,
     setName,
     servings,
@@ -147,6 +177,10 @@ export function useBundleBuilder(onSaved: () => void) {
     startEditing,
     cancel,
     addFood,
+    startEditingFood,
+    cancelFoodEdit,
+    updateFood,
+    removeFood,
     save,
   };
 }

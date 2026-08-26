@@ -12,6 +12,7 @@ interface FoodFormProps {
   logMealToDiary: boolean;
   setLogMealToDiary: (val: boolean) => void;
   builderMode: "meal" | "recipe" | null;
+  isEditingStagedFood?: boolean;
   editingFoodId: string | null;
   isEditingLog?: boolean;
   isSubmitting: boolean;
@@ -30,6 +31,7 @@ export default function FoodForm(props: FoodFormProps) {
     logMealToDiary,
     setLogMealToDiary,
     builderMode,
+    isEditingStagedFood,
     editingFoodId,
     isEditingLog,
     isSubmitting,
@@ -396,9 +398,13 @@ export default function FoodForm(props: FoodFormProps) {
             className="text-xs font-mono text-neutral-300 cursor-pointer select-none"
           >
             {builderMode === "meal"
-              ? "Stage to Meal Builder"
+              ? isEditingStagedFood
+                ? "Update item in Meal Builder"
+                : "Stage to Meal Builder"
               : builderMode === "recipe"
-                ? "Stage to Recipe Builder"
+                ? isEditingStagedFood
+                  ? "Update item in Recipe Builder"
+                  : "Stage to Recipe Builder"
                 : isEditingLog
                   ? "Update this entry in diary"
                   : "Log this food to my daily diary"}
@@ -422,7 +428,9 @@ export default function FoodForm(props: FoodFormProps) {
           {isSubmitting
             ? "Processing..."
             : builderMode
-              ? `+ Add to ${builderMode}`
+              ? isEditingStagedFood
+                ? `Update in ${builderMode}`
+                : `+ Add to ${builderMode}`
               : isEditingLog
                 ? "Update Log"
                 : "Log Food"}

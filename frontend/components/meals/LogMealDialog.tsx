@@ -3,7 +3,11 @@
 import { FormEvent, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MEAL_TYPES, MEAL_TYPE_LABELS } from '@/lib/constants';
-import { createCustomFood, deleteCustomFood, updateCustomFood } from '@/lib/api';
+import {
+  createCustomFood,
+  deleteCustomFood,
+  updateCustomFood,
+} from '@/lib/api';
 import {
   buildCustomFoodPayload,
   buildFoodPayload,
@@ -76,7 +80,6 @@ export default function LogMealModal({
       builder.reset();
       confirm.close();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialMealType, editingLog]);
 
   if (!isOpen) return null;
@@ -84,6 +87,7 @@ export default function LogMealModal({
   const query = searchQuery.trim();
 
   const handleSelectFood = (food: any, isEditMode = false) => {
+    builder.cancelFoodEdit();
     if (isEditMode) {
       setEditingFoodId(food.id);
       setSaveAsCustom(true);
@@ -116,6 +120,25 @@ export default function LogMealModal({
     });
   };
 
+  // Reopen a staged food in the manual form so it can be tweaked in place
+  const handleEditStagedFood = (index: number) => {
+    const staged = builder.foods[index];
+    if (!staged) return;
+
+    builder.startEditingFood(index);
+    setEditingFoodId(null);
+    setSaveAsCustom(false);
+    setLogMealToDiary(true);
+    form.selectFood(staged);
+    setActiveTab('manual');
+  };
+
+  const handleRemoveStagedFood = (index: number) => {
+    const staged = builder.foods[index];
+    builder.removeFood(index);
+    toast.success(`Removed ${staged?.food_name || 'item'}`);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -135,10 +158,16 @@ export default function LogMealModal({
         return;
       }
 
-      // Inside a builder, "submit" stages the food instead of logging it.
+      // Inside a builder, "submit" stages the food instead of logging it
       if (builder.mode && logMealToDiary) {
-        builder.addFood(payload);
-        toast.success(`Added ${payload.food_name} to ${builder.mode}`);
+        const stagedIndex = builder.editingFoodIndex;
+        if (stagedIndex !== null) {
+          builder.updateFood(stagedIndex, payload);
+          toast.success(`Updated ${payload.food_name}`);
+        } else {
+          builder.addFood(payload);
+          toast.success(`Added ${payload.food_name} to ${builder.mode}`);
+        }
         setActiveTab(builder.mode === 'meal' ? 'meals' : 'recipes');
         setIsSubmitting(false);
         return;
@@ -147,7 +176,11 @@ export default function LogMealModal({
       if (saveAsCustom) {
         const dbPayload = buildCustomFoodPayload(payload, form.baseFood);
         if (editingFoodId) {
-          await updateCustomFood(session.access_token, editingFoodId, dbPayload);
+          await updateCustomFood(
+            session.access_token,
+            editingFoodId,
+            dbPayload,
+          );
           toast.success('Food updated successfully!');
         } else {
           await createCustomFood(session.access_token, dbPayload);
@@ -354,6 +387,8 @@ export default function LogMealModal({
                 hasExactMatch={filtered.hasExactMeal}
                 builder={builder}
                 onAddFood={() => setActiveTab('recent')}
+                onEditFood={handleEditStagedFood}
+                onRemoveFood={handleRemoveStagedFood}
                 onLog={handleLogSavedMeal}
                 onDelete={handleDeleteBundle}
               />
@@ -367,6 +402,8 @@ export default function LogMealModal({
                 hasExactMatch={filtered.hasExactRecipe}
                 builder={builder}
                 onAddFood={() => setActiveTab('recent')}
+                onEditFood={handleEditStagedFood}
+                onRemoveFood={handleRemoveStagedFood}
                 onLog={handleLogRecipe}
                 onDelete={handleDeleteBundle}
               />
@@ -389,6 +426,7 @@ export default function LogMealModal({
                 logMealToDiary={logMealToDiary}
                 setLogMealToDiary={setLogMealToDiary}
                 builderMode={builder.mode}
+                isEditingStagedFood={builder.editingFoodIndex !== null}
                 editingFoodId={editingFoodId}
                 isEditingLog={!!editingLog}
                 isSubmitting={isSubmitting}
