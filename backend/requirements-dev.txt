@@ -1,0 +1,12 @@
+# Test-only dependencies. Install alongside requirements.txt:
+#   pip install -r requirements.txt -r requirements-dev.txt
+#
+# Kept separate so the production image doesn't ship a test runner.
+
+pytest==8.4.2
+pytest-cov==7.0.0
+
+# Uncomment when the first router/integration tests land. httpx is what
+# fastapi.testclient.TestClient runs on; it's already a transitive dependency
+# via supabase, but pin it explicitly once tests depend on it directly.
+# httpx==0.28.1
