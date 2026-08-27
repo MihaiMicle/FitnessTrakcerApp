@@ -1,0 +1,322 @@
+'use client';
+
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from 'react';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
+
+const FIELD_KEYS: Record<string, string> = {
+  weight: 'weight_kg',
+  reps: 'reps',
+  rir: 'rir',
+  time: 'duration_minutes',
+  distance: 'distance_km',
+  incline: 'incline',
+  speed: 'speed',
+  difficulty: 'difficulty',
+};
+
+interface WorkoutContextProps {
+  activeSession: any | null;
+  isMinimized: boolean;
+  workoutName: string;
+  setWorkoutName: React.Dispatch<React.SetStateAction<string>>;
+  exercises: any[];
+  setExercises: React.Dispatch<React.SetStateAction<any[]>>;
+  previousSets: Record<string, any[]>;
+  elapsed: number;
+  formattedTime: string;
+  startWorkout: (session: any) => void;
+  minimizeWorkout: () => void;
+  maximizeWorkout: () => void;
+  clearWorkout: () => void;
+  cancelWorkout: () => Promise<void>;
+  addSet: (exId: string) => void;
+  updateSet: (
+    exId: string,
+    setIndex: number,
+    field: string,
+    value: any,
+  ) => void;
+  toggleSetComplete: (exId: string, setIndex: number) => void;
+  removeSet: (exId: string, setIndex: number) => void;
+  removeExercise: (exId: string) => void;
+  getNextSet: () => any | null;
+  saveSession: (status?: string) => Promise<boolean>;
+}
+
+const WorkoutContext = createContext<WorkoutContextProps | undefined>(
+  undefined,
+);
+
+export function WorkoutProvider({ children }: { children: ReactNode }) {
+  const [activeSession, setActiveSession] = useState<any | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [exercises, setExercises] = useState<any[]>([]);
+  const [workoutName, setWorkoutName] = useState('Workout');
+  const [previousSets, setPreviousSets] = useState<Record<string, any[]>>({});
+  const [elapsed, setElapsed] = useState(0);
+
+  // Auto-recover active session on app reload
+  useEffect(() => {
+    const fetchActive = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/workouts/active`,
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setActiveSession(data);
+          setExercises(data.exercises || []);
+          setWorkoutName(data.name || 'Workout');
+          setIsMinimized(true);
+        }
+      } catch (e) {}
+    };
+    fetchActive();
+  }, []);
+
+  const startWorkout = (sessionData: any) => {
+    setActiveSession(sessionData);
+    setExercises(sessionData.exercises || []);
+    setWorkoutName(sessionData.name || 'Workout');
+    setIsMinimized(false);
+  };
+
+  const clearWorkout = () => {
+    setActiveSession(null);
+    setExercises([]);
+    setPreviousSets({});
+    setElapsed(0);
+    setIsMinimized(false);
+  };
+
+  const cancelWorkout = async () => {
+    if (activeSession) {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/workouts/${activeSession.id}`,
+            {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            },
+          );
+        }
+        toast.success('Workout canceled');
+      } catch (e) {
+        console.error('Failed to cancel session', e);
+      }
+    }
+    clearWorkout();
+  };
+
+  const minimizeWorkout = () => setIsMinimized(true);
+  const maximizeWorkout = () => setIsMinimized(false);
+
+  // Timer
+  useEffect(() => {
+    if (!activeSession || activeSession.status === 'completed') return;
+    const start = new Date(activeSession.start_time).getTime();
+    const updateTimer = () =>
+      setElapsed(Math.floor((new Date().getTime() - start) / 1000));
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [activeSession]);
+
+  const formatTime = (totalSeconds: number) => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    if (hrs > 0)
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Fetch Previous Sets History
+  useEffect(() => {
+    const fetchPreviousSets = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const newPreviousSets = { ...previousSets };
+      let hasChanges = false;
+      for (const ex of exercises) {
+        if (!newPreviousSets[ex.name]) {
+          try {
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/workouts/exercises/${encodeURIComponent(ex.name)}/last-sets`,
+              {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              },
+            );
+            if (res.ok) {
+              newPreviousSets[ex.name] = await res.json();
+              hasChanges = true;
+            }
+          } catch (err) {}
+        }
+      }
+      if (hasChanges) setPreviousSets(newPreviousSets);
+    };
+    if (exercises.length > 0) fetchPreviousSets();
+  }, [exercises, previousSets]);
+
+  // Set & Exercise Management
+  const addSet = useCallback((exId: string) => {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exId) return ex;
+        const lastSet = ex.sets[ex.sets.length - 1];
+        const newSet: any = { set: ex.sets.length + 1, completed: false };
+        ex.tracking_fields.forEach((f: string) => {
+          const key = FIELD_KEYS[f];
+          newSet[key] = lastSet ? lastSet[key] : '';
+        });
+        return { ...ex, sets: [...ex.sets, newSet] };
+      }),
+    );
+  }, []);
+
+  const updateSet = useCallback(
+    (exId: string, setIndex: number, field: string, value: any) => {
+      setExercises((prev) =>
+        prev.map((ex) => {
+          if (ex.id !== exId) return ex;
+          const newSets = [...ex.sets];
+          newSets[setIndex] = { ...newSets[setIndex], [field]: value };
+          return { ...ex, sets: newSets };
+        }),
+      );
+    },
+    [],
+  );
+
+  const toggleSetComplete = useCallback((exId: string, setIndex: number) => {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exId) return ex;
+        const newSets = [...ex.sets];
+        newSets[setIndex] = {
+          ...newSets[setIndex],
+          completed: !newSets[setIndex].completed,
+        };
+        return { ...ex, sets: newSets };
+      }),
+    );
+  }, []);
+
+  const removeSet = useCallback((exId: string, setIndex: number) => {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exId) return ex;
+        const newSets = ex.sets.filter((_: any, i: number) => i !== setIndex);
+        return {
+          ...ex,
+          sets: newSets.map((s: any, i: number) => ({ ...s, set: i + 1 })),
+        };
+      }),
+    );
+  }, []);
+
+  const removeExercise = useCallback((exId: string) => {
+    setExercises((prev) => prev.filter((ex) => ex.id !== exId));
+  }, []);
+
+  const getNextSet = useCallback(() => {
+    for (const ex of exercises) {
+      const setIdx = ex.sets.findIndex((s: any) => !s.completed);
+      if (setIdx !== -1)
+        return { exercise: ex, setIndex: setIdx, set: ex.sets[setIdx] };
+    }
+    return null;
+  }, [exercises]);
+
+  const saveSession = async (status = 'in_progress') => {
+    if (!activeSession) return false;
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return false;
+      const payload: any = {
+        name: workoutName,
+        status,
+        duration_seconds: elapsed,
+        exercises,
+      };
+      if (status === 'completed') payload.end_time = new Date().toISOString();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/workouts/${activeSession.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!res.ok) throw new Error('Failed to save');
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  return (
+    <WorkoutContext.Provider
+      value={{
+        activeSession,
+        isMinimized,
+        workoutName,
+        setWorkoutName,
+        exercises,
+        setExercises,
+        previousSets,
+        elapsed,
+        formattedTime: formatTime(elapsed),
+        startWorkout,
+        minimizeWorkout,
+        maximizeWorkout,
+        clearWorkout,
+        cancelWorkout,
+        addSet,
+        updateSet,
+        toggleSetComplete,
+        removeSet,
+        removeExercise,
+        getNextSet,
+        saveSession,
+      }}
+    >
+      {children}
+    </WorkoutContext.Provider>
+  );
+}
+
+export function useWorkout() {
+  const context = useContext(WorkoutContext);
+  if (!context)
+    throw new Error('useWorkout must be used within WorkoutProvider');
+  return context;
+}

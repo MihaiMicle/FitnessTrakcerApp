@@ -263,3 +263,38 @@ def update_template(
     db.commit()
     db.refresh(template)
     return template
+
+
+@router.get("/exercises/{exercise_name}/last-sets")
+def get_last_exercise_sets(
+    exercise_name: str,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve the sets from the last time the user performed this exercise."""
+    # Find the most recent set for this exercise to get the session_id
+    last_set = (
+        db.query(WorkoutSet)
+        .filter(
+            WorkoutSet.user_id == current_user_id,
+            WorkoutSet.exercise_name == exercise_name
+        )
+        .order_by(WorkoutSet.created_at.desc())
+        .first()
+    )
+
+    if not last_set:
+        return []
+
+    # Fetch all sets for that specific session and exercise
+    previous_sets = (
+        db.query(WorkoutSet)
+        .filter(
+            WorkoutSet.session_id == last_set.session_id,
+            WorkoutSet.exercise_name == exercise_name
+        )
+        .order_by(WorkoutSet.set_number.asc())
+        .all()
+    )
+
+    return previous_sets

@@ -1,3 +1,4 @@
+// app/workouts/RoutineEditor.tsx
 'use client';
 
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import {
   Activity,
   Save,
   X,
+  GripVertical,
 } from 'lucide-react';
 import ExerciseSelectorModal from './ExerciseSelectorModal';
 
@@ -52,10 +54,14 @@ export default function RoutineEditor({
     'strength' | 'cardio' | null
   >(null);
 
+  // Reorder Mode States
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedExIndex, setDraggedExIndex] = useState<number | null>(null);
+  const [dragOverExIndex, setDragOverExIndex] = useState<number | null>(null);
+
   const handleSave = async () => {
     if (!name.trim()) return toast.error('Routine name is required');
     if (exercises.length === 0) return toast.error('Add at least one exercise');
-
     setIsSaving(true);
     try {
       const {
@@ -102,6 +108,7 @@ export default function RoutineEditor({
       tracking_fields: trackingFields,
       sets: [{ set: 1, completed: false }],
     };
+
     setExercises([...exercises, newEx]);
     setSelectorType(null);
   };
@@ -117,6 +124,7 @@ export default function RoutineEditor({
           const key = FIELD_KEYS[f];
           newSet[key] = lastSet ? lastSet[key] : '';
         });
+
         return { ...ex, sets: [...ex.sets, newSet] };
       }),
     );
@@ -154,6 +162,40 @@ export default function RoutineEditor({
   const removeExercise = (exId: string) =>
     setExercises(exercises.filter((ex) => ex.id !== exId));
 
+  // --- Drag and Drop Handlers ---
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedExIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedExIndex === index) return;
+    setDragOverExIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedExIndex === null || draggedExIndex === targetIndex) {
+      setDraggedExIndex(null);
+      setDragOverExIndex(null);
+      return;
+    }
+    const newExercises = [...exercises];
+    const [movedItem] = newExercises.splice(draggedExIndex, 1);
+    newExercises.splice(targetIndex, 0, movedItem);
+    setExercises(newExercises);
+    setDraggedExIndex(null);
+    setDragOverExIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedExIndex(null);
+    setDragOverExIndex(null);
+  };
+
   const inputClass =
     'bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-indigo-500 outline-none transition-colors font-mono min-w-0 text-center w-full';
 
@@ -177,9 +219,17 @@ export default function RoutineEditor({
                 className="bg-transparent text-lg sm:text-xl font-bold text-white outline-none focus:border-b focus:border-indigo-500 placeholder:text-neutral-600 w-full truncate"
                 placeholder="Routine Name"
               />
-              <span className="text-neutral-500 font-mono text-[10px] sm:text-xs mt-0.5">
-                Template Builder
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-neutral-500 font-mono text-[10px] sm:text-xs mt-0.5">
+                  Template Builder
+                </span>
+                <button
+                  onClick={() => setIsReordering(!isReordering)}
+                  className={`ml-2 px-2 py-0.5 rounded text-[10px] sm:text-xs transition-colors font-mono ${isReordering ? 'bg-indigo-500 text-white' : 'bg-neutral-800 text-neutral-300 hover:text-white'}`}
+                >
+                  {isReordering ? 'Done' : 'Reorder'}
+                </button>
+              </div>
             </div>
           </div>
           <button
@@ -197,13 +247,34 @@ export default function RoutineEditor({
         {exercises.map((ex, index) => (
           <div
             key={ex.id}
-            className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 shadow-sm"
+            draggable={isReordering}
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+            className={`bg-neutral-900 border rounded-xl p-4 shadow-sm transition-colors ${
+              isReordering ? 'cursor-grab active:cursor-grabbing' : ''
+            } ${
+              draggedExIndex === index
+                ? 'opacity-50 border-indigo-500'
+                : 'border-neutral-800'
+            } ${
+              dragOverExIndex === index
+                ? 'border-indigo-500 bg-indigo-950/20'
+                : ''
+            }`}
           >
             <div className="flex items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
-                  {index + 1}
-                </div>
+                {isReordering ? (
+                  <div className="text-neutral-500">
+                    <GripVertical size={20} />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    {index + 1}
+                  </div>
+                )}
                 <h3 className="text-lg font-bold text-indigo-100 truncate">
                   {ex.name}
                 </h3>
@@ -216,74 +287,81 @@ export default function RoutineEditor({
               </button>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex gap-2 px-1 text-[10px] text-neutral-500 font-mono uppercase tracking-wider items-center">
-                <span className="w-6 text-center shrink-0">Set</span>
-                {(ex.tracking_fields || []).map((f: string) => (
-                  <span key={f} className="flex-1 text-center truncate">
-                    {FIELD_LABELS[f] || f}
-                  </span>
-                ))}
-                <span className="w-8 shrink-0"></span>
-              </div>
-
-              {ex.sets.map((set: any, sIdx: number) => (
-                <div key={sIdx} className="flex gap-2 items-center p-1">
-                  <div className="w-6 text-center text-xs font-bold text-neutral-500 font-mono shrink-0">
-                    {set.set}
-                  </div>
-                  {(ex.tracking_fields || []).map((f: string) => {
-                    const key = FIELD_KEYS[f];
-                    return (
-                      <div key={f} className="flex-1 min-w-0">
-                        <input
-                          type="number"
-                          step="any"
-                          placeholder="target"
-                          value={set[key] || ''}
-                          onChange={(e) =>
-                            updateSet(ex.id, sIdx, key, e.target.value)
-                          }
-                          className={inputClass}
-                        />
-                      </div>
-                    );
-                  })}
-                  <button
-                    onClick={() => removeSet(ex.id, sIdx)}
-                    disabled={ex.sets.length === 1}
-                    className="w-8 h-8 shrink-0 flex items-center justify-center text-neutral-600 hover:text-rose-500 transition-colors disabled:opacity-0"
-                  >
-                    <X size={16} />
-                  </button>
+            {!isReordering && (
+              <div className="space-y-2">
+                <div className="flex gap-2 px-1 text-[10px] text-neutral-500 font-mono uppercase tracking-wider items-center">
+                  <span className="w-6 text-center shrink-0">Set</span>
+                  {(ex.tracking_fields || []).map((f: string) => (
+                    <span key={f} className="flex-1 text-center truncate">
+                      {FIELD_LABELS[f] || f}
+                    </span>
+                  ))}
+                  <span className="w-8 shrink-0"></span>
                 </div>
-              ))}
-              <button
-                onClick={() => addSet(ex.id)}
-                className="w-full py-2 mt-2 border-2 border-dashed border-neutral-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-lg text-indigo-400 font-mono text-xs transition-colors flex items-center justify-center gap-1"
-              >
-                <Plus size={14} /> Add Set
-              </button>
-            </div>
+
+                {ex.sets.map((set: any, sIdx: number) => (
+                  <div key={sIdx} className="flex gap-2 items-center p-1">
+                    <div className="w-6 text-center text-xs font-bold text-neutral-500 font-mono shrink-0">
+                      {set.set}
+                    </div>
+
+                    {(ex.tracking_fields || []).map((f: string) => {
+                      const key = FIELD_KEYS[f];
+                      return (
+                        <div key={f} className="flex-1 min-w-0">
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="target"
+                            value={set[key] || ''}
+                            onChange={(e) =>
+                              updateSet(ex.id, sIdx, key, e.target.value)
+                            }
+                            className={inputClass}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => removeSet(ex.id, sIdx)}
+                      disabled={ex.sets.length === 1}
+                      className="w-8 h-8 shrink-0 flex items-center justify-center text-neutral-600 hover:text-rose-500 transition-colors disabled:opacity-0"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  onClick={() => addSet(ex.id)}
+                  className="w-full py-2 mt-2 border-2 border-dashed border-neutral-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-lg text-indigo-400 font-mono text-xs transition-colors flex items-center justify-center gap-1"
+                >
+                  <Plus size={14} /> Add Set
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Floating cction buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 via-neutral-950 to-transparent flex justify-center gap-3 pointer-events-none z-40">
-        <button
-          onClick={() => setSelectorType('strength')}
-          className="pointer-events-auto bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white text-indigo-400 font-mono text-xs font-bold py-3 px-6 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-95 flex items-center gap-2"
-        >
-          <Dumbbell size={16} /> Add Lifting
-        </button>
-        <button
-          onClick={() => setSelectorType('cardio')}
-          className="pointer-events-auto bg-rose-600/20 border border-rose-500/30 hover:bg-rose-600 hover:text-white text-rose-400 font-mono text-xs font-bold py-3 px-6 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-95 flex items-center gap-2"
-        >
-          <Activity size={16} /> Add Cardio
-        </button>
-      </div>
+      {/* Floating action buttons */}
+      {!isReordering && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-neutral-950 via-neutral-950 to-transparent flex justify-center gap-3 pointer-events-none z-40">
+          <button
+            onClick={() => setSelectorType('strength')}
+            className="pointer-events-auto bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white text-indigo-400 font-mono text-xs font-bold py-3 px-6 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-95 flex items-center gap-2"
+          >
+            <Dumbbell size={16} /> Add Lifting
+          </button>
+          <button
+            onClick={() => setSelectorType('cardio')}
+            className="pointer-events-auto bg-rose-600/20 border border-rose-500/30 hover:bg-rose-600 hover:text-white text-rose-400 font-mono text-xs font-bold py-3 px-6 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-95 flex items-center gap-2"
+          >
+            <Activity size={16} /> Add Cardio
+          </button>
+        </div>
+      )}
 
       <ExerciseSelectorModal
         isOpen={selectorType !== null}

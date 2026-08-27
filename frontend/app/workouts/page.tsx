@@ -13,15 +13,18 @@ import {
   Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import LiveWorkout from '@/components/workouts/LiveWorkout';
 import RoutineEditor from '@/components/workouts/RoutineEditor';
+import { useWorkout } from '@/lib/context/WorkoutContext';
 
 export default function WorkoutsDashboard() {
   const router = useRouter();
+
+  // Pull startWorkout from your global context
+  const { startWorkout } = useWorkout();
+
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
-  const [activeSession, setActiveSession] = useState<any | null>(null);
 
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
@@ -37,16 +40,7 @@ export default function WorkoutsDashboard() {
       } = await supabase.auth.getSession();
       if (!session) return router.replace('/login');
 
-      const activeRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/workouts/active`,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
-
-      if (activeRes.ok) setActiveSession(await activeRes.json());
-      else setActiveSession(null);
-
+      // Fetch Past Sessions
       const historyRes = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/workouts/`,
         {
@@ -77,12 +71,12 @@ export default function WorkoutsDashboard() {
     fetchSessions();
   }, []);
 
-  const startEmptyWorkout = () => startWorkout('New Workout', []);
+  const startEmptyWorkout = () => handleStartWorkout('New Workout', []);
 
   const startWorkoutFromTemplate = (template: any) =>
-    startWorkout(template.name, template.exercises);
+    handleStartWorkout(template.name, template.exercises);
 
-  const startWorkout = async (name: string, exercises: any[]) => {
+  const handleStartWorkout = async (name: string, exercises: any[]) => {
     try {
       const {
         data: { session },
@@ -107,7 +101,9 @@ export default function WorkoutsDashboard() {
       });
 
       if (res.ok) {
-        setActiveSession(await res.json());
+        const newSession = await res.json();
+        // Trigger the global overlay via context!
+        startWorkout(newSession);
         toast.success('Session started!');
       }
     } catch (err) {
@@ -178,18 +174,6 @@ export default function WorkoutsDashboard() {
       <div className="min-h-screen bg-neutral-950 p-8 text-neutral-500 font-mono text-center animate-pulse">
         Loading Session Data...
       </div>
-    );
-  }
-
-  if (activeSession) {
-    return (
-      <LiveWorkout
-        sessionData={activeSession}
-        onClose={() => {
-          setActiveSession(null);
-          fetchSessions();
-        }}
-      />
     );
   }
 
@@ -325,8 +309,7 @@ export default function WorkoutsDashboard() {
             sessions.map((s) => (
               <div
                 key={s.id}
-                onClick={() => setActiveSession(s)}
-                className="bg-neutral-900 border border-neutral-800 hover:border-indigo-500/50 rounded-xl p-4 sm:p-5 transition-colors cursor-pointer group flex justify-between items-center"
+                className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 sm:p-5 group flex justify-between items-center"
               >
                 <div>
                   <div className="flex items-start mb-1.5">
