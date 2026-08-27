@@ -105,6 +105,9 @@ class WorkoutSet(Base):
     set_type = Column(String, default="working")
     completed = Column(Boolean, default=False)
 
+    # Rest resolved from the set override, the exercise, then the app default
+    rest_seconds = Column(Integer, nullable=True)
+
     # Tracking Fields
     weight_kg = Column(Float, nullable=True)
     reps = Column(Integer, nullable=True)

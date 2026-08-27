@@ -10,6 +10,17 @@ import React, {
 } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import type { SetType } from '@/lib/workouts/constants';
+import {
+  clampRestSeconds,
+  planRestAfterSet,
+  withExerciseRest,
+  withSetRest,
+} from '@/lib/workouts/rest';
+import {
+  notifyRestComplete,
+  requestRestNotificationPermission,
+} from '@/lib/workouts/restNotify';
 
 const FIELD_KEYS: Record<string, string> = {
   weight: 'weight_kg',
@@ -51,6 +62,27 @@ interface WorkoutContextProps {
   toggleSuperset: (index: number) => void;
   getNextSet: () => any | null;
   saveSession: (status?: string) => Promise<boolean>;
+
+  /* Rest timer */
+  restLabel: string;
+  restRemaining: number;
+  restTotal: number;
+  isResting: boolean;
+  startRest: (seconds: number, label: string) => void;
+  adjustRest: (deltaSeconds: number) => void;
+  skipRest: () => void;
+  setExerciseRest: (
+    exId: string,
+    setType: SetType,
+    seconds: number | null,
+  ) => void;
+  setSetRest: (exId: string, setIndex: number, seconds: number | null) => void;
+}
+
+interface RestState {
+  endsAt: number;
+  total: number;
+  label: string;
 }
 
 const WorkoutContext = createContext<WorkoutContextProps | undefined>(
@@ -64,6 +96,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const [workoutName, setWorkoutName] = useState('Workout');
   const [previousSets, setPreviousSets] = useState<Record<string, any[]>>({});
   const [elapsed, setElapsed] = useState(0);
+  const [rest, setRest] = useState<RestState | null>(null);
+  const [restRemaining, setRestRemaining] = useState(0);
 
   // Auto-recover active session on app reload
   useEffect(() => {
@@ -103,6 +137,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     setExercises([]);
     setPreviousSets({});
     setElapsed(0);
+    setRest(null);
+    setRestRemaining(0);
     setIsMinimized(false);
   };
 
@@ -182,6 +218,77 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     if (exercises.length > 0) fetchPreviousSets();
   }, [exercises, previousSets]);
 
+  /*
+   * Rest countdown
+   *
+   * Stored as a deadline rather than a decrementing number so a backgrounded
+   * tab, which throttles intervals, still reads the right time when it wakes
+   */
+  useEffect(() => {
+    if (!rest) {
+      setRestRemaining(0);
+      return;
+    }
+
+    let finished = false;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((rest.endsAt - Date.now()) / 1000));
+      setRestRemaining(left);
+      if (left === 0 && !finished) {
+        finished = true;
+        notifyRestComplete(rest.label);
+        toast.success(`Rest over · ${rest.label}`, { id: 'rest-timer' });
+        setRest(null);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 250);
+    return () => clearInterval(interval);
+  }, [rest]);
+
+  const startRest = useCallback((seconds: number, label: string) => {
+    const total = clampRestSeconds(seconds);
+    if (total <= 0) return;
+    requestRestNotificationPermission();
+    setRest({ endsAt: Date.now() + total * 1000, total, label });
+    setRestRemaining(total);
+  }, []);
+
+  const skipRest = useCallback(() => {
+    setRest(null);
+    setRestRemaining(0);
+  }, []);
+
+  /* Plus and minus on the running timer, floored so it cannot go negative */
+  const adjustRest = useCallback((deltaSeconds: number) => {
+    setRest((prev) => {
+      if (!prev) return prev;
+      const left = Math.max(0, Math.ceil((prev.endsAt - Date.now()) / 1000));
+      const nextLeft = Math.max(0, left + deltaSeconds);
+      if (nextLeft === 0) return null;
+      return {
+        ...prev,
+        endsAt: Date.now() + nextLeft * 1000,
+        total: Math.max(prev.total, nextLeft),
+      };
+    });
+  }, []);
+
+  const setExerciseRest = useCallback(
+    (exId: string, setType: SetType, seconds: number | null) => {
+      setExercises((prev) => withExerciseRest(prev, exId, setType, seconds));
+    },
+    [],
+  );
+
+  const setSetRest = useCallback(
+    (exId: string, setIndex: number, seconds: number | null) => {
+      setExercises((prev) => withSetRest(prev, exId, setIndex, seconds));
+    },
+    [],
+  );
+
   // Set & Exercise Management
   const addSet = useCallback((exId: string) => {
     setExercises((prev) =>
@@ -216,9 +323,14 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const toggleSetComplete = useCallback((exId: string, setIndex: number) => {
-    setExercises((prev) =>
-      prev.map((ex) => {
+  /*
+   * Checking a set off is what starts rest, so this works off the current
+   * array rather than a functional update: `planRestAfterSet` needs to see the
+   * whole list after the toggle to know whether a superset round just closed
+   */
+  const toggleSetComplete = useCallback(
+    (exId: string, setIndex: number) => {
+      const next = exercises.map((ex) => {
         if (ex.id !== exId) return ex;
         const newSets = [...ex.sets];
         newSets[setIndex] = {
@@ -226,9 +338,14 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           completed: !newSets[setIndex].completed,
         };
         return { ...ex, sets: newSets };
-      }),
-    );
-  }, []);
+      });
+      setExercises(next);
+
+      const plan = planRestAfterSet(next, exId, setIndex);
+      if (plan) startRest(plan.seconds, plan.label);
+    },
+    [exercises, startRest],
+  );
 
   const updateSetType = useCallback(
     (exId: string, setIndex: number, type: string) => {
@@ -356,6 +473,15 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         toggleSuperset,
         getNextSet,
         saveSession,
+        restLabel: rest?.label || '',
+        restRemaining,
+        restTotal: rest?.total || 0,
+        isResting: rest !== null,
+        startRest,
+        adjustRest,
+        skipRest,
+        setExerciseRest,
+        setSetRest,
       }}
     >
       {children}

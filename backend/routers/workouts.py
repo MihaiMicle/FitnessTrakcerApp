@@ -8,6 +8,7 @@ from uuid import UUID
 from core.database import get_db
 from core.security import get_current_user
 from core.social import VISIBILITY_PRIVATE, normalize_visibility
+from core.rest import resolve_rest_seconds
 from core.social_queries import assert_not_blocked, visible_content_filter
 from models.profile import UserProfile
 from models.workouts import WorkoutSession, Exercise, WorkoutTemplate, WorkoutSet
@@ -56,6 +57,7 @@ def sync_workout_sets(db: Session, session: WorkoutSession):
                     set_number=s.get("set", 1),
                     set_type=s.get("set_type", "working"),
                     completed=s.get("completed", False),
+                    rest_seconds=resolve_rest_seconds(ex, s),
                     weight_kg=s.get("weight_kg"),
                     reps=s.get("reps"),
                     rir=s.get("rir"),

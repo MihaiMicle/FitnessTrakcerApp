@@ -94,3 +94,25 @@ export const TRACKING_TYPES: TrackingType[] = [
 ];
 
 export const DEFAULT_TRACKING_FIELDS = ['weight', 'reps'];
+
+export type SetType = 'working' | 'W' | 'D' | 'F';
+
+export interface SetTypeOption {
+  id: SetType;
+  /* Badge letter, empty for plain working sets which show their number */
+  badge: string;
+  label: string;
+  className: string;
+}
+
+/* The four set types, in the order the set menu lists them */
+export const SET_TYPE_OPTIONS: SetTypeOption[] = [
+  { id: 'working', badge: '', label: 'Working', className: 'text-neutral-300' },
+  { id: 'W', badge: 'W', label: 'Warm-up (W)', className: 'text-amber-500' },
+  { id: 'D', badge: 'D', label: 'Drop set (D)', className: 'text-indigo-400' },
+  { id: 'F', badge: 'F', label: 'Failure (F)', className: 'text-rose-500' },
+];
+
+export const SET_TYPES: SetType[] = SET_TYPE_OPTIONS.map((o) => o.id);
+
+export const DEFAULT_SET_TYPE: SetType = 'working';

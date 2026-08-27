@@ -1,9 +1,10 @@
 'use client';
 
 import { useWorkout } from '@/lib/context/WorkoutContext';
-import { Check, ChevronUp, Clock, X } from 'lucide-react';
+import { Check, ChevronUp, Clock, Timer, SkipForward, X } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import { useConfirm } from '@/components/shared/useConfirm';
+import { formatRest } from '@/lib/workouts/rest';
 
 export default function FloatingWorkoutBar() {
   const {
@@ -15,6 +16,11 @@ export default function FloatingWorkoutBar() {
     maximizeWorkout,
     saveSession,
     cancelWorkout,
+    isResting,
+    restLabel,
+    restRemaining,
+    restTotal,
+    skipRest,
   } = useWorkout();
 
   // Initialize the custom confirm hook
@@ -75,6 +81,49 @@ export default function FloatingWorkoutBar() {
         </div>
 
         <div className="w-full h-px bg-neutral-800" />
+
+        {/* Rest countdown lives here while the workout is minimized */}
+        {isResting && (
+          <div className="bg-sky-500/10 border border-sky-500/30 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Timer size={14} className="text-sky-400 shrink-0" />
+                <span className="text-[11px] font-mono text-neutral-400 truncate">
+                  {restLabel}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span
+                  className={`text-lg font-bold font-mono tabular-nums ${
+                    restRemaining <= 5
+                      ? 'text-emerald-400 animate-pulse'
+                      : 'text-sky-300'
+                  }`}
+                >
+                  {formatRest(restRemaining)}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    skipRest();
+                  }}
+                  title="Skip rest"
+                  className="p-1.5 rounded-md bg-neutral-800 border border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+                >
+                  <SkipForward size={14} />
+                </button>
+              </div>
+            </div>
+            <div className="h-1 w-full bg-neutral-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-sky-400 rounded-full transition-[width] duration-200 ease-linear"
+                style={{
+                  width: `${restTotal > 0 ? Math.min(100, (restRemaining / restTotal) * 100) : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {next ? (
           <div className="flex justify-between items-center bg-neutral-950 p-3 rounded-xl border border-neutral-800">

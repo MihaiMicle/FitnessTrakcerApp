@@ -16,6 +16,10 @@ import {
   Unlink,
 } from 'lucide-react';
 import ExerciseSelectorModal from './ExerciseSelectorModal';
+import SetTypeMenu from './SetTypeMenu';
+import RestSettingsButton from './RestSettingsButton';
+import type { SetType } from '@/lib/workouts/constants';
+import { withExerciseRest, withSetRest } from '@/lib/workouts/rest';
 
 const FIELD_LABELS: Record<string, string> = {
   weight: 'kg',
@@ -37,21 +41,6 @@ const FIELD_KEYS: Record<string, string> = {
   incline: 'incline',
   speed: 'speed',
   difficulty: 'difficulty',
-};
-
-const renderSetBadge = (ex: any, set: any, sIdx: number) => {
-  const type = set.set_type || 'working';
-  if (type === 'W') return <span className="text-amber-500">W</span>;
-  if (type === 'D') return <span className="text-indigo-400">D</span>;
-  if (type === 'F') return <span className="text-rose-500">F</span>;
-
-  // Normal sets - calculate working set number ignoring W, D, F
-  const workingIndex = ex.sets.filter(
-    (s: any, i: number) =>
-      i <= sIdx && (!s.set_type || s.set_type === 'working'),
-  ).length;
-
-  return <span className="text-neutral-500">{workingIndex}</span>;
 };
 
 export default function RoutineEditor({
@@ -188,6 +177,16 @@ export default function RoutineEditor({
       }),
     );
   };
+
+  /* Rest times saved with the routine, so a workout starts already configured */
+  const setExerciseRest = (
+    exId: string,
+    setType: SetType,
+    seconds: number | null,
+  ) => setExercises((prev) => withExerciseRest(prev, exId, setType, seconds));
+
+  const setSetRest = (exId: string, setIndex: number, seconds: number | null) =>
+    setExercises((prev) => withSetRest(prev, exId, setIndex, seconds));
 
   const removeSet = (exId: string, setIndex: number) => {
     setExercises(
@@ -348,6 +347,14 @@ export default function RoutineEditor({
                   </h3>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {!isReordering && (
+                    <RestSettingsButton
+                      exercise={ex}
+                      onChange={(setType, seconds) =>
+                        setExerciseRest(ex.id, setType, seconds)
+                      }
+                    />
+                  )}
                   {index > 0 && !isReordering && (
                     <button
                       onClick={() => toggleSuperset(index)}
@@ -392,65 +399,24 @@ export default function RoutineEditor({
                         key={sIdx}
                         className={`flex gap-2 items-center p-1 rounded-lg transition-colors relative ${isMenuOpen ? 'z-50' : 'z-10'}`}
                       >
-                        <div className="relative set-menu-container">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenSetMenu(
-                                isMenuOpen ? null : { exId: ex.id, sIdx },
-                              );
-                            }}
-                            className="w-6 h-6 shrink-0 flex items-center justify-center text-xs font-bold font-mono rounded hover:bg-neutral-800 transition-colors"
-                          >
-                            {renderSetBadge(ex, set, sIdx)}
-                          </button>
-
-                          {/* Dropdown Menu */}
-                          {isMenuOpen && (
-                            <div className="absolute top-full left-0 mt-2 w-32 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 z-[9999]">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateSetType(ex.id, sIdx, 'working');
-                                  setOpenSetMenu(null);
-                                }}
-                                className="px-3 py-2.5 text-xs font-mono text-left text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-                              >
-                                Working
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateSetType(ex.id, sIdx, 'W');
-                                  setOpenSetMenu(null);
-                                }}
-                                className="px-3 py-2.5 text-xs font-mono text-left text-amber-500 hover:bg-neutral-800 transition-colors"
-                              >
-                                Warm-up (W)
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateSetType(ex.id, sIdx, 'D');
-                                  setOpenSetMenu(null);
-                                }}
-                                className="px-3 py-2.5 text-xs font-mono text-left text-indigo-400 hover:bg-neutral-800 transition-colors"
-                              >
-                                Drop set (D)
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateSetType(ex.id, sIdx, 'F');
-                                  setOpenSetMenu(null);
-                                }}
-                                className="px-3 py-2.5 text-xs font-mono text-left text-rose-500 hover:bg-neutral-800 transition-colors"
-                              >
-                                Failure (F)
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <SetTypeMenu
+                          exercise={ex}
+                          set={set}
+                          setIndex={sIdx}
+                          isOpen={isMenuOpen}
+                          onToggle={() =>
+                            setOpenSetMenu(
+                              isMenuOpen ? null : { exId: ex.id, sIdx },
+                            )
+                          }
+                          onSelectType={(type) =>
+                            updateSetType(ex.id, sIdx, type)
+                          }
+                          onChangeRest={(seconds) =>
+                            setSetRest(ex.id, sIdx, seconds)
+                          }
+                          onClose={() => setOpenSetMenu(null)}
+                        />
 
                         {(ex.tracking_fields || []).map((f: string) => {
                           const key = FIELD_KEYS[f];
