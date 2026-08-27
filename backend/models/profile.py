@@ -1,9 +1,20 @@
 from datetime import date
-from sqlalchemy import Column, Float, Integer, String, DateTime, Date, ForeignKey
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Float,
+    Integer,
+    String,
+    DateTime,
+    Date,
+    ForeignKey,
+    Index,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 from core.database import Base
+from core.social import VISIBILITY_FOLLOWERS, VISIBILITY_PRIVATE
 
 
 class UserProfile(Base):
@@ -29,6 +40,26 @@ class UserProfile(Base):
     body_fat_percentage = Column(Float, nullable=True, default=None)
 
     avatar_url = Column(String, nullable=True, default="")
+
+    # Social identity. username is the handle other users search and mention by,
+    # nullable until the user picks one so existing rows stay valid
+    username = Column(String, nullable=True, unique=True, index=True)
+    bio = Column(String, nullable=True, default="")
+
+    # A private account never exposes public content, whatever a row says
+    is_private = Column(Boolean, nullable=False, default=True)
+
+    # Defaults applied to new content, overridable per row
+    default_workout_visibility = Column(
+        String, nullable=False, default=VISIBILITY_FOLLOWERS
+    )
+    default_routine_visibility = Column(
+        String, nullable=False, default=VISIBILITY_FOLLOWERS
+    )
+
+    # Denormalised so a profile card is one query, recomputed on every graph change
+    followers_count = Column(Integer, nullable=False, default=0)
+    following_count = Column(Integer, nullable=False, default=0)
 
     target_calories = Column(Integer, default=2500)
     target_protein_g = Column(Integer, default=165)
@@ -61,4 +92,10 @@ class WeightLog(Base):
     date = Column(Date, nullable=False)
     weight_kg = Column(Float, nullable=False)
     photo_url = Column(String, nullable=True)
+
+    # Body photos and bodyweight default to private and are never bulk-opened
+    visibility = Column(String, nullable=False, default=VISIBILITY_PRIVATE)
+
     created_at = Column(DateTime(timezone=True), default=func.now())
+
+    __table_args__ = (Index("ix_weight_logs_user_visibility", "user_id", "visibility"),)

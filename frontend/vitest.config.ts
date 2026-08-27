@@ -23,8 +23,12 @@ export default defineConfig({
       // Widen this glob as you add tests. Leaving an untested directory in
       // here only makes the gate permanently red, which teaches people to
       // ignore it. Not yet covered: lib/images.ts, lib/progressShare.ts,
-      // lib/api.ts, and everything under components/ and hooks/
-      include: ['lib/nutrition/**/*.ts', 'lib/workouts/**/*.ts'],
+      // lib/api.ts, lib/social/api.ts, and everything under components/ and hooks/
+      include: [
+        'lib/nutrition/**/*.ts',
+        'lib/workouts/**/*.ts',
+        'lib/social/visibility.ts',
+      ],
       exclude: ['**/__tests__/**', '**/*.d.ts'],
 
       // These are met today. Raise them as more logic moves into lib/

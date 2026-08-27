@@ -14,6 +14,8 @@ import {
   BookmarkPlus,
   GripVertical,
   X,
+  Link,
+  Unlink,
 } from 'lucide-react';
 import ExerciseSelectorModal from './ExerciseSelectorModal';
 import { useWorkout } from '@/lib/context/WorkoutContext';
@@ -56,6 +58,21 @@ const formatPrevious = (prevSet: any, trackingFields: string[]) => {
   return parts.join(' ') || '-';
 };
 
+const renderSetBadge = (ex: any, set: any, sIdx: number) => {
+  const type = set.set_type || 'working';
+  if (type === 'W') return <span className="text-amber-500">W</span>;
+  if (type === 'D') return <span className="text-indigo-400">D</span>;
+  if (type === 'F') return <span className="text-rose-500">F</span>;
+
+  // Normal sets - calculate working set number ignoring W, D, F
+  const workingIndex = ex.sets.filter(
+    (s: any, i: number) =>
+      i <= sIdx && (!s.set_type || s.set_type === 'working'),
+  ).length;
+
+  return <span className="text-neutral-500">{workingIndex}</span>;
+};
+
 export default function LiveWorkout() {
   const {
     activeSession,
@@ -72,8 +89,10 @@ export default function LiveWorkout() {
     addSet,
     updateSet,
     toggleSetComplete,
+    updateSetType,
     removeSet,
     removeExercise,
+    toggleSuperset,
     saveSession,
   } = useWorkout();
 
@@ -88,9 +107,23 @@ export default function LiveWorkout() {
 
   const [templates, setTemplates] = useState<any[]>([]);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [openSetMenu, setOpenSetMenu] = useState<{
+    exId: string;
+    sIdx: number;
+  } | null>(null);
 
-  // Initialize the custom confirm hook
   const confirm = useConfirm();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest && target.closest('.set-menu-container')) return;
+      setOpenSetMenu(null);
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -109,7 +142,6 @@ export default function LiveWorkout() {
     fetchTemplates();
   }, []);
 
-  // Only render full screen when active AND not minimized
   if (!activeSession || isMinimized) return null;
 
   const matchedTemplate = templates.find((t) => t.name === workoutName);
@@ -193,7 +225,7 @@ export default function LiveWorkout() {
       name: selectedEx.name,
       type: selectedEx.type,
       tracking_fields: trackingFields,
-      sets: [{ set: 1, completed: false }],
+      sets: [{ set: 1, set_type: 'working', completed: false }],
     };
     setExercises([...exercises, newEx]);
     setSelectorType(null);
@@ -220,6 +252,10 @@ export default function LiveWorkout() {
     }
     const newExercises = [...exercises];
     const [movedItem] = newExercises.splice(draggedExIndex, 1);
+
+    // Break superset link if moving to prevent weird visual bugs
+    movedItem.superset_id = null;
+
     newExercises.splice(targetIndex, 0, movedItem);
     setExercises(newExercises);
     setDraggedExIndex(null);
@@ -238,7 +274,7 @@ export default function LiveWorkout() {
       <div className="fixed inset-0 z-[100] bg-neutral-950 text-neutral-100 flex flex-col overflow-y-auto">
         {/* Sticky Header */}
         <div className="sticky top-0 z-40 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-800 p-4 sm:px-6">
-          <div className="max-w-3xl mx-auto flex justify-between items-center">
+          <div className="max-w-4xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-2 sm:gap-4 flex-1">
               <button
                 onClick={handleBack}
@@ -267,10 +303,8 @@ export default function LiveWorkout() {
             </div>
 
             <div className="flex items-center gap-2 ml-3 shrink-0">
-              {/* Cancel Workout Button */}
               <button
                 onClick={() => {
-                  // Use the custom modal instead of window.confirm
                   confirm.ask({
                     title: 'CANCEL WORKOUT',
                     message:
@@ -317,112 +351,210 @@ export default function LiveWorkout() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 max-w-3xl w-full mx-auto p-4 sm:px-6 space-y-6 pb-32">
-          {exercises.map((ex: any, index: number) => (
-            <div
-              key={ex.id}
-              draggable={isReordering}
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragEnd={handleDragEnd}
-              className={`bg-neutral-900 border rounded-xl p-4 shadow-sm transition-colors ${isReordering ? 'cursor-grab active:cursor-grabbing' : ''} ${draggedExIndex === index ? 'opacity-50 border-indigo-500' : 'border-neutral-800'} ${dragOverExIndex === index ? 'border-indigo-500 bg-indigo-950/20' : ''}`}
-            >
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {isReordering ? (
-                    <div className="text-neutral-500">
-                      <GripVertical size={20} />
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
-                      {index + 1}
-                    </div>
-                  )}
-                  <h3 className="text-lg font-bold text-indigo-100 truncate">
-                    {ex.name}
-                  </h3>
-                </div>
-                <button
-                  onClick={() => removeExercise(ex.id)}
-                  className="text-neutral-600 hover:text-rose-500 p-2 transition-colors shrink-0"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
+        <div className="flex-1 max-w-6xl w-full mx-auto p-4 sm:px-6 grid grid-cols-1 md:grid-cols-2 gap-6 pb-32 content-start">
+          {exercises.map((ex: any, index: number) => {
+            const isSuperset =
+              ex.superset_id &&
+              ((index > 0 &&
+                exercises[index - 1].superset_id === ex.superset_id) ||
+                (index < exercises.length - 1 &&
+                  exercises[index + 1].superset_id === ex.superset_id));
 
-              {!isReordering && (
-                <div className="space-y-2">
-                  <div className="flex gap-2 px-1 text-[10px] text-neutral-500 font-mono uppercase tracking-wider items-center">
-                    <span className="w-6 text-center shrink-0">Set</span>
-                    <span className="w-24 text-center shrink-0">Previous</span>
-                    {(ex.tracking_fields || []).map((f: string) => (
-                      <span key={f} className="flex-1 text-center truncate">
-                        {FIELD_LABELS[f] || f}
-                      </span>
-                    ))}
-                    <span className="w-8 shrink-0"></span>
-                    <span className="w-10 text-center shrink-0">
-                      <Check size={14} className="mx-auto" />
-                    </span>
+            return (
+              <div
+                key={ex.id}
+                draggable={isReordering}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={(e) => handleDrop(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`bg-neutral-900 border rounded-xl p-4 shadow-sm transition-colors ${
+                  isReordering
+                    ? 'col-span-1 md:col-span-2 cursor-grab active:cursor-grabbing'
+                    : isSuperset
+                      ? 'col-span-1'
+                      : 'col-span-1 md:col-span-2'
+                } ${draggedExIndex === index ? 'opacity-50 border-indigo-500' : 'border-neutral-800'} ${dragOverExIndex === index ? 'border-indigo-500 bg-indigo-950/20' : ''}`}
+              >
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {isReordering ? (
+                      <div className="text-neutral-500">
+                        <GripVertical size={20} />
+                      </div>
+                    ) : (
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isSuperset ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'}`}
+                      >
+                        {isSuperset ? 'S' : index + 1}
+                      </div>
+                    )}
+                    <h3 className="text-lg font-bold text-indigo-100 truncate">
+                      {ex.name}
+                    </h3>
                   </div>
-
-                  {ex.sets.map((set: any, sIdx: number) => (
-                    <div
-                      key={sIdx}
-                      className={`flex gap-2 items-center p-1 rounded-lg transition-colors ${set.completed ? 'bg-emerald-950/20' : ''}`}
-                    >
-                      <div className="w-6 text-center text-xs font-bold text-neutral-500 font-mono shrink-0">
-                        {set.set}
-                      </div>
-                      <div className="w-24 text-center text-xs text-neutral-500 font-mono shrink-0 truncate">
-                        {formatPrevious(
-                          previousSets[ex.name]?.[sIdx],
-                          ex.tracking_fields,
+                  <div className="flex items-center gap-1 shrink-0">
+                    {index > 0 && !isReordering && (
+                      <button
+                        onClick={() => toggleSuperset(index)}
+                        className={`p-2 transition-colors shrink-0 ${isSuperset && exercises[index - 1]?.superset_id === ex.superset_id ? 'text-indigo-400' : 'text-neutral-600 hover:text-indigo-400'}`}
+                        title="Superset with previous"
+                      >
+                        {isSuperset &&
+                        exercises[index - 1]?.superset_id === ex.superset_id ? (
+                          <Unlink size={16} />
+                        ) : (
+                          <Link size={16} />
                         )}
-                      </div>
-                      {(ex.tracking_fields || []).map((f: string) => {
-                        const key = FIELD_KEYS[f];
-                        return (
-                          <div key={f} className="flex-1 min-w-0">
-                            <input
-                              type="number"
-                              step="any"
-                              placeholder="-"
-                              value={set[key] || ''}
-                              onChange={(e) =>
-                                updateSet(ex.id, sIdx, key, e.target.value)
-                              }
-                              className={`${inputClass} ${set.completed ? 'opacity-50' : ''} ${key === 'rir' ? 'text-indigo-300 placeholder:text-neutral-700' : ''}`}
-                            />
-                          </div>
-                        );
-                      })}
-                      <button
-                        onClick={() => removeSet(ex.id, sIdx)}
-                        disabled={ex.sets.length === 1}
-                        className="w-8 h-10 shrink-0 flex items-center justify-center text-neutral-600 hover:text-rose-500 transition-colors disabled:opacity-0"
-                      >
-                        <X size={16} />
                       </button>
-                      <button
-                        onClick={() => toggleSetComplete(ex.id, sIdx)}
-                        className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-lg transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'}`}
-                      >
-                        <Check size={16} strokeWidth={3} />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => addSet(ex.id)}
-                    className="w-full py-2 mt-2 border-2 border-dashed border-neutral-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-lg text-indigo-400 font-mono text-xs transition-colors flex items-center justify-center gap-1"
-                  >
-                    <Plus size={14} /> Add Set
-                  </button>
+                    )}
+                    <button
+                      onClick={() => removeExercise(ex.id)}
+                      className="text-neutral-600 hover:text-rose-500 p-2 transition-colors shrink-0"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {!isReordering && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2 px-1 text-[10px] text-neutral-500 font-mono uppercase tracking-wider items-center">
+                      <span className="w-6 text-center shrink-0">Set</span>
+                      <span className="w-24 text-center shrink-0">
+                        Previous
+                      </span>
+                      {(ex.tracking_fields || []).map((f: string) => (
+                        <span key={f} className="flex-1 text-center truncate">
+                          {FIELD_LABELS[f] || f}
+                        </span>
+                      ))}
+                      <span className="w-8 shrink-0"></span>
+                      <span className="w-10 text-center shrink-0">
+                        <Check size={14} className="mx-auto" />
+                      </span>
+                    </div>
+
+                    {ex.sets.map((set: any, sIdx: number) => {
+                      const isMenuOpen =
+                        openSetMenu?.exId === ex.id &&
+                        openSetMenu?.sIdx === sIdx;
+
+                      return (
+                        <div
+                          key={sIdx}
+                          className={`flex gap-2 items-center p-1 rounded-lg transition-colors relative ${set.completed ? 'bg-emerald-950/20' : ''} ${isMenuOpen ? 'z-50' : 'z-10'}`}
+                        >
+                          <div className="relative set-menu-container">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenSetMenu(
+                                  isMenuOpen ? null : { exId: ex.id, sIdx },
+                                );
+                              }}
+                              className="w-6 h-6 shrink-0 flex items-center justify-center text-xs font-bold font-mono rounded hover:bg-neutral-800 transition-colors"
+                            >
+                              {renderSetBadge(ex, set, sIdx)}
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {isMenuOpen && (
+                              <div className="absolute top-full left-0 mt-2 w-32 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 z-[9999]">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateSetType(ex.id, sIdx, 'working');
+                                    setOpenSetMenu(null);
+                                  }}
+                                  className="px-3 py-2.5 text-xs font-mono text-left text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                                >
+                                  Working
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateSetType(ex.id, sIdx, 'W');
+                                    setOpenSetMenu(null);
+                                  }}
+                                  className="px-3 py-2.5 text-xs font-mono text-left text-amber-500 hover:bg-neutral-800 transition-colors"
+                                >
+                                  Warm-up (W)
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateSetType(ex.id, sIdx, 'D');
+                                    setOpenSetMenu(null);
+                                  }}
+                                  className="px-3 py-2.5 text-xs font-mono text-left text-indigo-400 hover:bg-neutral-800 transition-colors"
+                                >
+                                  Drop set (D)
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateSetType(ex.id, sIdx, 'F');
+                                    setOpenSetMenu(null);
+                                  }}
+                                  className="px-3 py-2.5 text-xs font-mono text-left text-rose-500 hover:bg-neutral-800 transition-colors"
+                                >
+                                  Failure (F)
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="w-24 text-center text-xs text-neutral-500 font-mono shrink-0 truncate">
+                            {formatPrevious(
+                              previousSets[ex.name]?.[sIdx],
+                              ex.tracking_fields,
+                            )}
+                          </div>
+                          {(ex.tracking_fields || []).map((f: string) => {
+                            const key = FIELD_KEYS[f];
+                            return (
+                              <div key={f} className="flex-1 min-w-0">
+                                <input
+                                  type="number"
+                                  step="any"
+                                  placeholder="-"
+                                  value={set[key] || ''}
+                                  onChange={(e) =>
+                                    updateSet(ex.id, sIdx, key, e.target.value)
+                                  }
+                                  className={`${inputClass} ${set.completed ? 'opacity-50' : ''} ${key === 'rir' ? 'text-indigo-300 placeholder:text-neutral-700' : ''}`}
+                                />
+                              </div>
+                            );
+                          })}
+                          <button
+                            onClick={() => removeSet(ex.id, sIdx)}
+                            disabled={ex.sets.length === 1}
+                            className="w-8 h-10 shrink-0 flex items-center justify-center text-neutral-600 hover:text-rose-500 transition-colors disabled:opacity-0"
+                          >
+                            <X size={16} />
+                          </button>
+                          <button
+                            onClick={() => toggleSetComplete(ex.id, sIdx)}
+                            className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-lg transition-colors ${set.completed ? 'bg-emerald-500 text-white' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700'}`}
+                          >
+                            <Check size={16} strokeWidth={3} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <button
+                      onClick={() => addSet(ex.id)}
+                      className="w-full py-2 mt-2 border-2 border-dashed border-neutral-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-lg text-indigo-400 font-mono text-xs transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Plus size={14} /> Add Set
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Floating Action Buttons */}

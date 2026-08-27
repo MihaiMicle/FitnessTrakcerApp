@@ -1,7 +1,6 @@
-// app/workouts/RoutineEditor.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import {
@@ -13,6 +12,8 @@ import {
   Save,
   X,
   GripVertical,
+  Link,
+  Unlink,
 } from 'lucide-react';
 import ExerciseSelectorModal from './ExerciseSelectorModal';
 
@@ -38,6 +39,21 @@ const FIELD_KEYS: Record<string, string> = {
   difficulty: 'difficulty',
 };
 
+const renderSetBadge = (ex: any, set: any, sIdx: number) => {
+  const type = set.set_type || 'working';
+  if (type === 'W') return <span className="text-amber-500">W</span>;
+  if (type === 'D') return <span className="text-indigo-400">D</span>;
+  if (type === 'F') return <span className="text-rose-500">F</span>;
+
+  // Normal sets - calculate working set number ignoring W, D, F
+  const workingIndex = ex.sets.filter(
+    (s: any, i: number) =>
+      i <= sIdx && (!s.set_type || s.set_type === 'working'),
+  ).length;
+
+  return <span className="text-neutral-500">{workingIndex}</span>;
+};
+
 export default function RoutineEditor({
   template,
   onClose,
@@ -58,6 +74,22 @@ export default function RoutineEditor({
   const [isReordering, setIsReordering] = useState(false);
   const [draggedExIndex, setDraggedExIndex] = useState<number | null>(null);
   const [dragOverExIndex, setDragOverExIndex] = useState<number | null>(null);
+
+  const [openSetMenu, setOpenSetMenu] = useState<{
+    exId: string;
+    sIdx: number;
+  } | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest && target.closest('.set-menu-container')) return;
+      setOpenSetMenu(null);
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const handleSave = async () => {
     if (!name.trim()) return toast.error('Routine name is required');
@@ -100,15 +132,13 @@ export default function RoutineEditor({
     const trackingFields =
       selectedEx.tracking_fields ||
       (selectedEx.type === 'strength' ? ['weight', 'reps', 'rir'] : ['time']);
-
     const newEx = {
       id: 'ex-' + Date.now(),
       name: selectedEx.name,
       type: selectedEx.type,
       tracking_fields: trackingFields,
-      sets: [{ set: 1, completed: false }],
+      sets: [{ set: 1, set_type: 'working', completed: false }],
     };
-
     setExercises([...exercises, newEx]);
     setSelectorType(null);
   };
@@ -118,13 +148,15 @@ export default function RoutineEditor({
       exercises.map((ex) => {
         if (ex.id !== exId) return ex;
         const lastSet = ex.sets[ex.sets.length - 1];
-        const newSet: any = { set: ex.sets.length + 1, completed: false };
-
+        const newSet: any = {
+          set: ex.sets.length + 1,
+          set_type: 'working',
+          completed: false,
+        };
         ex.tracking_fields.forEach((f: string) => {
           const key = FIELD_KEYS[f];
           newSet[key] = lastSet ? lastSet[key] : '';
         });
-
         return { ...ex, sets: [...ex.sets, newSet] };
       }),
     );
@@ -146,6 +178,17 @@ export default function RoutineEditor({
     );
   };
 
+  const updateSetType = (exId: string, setIndex: number, type: string) => {
+    setExercises(
+      exercises.map((ex) => {
+        if (ex.id !== exId) return ex;
+        const newSets = [...ex.sets];
+        newSets[setIndex] = { ...newSets[setIndex], set_type: type };
+        return { ...ex, sets: newSets };
+      }),
+    );
+  };
+
   const removeSet = (exId: string, setIndex: number) => {
     setExercises(
       exercises.map((ex) => {
@@ -162,20 +205,40 @@ export default function RoutineEditor({
   const removeExercise = (exId: string) =>
     setExercises(exercises.filter((ex) => ex.id !== exId));
 
-  // --- Drag and Drop Handlers ---
+  const toggleSuperset = (index: number) => {
+    if (index <= 0) return;
+    setExercises((prev) => {
+      const newEx = [...prev];
+      const current = newEx[index];
+      const previous = newEx[index - 1];
+
+      if (current.superset_id && current.superset_id === previous.superset_id) {
+        newEx[index] = { ...current, superset_id: null };
+        const isPrevOrphaned = !newEx.some(
+          (e, i) => i !== index - 1 && e.superset_id === previous.superset_id,
+        );
+        if (isPrevOrphaned)
+          newEx[index - 1] = { ...previous, superset_id: null };
+      } else {
+        const setId = previous.superset_id || `ss-${Date.now()}`;
+        newEx[index - 1] = { ...previous, superset_id: setId };
+        newEx[index] = { ...current, superset_id: setId };
+      }
+      return newEx;
+    });
+  };
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedExIndex(index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
   };
-
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (draggedExIndex === index) return;
     setDragOverExIndex(index);
   };
-
   const handleDrop = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
     if (draggedExIndex === null || draggedExIndex === targetIndex) {
@@ -185,12 +248,12 @@ export default function RoutineEditor({
     }
     const newExercises = [...exercises];
     const [movedItem] = newExercises.splice(draggedExIndex, 1);
+    movedItem.superset_id = null; // Clear superset if moved
     newExercises.splice(targetIndex, 0, movedItem);
     setExercises(newExercises);
     setDraggedExIndex(null);
     setDragOverExIndex(null);
   };
-
   const handleDragEnd = () => {
     setDraggedExIndex(null);
     setDragOverExIndex(null);
@@ -242,107 +305,193 @@ export default function RoutineEditor({
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 max-w-3xl w-full mx-auto p-4 sm:px-6 space-y-6 pb-32 overflow-y-auto">
-        {exercises.map((ex, index) => (
-          <div
-            key={ex.id}
-            draggable={isReordering}
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={(e) => handleDrop(e, index)}
-            onDragEnd={handleDragEnd}
-            className={`bg-neutral-900 border rounded-xl p-4 shadow-sm transition-colors ${
-              isReordering ? 'cursor-grab active:cursor-grabbing' : ''
-            } ${
-              draggedExIndex === index
-                ? 'opacity-50 border-indigo-500'
-                : 'border-neutral-800'
-            } ${
-              dragOverExIndex === index
-                ? 'border-indigo-500 bg-indigo-950/20'
-                : ''
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-3 min-w-0">
-                {isReordering ? (
-                  <div className="text-neutral-500">
-                    <GripVertical size={20} />
-                  </div>
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
-                    {index + 1}
-                  </div>
-                )}
-                <h3 className="text-lg font-bold text-indigo-100 truncate">
-                  {ex.name}
-                </h3>
-              </div>
-              <button
-                onClick={() => removeExercise(ex.id)}
-                className="text-neutral-600 hover:text-rose-500 p-2 transition-colors shrink-0"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
+      <div className="flex-1 max-w-6xl w-full mx-auto p-4 sm:px-6 grid grid-cols-1 md:grid-cols-2 gap-6 pb-32 content-start overflow-y-auto">
+        {exercises.map((ex, index) => {
+          const isSuperset =
+            ex.superset_id &&
+            ((index > 0 &&
+              exercises[index - 1].superset_id === ex.superset_id) ||
+              (index < exercises.length - 1 &&
+                exercises[index + 1].superset_id === ex.superset_id));
 
-            {!isReordering && (
-              <div className="space-y-2">
-                <div className="flex gap-2 px-1 text-[10px] text-neutral-500 font-mono uppercase tracking-wider items-center">
-                  <span className="w-6 text-center shrink-0">Set</span>
-                  {(ex.tracking_fields || []).map((f: string) => (
-                    <span key={f} className="flex-1 text-center truncate">
-                      {FIELD_LABELS[f] || f}
-                    </span>
-                  ))}
-                  <span className="w-8 shrink-0"></span>
-                </div>
-
-                {ex.sets.map((set: any, sIdx: number) => (
-                  <div key={sIdx} className="flex gap-2 items-center p-1">
-                    <div className="w-6 text-center text-xs font-bold text-neutral-500 font-mono shrink-0">
-                      {set.set}
+          return (
+            <div
+              key={ex.id}
+              draggable={isReordering}
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDrop={(e) => handleDrop(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`bg-neutral-900 border rounded-xl p-4 shadow-sm transition-colors ${
+                isReordering
+                  ? 'col-span-1 md:col-span-2 cursor-grab active:cursor-grabbing'
+                  : isSuperset
+                    ? 'col-span-1'
+                    : 'col-span-1 md:col-span-2'
+              } ${draggedExIndex === index ? 'opacity-50 border-indigo-500' : 'border-neutral-800'} ${dragOverExIndex === index ? 'border-indigo-500 bg-indigo-950/20' : ''}`}
+            >
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  {isReordering ? (
+                    <div className="text-neutral-500">
+                      <GripVertical size={20} />
                     </div>
-
-                    {(ex.tracking_fields || []).map((f: string) => {
-                      const key = FIELD_KEYS[f];
-                      return (
-                        <div key={f} className="flex-1 min-w-0">
-                          <input
-                            type="number"
-                            step="any"
-                            placeholder="target"
-                            value={set[key] || ''}
-                            onChange={(e) =>
-                              updateSet(ex.id, sIdx, key, e.target.value)
-                            }
-                            className={inputClass}
-                          />
-                        </div>
-                      );
-                    })}
-
-                    <button
-                      onClick={() => removeSet(ex.id, sIdx)}
-                      disabled={ex.sets.length === 1}
-                      className="w-8 h-8 shrink-0 flex items-center justify-center text-neutral-600 hover:text-rose-500 transition-colors disabled:opacity-0"
+                  ) : (
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isSuperset ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'}`}
                     >
-                      <X size={16} />
+                      {isSuperset ? 'S' : index + 1}
+                    </div>
+                  )}
+                  <h3 className="text-lg font-bold text-indigo-100 truncate">
+                    {ex.name}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {index > 0 && !isReordering && (
+                    <button
+                      onClick={() => toggleSuperset(index)}
+                      className={`p-2 transition-colors shrink-0 ${isSuperset && exercises[index - 1]?.superset_id === ex.superset_id ? 'text-indigo-400' : 'text-neutral-600 hover:text-indigo-400'}`}
+                      title="Superset with previous"
+                    >
+                      {isSuperset &&
+                      exercises[index - 1]?.superset_id === ex.superset_id ? (
+                        <Unlink size={16} />
+                      ) : (
+                        <Link size={16} />
+                      )}
                     </button>
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => addSet(ex.id)}
-                  className="w-full py-2 mt-2 border-2 border-dashed border-neutral-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-lg text-indigo-400 font-mono text-xs transition-colors flex items-center justify-center gap-1"
-                >
-                  <Plus size={14} /> Add Set
-                </button>
+                  )}
+                  <button
+                    onClick={() => removeExercise(ex.id)}
+                    className="text-neutral-600 hover:text-rose-500 p-2 transition-colors shrink-0"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+
+              {!isReordering && (
+                <div className="space-y-2">
+                  <div className="flex gap-2 px-1 text-[10px] text-neutral-500 font-mono uppercase tracking-wider items-center">
+                    <span className="w-6 text-center shrink-0">Set</span>
+                    {(ex.tracking_fields || []).map((f: string) => (
+                      <span key={f} className="flex-1 text-center truncate">
+                        {FIELD_LABELS[f] || f}
+                      </span>
+                    ))}
+                    <span className="w-8 shrink-0"></span>
+                  </div>
+
+                  {ex.sets.map((set: any, sIdx: number) => {
+                    const isMenuOpen =
+                      openSetMenu?.exId === ex.id && openSetMenu?.sIdx === sIdx;
+
+                    return (
+                      <div
+                        key={sIdx}
+                        className={`flex gap-2 items-center p-1 rounded-lg transition-colors relative ${isMenuOpen ? 'z-50' : 'z-10'}`}
+                      >
+                        <div className="relative set-menu-container">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenSetMenu(
+                                isMenuOpen ? null : { exId: ex.id, sIdx },
+                              );
+                            }}
+                            className="w-6 h-6 shrink-0 flex items-center justify-center text-xs font-bold font-mono rounded hover:bg-neutral-800 transition-colors"
+                          >
+                            {renderSetBadge(ex, set, sIdx)}
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {isMenuOpen && (
+                            <div className="absolute top-full left-0 mt-2 w-32 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 z-[9999]">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateSetType(ex.id, sIdx, 'working');
+                                  setOpenSetMenu(null);
+                                }}
+                                className="px-3 py-2.5 text-xs font-mono text-left text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                              >
+                                Working
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateSetType(ex.id, sIdx, 'W');
+                                  setOpenSetMenu(null);
+                                }}
+                                className="px-3 py-2.5 text-xs font-mono text-left text-amber-500 hover:bg-neutral-800 transition-colors"
+                              >
+                                Warm-up (W)
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateSetType(ex.id, sIdx, 'D');
+                                  setOpenSetMenu(null);
+                                }}
+                                className="px-3 py-2.5 text-xs font-mono text-left text-indigo-400 hover:bg-neutral-800 transition-colors"
+                              >
+                                Drop set (D)
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateSetType(ex.id, sIdx, 'F');
+                                  setOpenSetMenu(null);
+                                }}
+                                className="px-3 py-2.5 text-xs font-mono text-left text-rose-500 hover:bg-neutral-800 transition-colors"
+                              >
+                                Failure (F)
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {(ex.tracking_fields || []).map((f: string) => {
+                          const key = FIELD_KEYS[f];
+                          return (
+                            <div key={f} className="flex-1 min-w-0">
+                              <input
+                                type="number"
+                                step="any"
+                                placeholder="target"
+                                value={set[key] || ''}
+                                onChange={(e) =>
+                                  updateSet(ex.id, sIdx, key, e.target.value)
+                                }
+                                className={inputClass}
+                              />
+                            </div>
+                          );
+                        })}
+
+                        <button
+                          onClick={() => removeSet(ex.id, sIdx)}
+                          disabled={ex.sets.length === 1}
+                          className="w-8 h-8 shrink-0 flex items-center justify-center text-neutral-600 hover:text-rose-500 transition-colors disabled:opacity-0"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => addSet(ex.id)}
+                    className="w-full py-2 mt-2 border-2 border-dashed border-neutral-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-lg text-indigo-400 font-mono text-xs transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Plus size={14} /> Add Set
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Floating action buttons */}

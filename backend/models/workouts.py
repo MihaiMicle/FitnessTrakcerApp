@@ -1,8 +1,18 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    Float,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from core.database import Base
+from core.social import VISIBILITY_PRIVATE
 
 
 class WorkoutSession(Base):
@@ -17,7 +27,15 @@ class WorkoutSession(Base):
     end_time = Column(DateTime(timezone=True), nullable=True)
     duration_seconds = Column(Integer, default=0)
     exercises = Column(JSONB, default=list)
+
+    # Who may read this session, clamped by the owner's is_private flag
+    visibility = Column(String, nullable=False, default=VISIBILITY_PRIVATE)
+
     created_at = Column(DateTime(timezone=True), default=func.now())
+
+    __table_args__ = (
+        Index("ix_workout_sessions_user_visibility", "user_id", "visibility"),
+    )
 
 
 class Exercise(Base):
@@ -49,7 +67,22 @@ class WorkoutTemplate(Base):
     )
     name = Column(String, nullable=False)
     exercises = Column(JSONB, default=list)
+
+    # Routines are the unit users share, so they carry their own visibility
+    visibility = Column(String, nullable=False, default=VISIBILITY_PRIVATE)
+
+    # Set when a routine was copied from someone else's shared routine
+    source_template_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workout_templates.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     created_at = Column(DateTime(timezone=True), default=func.now())
+
+    __table_args__ = (
+        Index("ix_workout_templates_user_visibility", "user_id", "visibility"),
+    )
 
 
 class WorkoutSet(Base):
@@ -69,6 +102,7 @@ class WorkoutSet(Base):
     
     exercise_name = Column(String, nullable=False)
     set_number = Column(Integer, nullable=False)
+    set_type = Column(String, default="working")
     completed = Column(Boolean, default=False)
 
     # Tracking Fields

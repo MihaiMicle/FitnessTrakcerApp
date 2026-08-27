@@ -102,12 +102,15 @@ export default function WorkoutsDashboard() {
 
       if (res.ok) {
         const newSession = await res.json();
-        // Trigger the global overlay via context!
         startWorkout(newSession);
         toast.success('Session started!');
+      } else {
+        // Capture the actual FastAPI error message
+        const errorData = await res.json();
+        toast.error(`Error: ${errorData.detail || 'Failed to start workout'}`);
       }
     } catch (err) {
-      toast.error('Failed to start workout');
+      toast.error('Network error. Is the backend running?');
     }
   };
 

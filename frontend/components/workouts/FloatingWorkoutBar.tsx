@@ -55,7 +55,6 @@ export default function FloatingWorkoutBar() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                // Use the custom modal instead of window.confirm
                 confirm.ask({
                   title: 'CANCEL WORKOUT',
                   message:

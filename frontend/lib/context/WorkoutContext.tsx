@@ -45,8 +45,10 @@ interface WorkoutContextProps {
     value: any,
   ) => void;
   toggleSetComplete: (exId: string, setIndex: number) => void;
+  updateSetType: (exId: string, setIndex: number, type: string) => void;
   removeSet: (exId: string, setIndex: number) => void;
   removeExercise: (exId: string) => void;
+  toggleSuperset: (index: number) => void;
   getNextSet: () => any | null;
   saveSession: (status?: string) => Promise<boolean>;
 }
@@ -186,7 +188,11 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       prev.map((ex) => {
         if (ex.id !== exId) return ex;
         const lastSet = ex.sets[ex.sets.length - 1];
-        const newSet: any = { set: ex.sets.length + 1, completed: false };
+        const newSet: any = {
+          set: ex.sets.length + 1,
+          set_type: 'working',
+          completed: false,
+        };
         ex.tracking_fields.forEach((f: string) => {
           const key = FIELD_KEYS[f];
           newSet[key] = lastSet ? lastSet[key] : '';
@@ -224,6 +230,20 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const updateSetType = useCallback(
+    (exId: string, setIndex: number, type: string) => {
+      setExercises((prev) =>
+        prev.map((ex) => {
+          if (ex.id !== exId) return ex;
+          const newSets = [...ex.sets];
+          newSets[setIndex] = { ...newSets[setIndex], set_type: type };
+          return { ...ex, sets: newSets };
+        }),
+      );
+    },
+    [],
+  );
+
   const removeSet = useCallback((exId: string, setIndex: number) => {
     setExercises((prev) =>
       prev.map((ex) => {
@@ -239,6 +259,33 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
 
   const removeExercise = useCallback((exId: string) => {
     setExercises((prev) => prev.filter((ex) => ex.id !== exId));
+  }, []);
+
+  const toggleSuperset = useCallback((index: number) => {
+    if (index <= 0) return;
+    setExercises((prev) => {
+      const newEx = [...prev];
+      const current = newEx[index];
+      const previous = newEx[index - 1];
+
+      if (current.superset_id && current.superset_id === previous.superset_id) {
+        // Unlink
+        newEx[index] = { ...current, superset_id: null };
+        // Clean up previous if it's now orphaned
+        const isPrevOrphaned = !newEx.some(
+          (e, i) => i !== index - 1 && e.superset_id === previous.superset_id,
+        );
+        if (isPrevOrphaned) {
+          newEx[index - 1] = { ...previous, superset_id: null };
+        }
+      } else {
+        // Link
+        const setId = previous.superset_id || `ss-${Date.now()}`;
+        newEx[index - 1] = { ...previous, superset_id: setId };
+        newEx[index] = { ...current, superset_id: setId };
+      }
+      return newEx;
+    });
   }, []);
 
   const getNextSet = useCallback(() => {
@@ -303,8 +350,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         addSet,
         updateSet,
         toggleSetComplete,
+        updateSetType,
         removeSet,
         removeExercise,
+        toggleSuperset,
         getNextSet,
         saveSession,
       }}

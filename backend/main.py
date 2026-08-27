@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import engine, Base
-from routers import profile, nutrition, foods, chat, workouts
+from routers import profile, nutrition, foods, chat, workouts, social
 
 # Create database tables automatically if they don't exist yet
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,7 @@ app.include_router(nutrition.router)
 app.include_router(foods.router)
 app.include_router(chat.router)
 app.include_router(workouts.router)
+app.include_router(social.router)
 
 
 @app.get("/", tags=["Health"])

@@ -3,6 +3,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
+from schemas.social import Visibility
+
 
 class WorkoutSessionCreate(BaseModel):
     name: str = "Workout"
@@ -12,6 +14,9 @@ class WorkoutSessionCreate(BaseModel):
     duration_seconds: int = 0
     exercises: List[Dict[str, Any]] = []
 
+    # Omitted means fall back to the owner's default_workout_visibility
+    visibility: Optional[Visibility] = None
+
 
 class WorkoutSessionUpdate(BaseModel):
     name: Optional[str] = None
@@ -20,6 +25,7 @@ class WorkoutSessionUpdate(BaseModel):
     end_time: Optional[datetime] = None
     duration_seconds: Optional[int] = None
     exercises: Optional[List[Dict[str, Any]]] = None
+    visibility: Optional[Visibility] = None
 
 
 class WorkoutSessionResponse(WorkoutSessionCreate):
@@ -57,10 +63,14 @@ class WorkoutTemplateCreate(BaseModel):
     name: str
     exercises: List[Dict[str, Any]] = []
 
+    # Omitted means fall back to the owner's default_routine_visibility
+    visibility: Optional[Visibility] = None
+
 
 class WorkoutTemplateResponse(WorkoutTemplateCreate):
     id: UUID
     user_id: UUID
+    source_template_id: Optional[UUID] = None
     created_at: datetime
 
     class Config:
