@@ -24,10 +24,18 @@ export default defineConfig({
       // here only makes the gate permanently red, which teaches people to
       // ignore it. Not yet covered: lib/images.ts, lib/progressShare.ts,
       // lib/api.ts, lib/social/api.ts, and everything under components/ and hooks/
+      // lib/offline/manager.ts and workoutSender.ts are left out for the same
+      // reason as lib/api.ts: they are browser and network glue, and every
+      // decision they make lives in queue.ts, sync.ts, draft.ts and storage.ts
       include: [
         'lib/nutrition/**/*.ts',
         'lib/workouts/**/*.ts',
         'lib/social/visibility.ts',
+        'lib/offline/queue.ts',
+        'lib/offline/sync.ts',
+        'lib/offline/draft.ts',
+        'lib/offline/storage.ts',
+        'lib/offline/ids.ts',
       ],
       exclude: ['**/__tests__/**', '**/*.d.ts'],
 

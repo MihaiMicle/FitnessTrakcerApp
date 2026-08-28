@@ -5,6 +5,7 @@ import { Check, ChevronUp, Clock, Timer, SkipForward, X } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import { useConfirm } from '@/components/shared/useConfirm';
 import { formatRest } from '@/lib/workouts/rest';
+import SyncStatusBadge from './SyncStatusBadge';
 
 export default function FloatingWorkoutBar() {
   const {
@@ -53,6 +54,7 @@ export default function FloatingWorkoutBar() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <SyncStatusBadge compact />
             <div className="flex items-center gap-2 text-indigo-400 font-mono text-sm bg-indigo-500/10 px-2 py-1 rounded-md">
               <Clock size={14} />
               {formattedTime}

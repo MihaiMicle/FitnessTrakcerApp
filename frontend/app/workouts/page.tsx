@@ -11,16 +11,21 @@ import {
   BookOpen,
   Plus,
   Pencil,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RoutineEditor from '@/components/workouts/RoutineEditor';
 import { useWorkout } from '@/lib/context/WorkoutContext';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+import { newLocalSession } from '@/lib/offline/draft';
+import { queueSessionSave } from '@/lib/offline/manager';
+import WorkoutCalendar from '@/components/workouts/WorkoutCalendar';
 
 export default function WorkoutsDashboard() {
   const router = useRouter();
 
-  // Pull startWorkout from your global context
-  const { startWorkout } = useWorkout();
+  const { startWorkout, activeSession } = useWorkout();
+  const { pending, syncing } = useSyncStatus();
 
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -32,8 +37,15 @@ export default function WorkoutsDashboard() {
   const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
 
+  const [editTimeSession, setEditTimeSession] = useState<any | null>(null);
+  const [newDuration, setNewDuration] = useState(0);
+
+  const [selectedDayWorkouts, setSelectedDayWorkouts] = useState<{
+    date: string;
+    sessions: any[];
+  } | null>(null);
+
   const fetchSessions = async () => {
-    setLoading(true);
     try {
       const {
         data: { session },
@@ -68,49 +80,58 @@ export default function WorkoutsDashboard() {
   };
 
   useEffect(() => {
-    fetchSessions();
-  }, []);
+    if (pending === 0 && !syncing) {
+      fetchSessions();
+    }
+  }, [pending, syncing]);
 
   const startEmptyWorkout = () => handleStartWorkout('New Workout', []);
 
   const startWorkoutFromTemplate = (template: any) =>
     handleStartWorkout(template.name, template.exercises);
 
+  /*
+   * Start now, upload later
+   *
+   * The session id is generated on the device, so the workout is real to the
+   * app before any request is made and the first set can be logged with no
+   * signal. The queued PUT creates the row server side when it gets through
+   */
   const handleStartWorkout = async (name: string, exercises: any[]) => {
+    const newSession = newLocalSession(name, exercises, Date.now());
+    startWorkout(newSession);
+    queueSessionSave(newSession.id as string, { ...newSession });
+    toast.success('Session started!');
+  };
+
+  const confirmEditTime = async () => {
+    if (!editTimeSession) return;
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      const payload = {
-        name,
-        status: 'in_progress',
-        start_time: new Date().toISOString(),
-        duration_seconds: 0,
-        exercises,
-      };
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workouts/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/workouts/${editTimeSession.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ duration_seconds: newDuration }),
         },
-        body: JSON.stringify(payload),
-      });
+      );
 
       if (res.ok) {
-        const newSession = await res.json();
-        startWorkout(newSession);
-        toast.success('Session started!');
-      } else {
-        // Capture the actual FastAPI error message
-        const errorData = await res.json();
-        toast.error(`Error: ${errorData.detail || 'Failed to start workout'}`);
+        toast.success('Duration updated!');
+        fetchSessions();
       }
     } catch (err) {
-      toast.error('Network error. Is the backend running?');
+      toast.error('Failed to update time.');
+    } finally {
+      setEditTimeSession(null);
     }
   };
 
@@ -295,6 +316,19 @@ export default function WorkoutsDashboard() {
           )}
         </div>
 
+        {/* Workout Calendar */}
+        <div className="space-y-4 pt-4 border-t border-neutral-800/50">
+          <h2 className="text-xs font-mono text-neutral-500 tracking-wider">
+            ACTIVITY CALENDAR
+          </h2>
+          <WorkoutCalendar
+            sessions={sessions}
+            onDayClick={(date, daySessions) =>
+              setSelectedDayWorkouts({ date, sessions: daySessions })
+            }
+          />
+        </div>
+
         {/* Past sessions */}
         <div className="space-y-4 pt-4 border-t border-neutral-800/50">
           <h2 className="text-xs font-mono text-neutral-500 tracking-wider">
@@ -312,6 +346,7 @@ export default function WorkoutsDashboard() {
             sessions.map((s) => (
               <div
                 key={s.id}
+                onClick={() => startWorkout(s)}
                 className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 sm:p-5 group flex justify-between items-center"
               >
                 <div>
@@ -328,21 +363,59 @@ export default function WorkoutsDashboard() {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSessionToDelete(s.id);
-                  }}
-                  className="text-neutral-600 hover:text-rose-500 p-3 -mr-2 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100"
-                  title="Delete Workout"
-                >
-                  <Trash2 size={20} />
-                </button>
+
+                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSessionToDelete(s.id);
+                    }}
+                    className="text-neutral-600 hover:text-rose-500 p-2 transition-colors"
+                    title="Delete Workout"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* Edit Time Modal */}
+      {editTimeSession && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-sm w-full p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-white text-center tracking-tight">
+              Edit Workout Time
+            </h3>
+            <div className="flex items-center justify-center gap-4">
+              <input
+                type="number"
+                min="0"
+                value={Math.floor(newDuration / 60)}
+                onChange={(e) => setNewDuration(Number(e.target.value) * 60)}
+                className="w-24 bg-neutral-950 border border-neutral-800 rounded-lg p-3 text-white text-center text-xl font-mono focus:border-indigo-500 outline-none transition-colors"
+              />
+              <span className="text-neutral-400 font-mono">minutes</span>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setEditTimeSession(null)}
+                className="flex-1 py-3 px-4 bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-xs font-bold rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmEditTime}
+                className="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold rounded-xl transition-colors"
+              >
+                Save Time
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete past session modal */}
       {sessionToDelete && (
@@ -376,6 +449,53 @@ export default function WorkoutsDashboard() {
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar Day Workouts Modal */}
+      {selectedDayWorkouts && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {new Date(selectedDayWorkouts.date).toLocaleDateString(
+                  undefined,
+                  { weekday: 'short', month: 'short', day: 'numeric' },
+                )}
+              </h3>
+              <button
+                onClick={() => setSelectedDayWorkouts(null)}
+                className="text-neutral-500 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
+              {selectedDayWorkouts.sessions.map((s) => (
+                <div
+                  key={s.id}
+                  onClick={() => {
+                    setSelectedDayWorkouts(null);
+                    startWorkout(s);
+                  }}
+                  className="bg-neutral-950 border border-neutral-800 hover:border-indigo-500/50 rounded-xl p-4 cursor-pointer transition-all group"
+                >
+                  <h4 className="font-bold text-indigo-300 group-hover:text-indigo-200 transition-colors">
+                    {s.name}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] text-neutral-500 font-mono">
+                      {s.exercises?.length || 0} exercises
+                    </span>
+                    <span className="text-[10px] text-neutral-500 font-mono">
+                      • {Math.floor(s.duration_seconds / 60)}m
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

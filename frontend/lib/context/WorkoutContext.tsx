@@ -21,6 +21,24 @@ import {
   notifyRestComplete,
   requestRestNotificationPermission,
 } from '@/lib/workouts/restNotify';
+import {
+  chooseActiveWorkout,
+  isDraft,
+  makeDraft,
+  type WorkoutDraft,
+} from '@/lib/offline/draft';
+import {
+  queueSessionDelete,
+  queueSessionSave,
+  startSyncManager,
+} from '@/lib/offline/manager';
+import {
+  DRAFT_KEY,
+  PREV_SETS_KEY,
+  readJson,
+  removeKey,
+  writeJson,
+} from '@/lib/offline/storage';
 
 const FIELD_KEYS: Record<string, string> = {
   weight: 'weight_kg',
@@ -77,6 +95,10 @@ interface WorkoutContextProps {
     seconds: number | null,
   ) => void;
   setSetRest: (exId: string, setIndex: number, seconds: number | null) => void;
+
+  isTimerPaused: boolean;
+  toggleTimer: () => void;
+  overrideTimer: (seconds: number) => void;
 }
 
 interface RestState {
@@ -99,40 +121,79 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const [rest, setRest] = useState<RestState | null>(null);
   const [restRemaining, setRestRemaining] = useState(0);
 
-  // Auto-recover active session on app reload
+  const [isTimerPaused, setIsTimerPaused] = useState(false);
+  const [accumulatedTime, setAccumulatedTime] = useState(0);
+
+  /* Blocks the draft writer until the restore below has finished */
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => startSyncManager(), []);
+
+  /*
+   * Recover the workout in progress
+   *
+   * The local draft is applied first because it needs no network and holds any
+   * sets that have not been uploaded yet. The server is then asked what it
+   * thinks is active, and the two are reconciled
+   */
   useEffect(() => {
-    const fetchActive = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
+    let cancelled = false;
+
+    const restore = async () => {
+      const stored = readJson<unknown>(DRAFT_KEY, null);
+      const draft: WorkoutDraft | null = isDraft(stored) ? stored : null;
+
+      const apply = (data: any) => {
+        if (cancelled || !data) return;
+        setActiveSession(data);
+        setExercises(data.exercises || []);
+        setWorkoutName(data.name || 'Workout');
+        setElapsed(data.duration_seconds || 0);
+        setIsMinimized(true);
+      };
+
+      const local = chooseActiveWorkout(draft, null, Date.now());
+      apply(local);
+
+      let server: any = null;
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/workouts/active`,
-          {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setActiveSession(data);
-          setExercises(data.exercises || []);
-          setWorkoutName(data.name || 'Workout');
-          setIsMinimized(true);
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/workouts/active`,
+            {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            },
+          );
+          if (res.ok) server = await res.json();
         }
       } catch (e) {}
+
+      /* Re-applying the same session would discard anything typed meanwhile */
+      const resolved = chooseActiveWorkout(draft, server, Date.now());
+      if (resolved && resolved.id !== (local as any)?.id) apply(resolved);
+      if (!cancelled) setHydrated(true);
     };
-    fetchActive();
+
+    restore();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const startWorkout = (sessionData: any) => {
     setActiveSession(sessionData);
     setExercises(sessionData.exercises || []);
     setWorkoutName(sessionData.name || 'Workout');
+    setElapsed(sessionData.duration_seconds || 0);
     setIsMinimized(false);
+    setIsTimerPaused(false);
   };
 
   const clearWorkout = () => {
+    removeKey(DRAFT_KEY);
     setActiveSession(null);
     setExercises([]);
     setPreviousSets({});
@@ -140,27 +201,17 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     setRest(null);
     setRestRemaining(0);
     setIsMinimized(false);
+    setIsTimerPaused(false);
   };
 
+  /*
+   * Cancelling drops any queued save for this session before queueing the
+   * delete, so an unsent workout never reaches the server just to be removed
+   */
   const cancelWorkout = async () => {
-    if (activeSession) {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/workouts/${activeSession.id}`,
-            {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${session.access_token}` },
-            },
-          );
-        }
-        toast.success('Workout canceled');
-      } catch (e) {
-        console.error('Failed to cancel session', e);
-      }
+    if (activeSession?.id) {
+      queueSessionDelete(activeSession.id);
+      toast.success('Workout canceled');
     }
     clearWorkout();
   };
@@ -170,14 +221,41 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
 
   // Timer
   useEffect(() => {
-    if (!activeSession || activeSession.status === 'completed') return;
-    const start = new Date(activeSession.start_time).getTime();
-    const updateTimer = () =>
-      setElapsed(Math.floor((new Date().getTime() - start) / 1000));
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
+    if (!activeSession || activeSession.status === 'completed' || isTimerPaused)
+      return;
+
+    const interval = setInterval(() => {
+      setElapsed((prev) => prev + 1);
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, [activeSession]);
+  }, [activeSession, isTimerPaused]);
+
+  const toggleTimer = () => setIsTimerPaused((prev) => !prev);
+  const overrideTimer = (seconds: number) => setElapsed(seconds);
+
+  /*
+   * Mirror the workout to local storage
+   *
+   * Elapsed time is deliberately not a dependency: it changes every second and
+   * is recomputed from start_time on restore anyway
+   */
+  useEffect(() => {
+    if (!hydrated || !activeSession?.id) return;
+    if (activeSession.status === 'completed') return;
+    writeJson(
+      DRAFT_KEY,
+      makeDraft(
+        {
+          sessionId: activeSession.id,
+          name: workoutName,
+          startTime: activeSession.start_time,
+          exercises,
+        },
+        Date.now(),
+      ),
+    );
+  }, [hydrated, activeSession, workoutName, exercises]);
 
   const formatTime = (totalSeconds: number) => {
     const hrs = Math.floor(totalSeconds / 3600);
@@ -188,7 +266,16 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Fetch Previous Sets History
+  /*
+   * Last time's numbers are the reference a user lifts against, so they are
+   * cached rather than fetched fresh. Without this the column reads "-" for
+   * every exercise the moment the signal drops
+   */
+  useEffect(() => {
+    const cached = readJson<Record<string, any[]>>(PREV_SETS_KEY, {});
+    if (Object.keys(cached).length > 0) setPreviousSets(cached);
+  }, []);
+
   useEffect(() => {
     const fetchPreviousSets = async () => {
       const {
@@ -213,7 +300,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           } catch (err) {}
         }
       }
-      if (hasChanges) setPreviousSets(newPreviousSets);
+      if (hasChanges) {
+        setPreviousSets(newPreviousSets);
+        writeJson(PREV_SETS_KEY, newPreviousSets);
+      }
     };
     if (exercises.length > 0) fetchPreviousSets();
   }, [exercises, previousSets]);
@@ -414,37 +504,33 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     return null;
   }, [exercises]);
 
+  /*
+   * Record the workout locally and upload it when possible
+   *
+   * The write goes to the queue instead of the network, so this succeeds with
+   * no signal and callers never have to handle a failed save. start_time is
+   * always sent because the queued PUT may be the first the server hears of
+   * this session
+   */
   const saveSession = async (status = 'in_progress') => {
-    if (!activeSession) return false;
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return false;
-      const payload: any = {
-        name: workoutName,
-        status,
-        duration_seconds: elapsed,
-        exercises,
-      };
-      if (status === 'completed') payload.end_time = new Date().toISOString();
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/workouts/${activeSession.id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(payload),
-        },
-      );
-      if (!res.ok) throw new Error('Failed to save');
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
+    if (!activeSession?.id) return false;
+
+    const payload: any = {
+      name: workoutName,
+      status,
+      start_time: activeSession.start_time,
+      duration_seconds: elapsed,
+      exercises,
+    };
+
+    if (status === 'completed') {
+      payload.end_time = activeSession.end_time || new Date().toISOString();
     }
+
+    queueSessionSave(activeSession.id, payload);
+
+    if (status === 'completed') removeKey(DRAFT_KEY);
+    return true;
   };
 
   return (
@@ -482,6 +568,9 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         skipRest,
         setExerciseRest,
         setSetRest,
+        isTimerPaused,
+        toggleTimer,
+        overrideTimer,
       }}
     >
       {children}

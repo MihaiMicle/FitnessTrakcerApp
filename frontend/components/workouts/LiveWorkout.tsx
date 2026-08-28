@@ -21,6 +21,7 @@ import ExerciseSelectorModal from './ExerciseSelectorModal';
 import SetTypeMenu from './SetTypeMenu';
 import RestSettingsButton from './RestSettingsButton';
 import RestTimerOverlay from './RestTimerOverlay';
+import SyncStatusBadge from './SyncStatusBadge';
 import { useWorkout } from '@/lib/context/WorkoutContext';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import { useConfirm } from '@/components/shared/useConfirm';
@@ -71,6 +72,10 @@ export default function LiveWorkout() {
     setExercises,
     previousSets,
     formattedTime,
+    elapsed,
+    isTimerPaused,
+    toggleTimer,
+    overrideTimer,
     minimizeWorkout,
     clearWorkout,
     cancelWorkout,
@@ -103,6 +108,8 @@ export default function LiveWorkout() {
   } | null>(null);
 
   const confirm = useConfirm();
+
+  const [showTimerModal, setShowTimerModal] = useState(false);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -188,17 +195,32 @@ export default function LiveWorkout() {
   const handleFinishWorkout = async (
     action: 'update' | 'save_new' | 'skip',
   ) => {
+    /*
+     * The routine is a convenience and still needs the network, the session is
+     * the record of the work done. A failed routine save must never block the
+     * workout from being finished, or an offline user is stuck on this modal
+     */
     if (action === 'update' && matchedTemplate) {
-      const success = await saveAsRoutine(matchedTemplate.id);
-      if (!success) return;
+      await saveAsRoutine(matchedTemplate.id);
     } else if (action === 'save_new') {
-      const success = await saveAsRoutine();
-      if (!success) return;
+      await saveAsRoutine();
     }
     await saveSession('completed');
     toast.success('Workout completed!');
     setShowFinishModal(false);
     clearWorkout();
+  };
+
+  const handleFinishClick = async () => {
+    if (activeSession.status === 'completed') {
+      setIsSaving(true);
+      await saveSession('completed');
+      toast.success('Changes saved!');
+      setIsSaving(false);
+      clearWorkout();
+    } else {
+      setShowFinishModal(true);
+    }
   };
 
   const handleBack = () => {
@@ -280,14 +302,24 @@ export default function LiveWorkout() {
                   className="bg-transparent text-lg sm:text-xl font-bold text-white outline-none focus:border-b focus:border-indigo-500 placeholder:text-neutral-600 w-full truncate"
                   placeholder="Workout Name"
                 />
-                <div className="flex items-center gap-1.5 text-indigo-400 font-mono text-[10px] sm:text-xs mt-0.5">
+                <div
+                  onClick={() => setShowTimerModal(true)}
+                  className="flex items-center gap-1.5 text-indigo-400 font-mono text-[10px] sm:text-xs mt-0.5 cursor-pointer hover:text-indigo-300 transition-colors"
+                >
                   <Clock size={12} /> {formattedTime}
+                  {isTimerPaused && (
+                    <span className="text-rose-500 ml-1">(Paused)</span>
+                  )}
                   <button
-                    onClick={() => setIsReordering(!isReordering)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsReordering(!isReordering);
+                    }}
                     className={`ml-2 px-2 py-0.5 rounded transition-colors ${isReordering ? 'bg-indigo-500 text-white' : 'bg-neutral-800 text-neutral-300 hover:text-white'}`}
                   >
                     {isReordering ? 'Done' : 'Reorder'}
                   </button>
+                  <SyncStatusBadge compact />
                 </div>
               </div>
             </div>
@@ -330,11 +362,13 @@ export default function LiveWorkout() {
                 </span>
               </button>
               <button
-                onClick={() => setShowFinishModal(true)}
+                onClick={handleFinishClick}
                 disabled={isSaving}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 sm:px-6 rounded-lg transition-colors font-mono text-xs active:scale-95"
               >
-                Finish
+                {activeSession.status === 'completed'
+                  ? 'Save Changes'
+                  : 'Finish'}
               </button>
             </div>
           </div>
@@ -599,6 +633,82 @@ export default function LiveWorkout() {
                   className="w-full py-3 px-4 bg-transparent text-neutral-500 hover:text-white font-mono text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Timer Adjustment Modal */}
+        {showTimerModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-sm p-6 space-y-6 shadow-2xl animate-in zoom-in-95">
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                Adjust Timer
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-neutral-400 font-mono mb-2 flex justify-between">
+                    <span>Hours</span>
+                    <span className="text-white">
+                      {Math.floor(elapsed / 3600)}h
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    value={Math.floor(elapsed / 3600)}
+                    onChange={(e) =>
+                      overrideTimer(
+                        Number(e.target.value) * 3600 + (elapsed % 3600),
+                      )
+                    }
+                    className="w-full accent-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-neutral-400 font-mono mb-2 flex justify-between">
+                    <span>Minutes</span>
+                    <span className="text-white">
+                      {Math.floor((elapsed % 3600) / 60)}m
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="59"
+                    value={Math.floor((elapsed % 3600) / 60)}
+                    onChange={(e) =>
+                      overrideTimer(
+                        elapsed -
+                          (elapsed % 3600) +
+                          Number(e.target.value) * 60 +
+                          (elapsed % 60),
+                      )
+                    }
+                    className="w-full accent-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    toggleTimer();
+                    setShowTimerModal(false);
+                  }}
+                  className={`flex-1 py-3 font-bold rounded-xl font-mono text-xs transition-colors ${isTimerPaused ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white'}`}
+                >
+                  {isTimerPaused ? 'Resume Timer' : 'Pause Timer'}
+                </button>
+                <button
+                  onClick={() => setShowTimerModal(false)}
+                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl font-mono text-xs transition-colors"
+                >
+                  Done
                 </button>
               </div>
             </div>

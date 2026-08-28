@@ -9,6 +9,7 @@ from core.database import get_db
 from core.security import get_current_user
 from core.social import VISIBILITY_PRIVATE, normalize_visibility
 from core.rest import resolve_rest_seconds
+from core.sync import creation_defaults
 from core.social_queries import assert_not_blocked, visible_content_filter
 from models.profile import UserProfile
 from models.workouts import WorkoutSession, Exercise, WorkoutTemplate, WorkoutSet
@@ -135,7 +136,14 @@ def update_session(
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Sync live exercises, update the timer duration, or finish the workout"""
+    """
+    Sync live exercises, update the timer duration, or finish the workout
+
+    This upserts. The session id is generated on the device so a workout can be
+    logged with no signal, which means the queued save may be the first the
+    server hears of it. Writing to a known id also makes a retry after a timeout
+    idempotent instead of creating a duplicate workout
+    """
     workout = (
         db.query(WorkoutSession)
         .filter(
@@ -143,14 +151,29 @@ def update_session(
         )
         .first()
     )
-    if not workout:
-        raise HTTPException(status_code=404, detail="Session not found")
 
     update_data = payload.model_dump(exclude_unset=True)
     if update_data.get("visibility") is None:
         update_data.pop("visibility", None)
-    for key, value in update_data.items():
-        setattr(workout, key, value)
+
+    if not workout:
+        # 404 rather than 403 when the id belongs to someone else, so a probe
+        # cannot tell an existing session apart from a free id
+        taken = (
+            db.query(WorkoutSession).filter(WorkoutSession.id == session_id).first()
+        )
+        if taken:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        data = creation_defaults(update_data)
+        data["visibility"] = resolve_visibility(
+            db, current_user_id, data.get("visibility"), "default_workout_visibility"
+        )
+        workout = WorkoutSession(**data, id=session_id, user_id=current_user_id)
+        db.add(workout)
+    else:
+        for key, value in update_data.items():
+            setattr(workout, key, value)
 
     db.commit()
     db.refresh(workout)
