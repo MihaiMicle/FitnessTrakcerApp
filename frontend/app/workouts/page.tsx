@@ -20,6 +20,7 @@ import { useSyncStatus } from '@/hooks/useSyncStatus';
 import { newLocalSession } from '@/lib/offline/draft';
 import { queueSessionSave } from '@/lib/offline/manager';
 import WorkoutCalendar from '@/components/workouts/WorkoutCalendar';
+import ExerciseLibraryModal from '@/components/workouts/ExerciseLibraryModal';
 
 export default function WorkoutsDashboard() {
   const router = useRouter();
@@ -30,6 +31,8 @@ export default function WorkoutsDashboard() {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
+
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
@@ -247,6 +250,13 @@ export default function WorkoutsDashboard() {
             >
               <Plus size={18} strokeWidth={3} />
               CREATE ROUTINE
+            </button>
+            <button
+              onClick={() => setIsLibraryOpen(true)}
+              className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-emerald-400 font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 font-mono text-sm tracking-widest border border-neutral-700 hover:border-emerald-500/50"
+            >
+              <BookOpen size={18} strokeWidth={3} />
+              LIBRARY
             </button>
           </div>
         </header>
@@ -537,6 +547,11 @@ export default function WorkoutsDashboard() {
           </div>
         </div>
       )}
+
+      <ExerciseLibraryModal
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+      />
     </main>
   );
 }

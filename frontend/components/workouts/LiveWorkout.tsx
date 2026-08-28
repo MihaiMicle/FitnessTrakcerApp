@@ -224,8 +224,12 @@ export default function LiveWorkout() {
   };
 
   const handleBack = () => {
-    saveSession('in_progress');
-    minimizeWorkout();
+    if (activeSession.status === 'completed') {
+      clearWorkout();
+    } else {
+      saveSession('in_progress');
+      minimizeWorkout();
+    }
   };
 
   const handleExerciseSelected = (selectedEx: any) => {
@@ -325,27 +329,29 @@ export default function LiveWorkout() {
             </div>
 
             <div className="flex items-center gap-2 ml-3 shrink-0">
-              <button
-                onClick={() => {
-                  confirm.ask({
-                    title: 'CANCEL WORKOUT',
-                    message:
-                      'Are you sure you want to cancel this workout? All progress will be lost.',
-                    confirmText: 'Yes, Cancel',
-                    isDestructive: true,
-                    action: async () => {
-                      await cancelWorkout();
-                    },
-                  });
-                }}
-                title="Cancel Workout"
-                className="bg-neutral-800 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-500 p-2 sm:px-3 rounded-lg transition-colors flex items-center justify-center border border-neutral-700 hover:border-rose-500/30 active:scale-95"
-              >
-                <X size={18} />
-                <span className="hidden sm:inline text-xs font-mono ml-2 font-bold">
-                  Cancel
-                </span>
-              </button>
+              {activeSession.status !== 'completed' && (
+                <button
+                  onClick={() => {
+                    confirm.ask({
+                      title: 'CANCEL WORKOUT',
+                      message:
+                        'Are you sure you want to cancel this workout? All progress will be lost.',
+                      confirmText: 'Yes, Cancel',
+                      isDestructive: true,
+                      action: async () => {
+                        await cancelWorkout();
+                      },
+                    });
+                  }}
+                  title="Cancel Workout"
+                  className="bg-neutral-800 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-500 p-2 sm:px-3 rounded-lg transition-colors flex items-center justify-center border border-neutral-700 hover:border-rose-500/30 active:scale-95"
+                >
+                  <X size={18} />
+                  <span className="hidden sm:inline text-xs font-mono ml-2 font-bold">
+                    Cancel
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={() =>

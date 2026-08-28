@@ -22,10 +22,7 @@ const exercisesUrl = () =>
   `${process.env.NEXT_PUBLIC_API_URL}/workouts/exercises`;
 
 /** Loads the exercise database, applies the search/filter state, and creates new entries. */
-export function useExerciseLibrary(
-  isOpen: boolean,
-  type: ExerciseType | null,
-) {
+export function useExerciseLibrary(isOpen: boolean, type: ExerciseType | null) {
   const [exercises, setExercises] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -65,15 +62,15 @@ export function useExerciseLibrary(
   const filtered = useMemo(() => {
     const query = search.toLowerCase().trim();
     return exercises.filter((ex) => {
-      if (ex.type !== type) return false;
+      if (type !== null && ex.type !== type) return false;
       if (!ex.name.toLowerCase().includes(query)) return false;
 
       const matchesMuscle =
         muscle === 'All' ||
         ex.primary_muscle === muscle ||
         ex.secondary_muscles?.includes(muscle);
-      if (!matchesMuscle) return false;
 
+      if (!matchesMuscle) return false;
       return equipment === 'All' || ex.equipment === equipment;
     });
   }, [exercises, type, search, muscle, equipment]);

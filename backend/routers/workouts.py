@@ -159,9 +159,7 @@ def update_session(
     if not workout:
         # 404 rather than 403 when the id belongs to someone else, so a probe
         # cannot tell an existing session apart from a free id
-        taken = (
-            db.query(WorkoutSession).filter(WorkoutSession.id == session_id).first()
-        )
+        taken = db.query(WorkoutSession).filter(WorkoutSession.id == session_id).first()
         if taken:
             raise HTTPException(status_code=404, detail="Session not found")
 
@@ -318,7 +316,7 @@ def update_template(
 def get_last_exercise_sets(
     exercise_name: str,
     current_user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Retrieve the sets from the last time the user performed this exercise."""
     # Find the most recent set for this exercise to get the session_id
@@ -326,7 +324,7 @@ def get_last_exercise_sets(
         db.query(WorkoutSet)
         .filter(
             WorkoutSet.user_id == current_user_id,
-            WorkoutSet.exercise_name == exercise_name
+            WorkoutSet.exercise_name == exercise_name,
         )
         .order_by(WorkoutSet.created_at.desc())
         .first()
@@ -340,13 +338,35 @@ def get_last_exercise_sets(
         db.query(WorkoutSet)
         .filter(
             WorkoutSet.session_id == last_set.session_id,
-            WorkoutSet.exercise_name == exercise_name
+            WorkoutSet.exercise_name == exercise_name,
         )
         .order_by(WorkoutSet.set_number.asc())
         .all()
     )
 
     return previous_sets
+
+
+@router.get("/exercises/{exercise_name}/history")
+def get_exercise_history(
+    exercise_name: str,
+    limit: int = 50,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all completed historical sets for a specific exercise to track progression"""
+    return (
+        db.query(WorkoutSet)
+        .filter(
+            WorkoutSet.user_id == current_user_id,
+            WorkoutSet.exercise_name == exercise_name,
+            WorkoutSet.completed == True,
+        )
+        .order_by(WorkoutSet.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
 
 @router.get("/users/{user_id}/sessions", response_model=List[WorkoutSessionResponse])
 def get_user_sessions(
