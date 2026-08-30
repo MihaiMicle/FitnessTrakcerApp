@@ -44,6 +44,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Lint for undefined names
+        # A router that references a name it never imported still imports
+        # cleanly and only fails when the endpoint is called, which no test
+        # currently covers. F401 is deliberately not enabled yet: seeds/ relies
+        # on side-effect imports to register mappers.
+        run: ruff check --select F821 .
+
       - name: Run tests
         run: pytest
 

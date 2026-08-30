@@ -1,4 +1,4 @@
-// components/workouts/body/types.ts
+/* components/workouts/body/types.ts */
 
 import type { BodyRegion } from '@/lib/workouts/bodyMap';
 

@@ -6,6 +6,11 @@
 pytest==8.4.2
 pytest-cov==7.0.0
 
+# Undefined-name checking. A router that references a name it never imported
+# still imports cleanly and only fails when the endpoint is called, so CI runs
+# `ruff check --select F821` ahead of the tests.
+ruff==0.14.2
+
 # Uncomment when the first router/integration tests land. httpx is what
 # fastapi.testclient.TestClient runs on; it's already a transitive dependency
 # via supabase, but pin it explicitly once tests depend on it directly.

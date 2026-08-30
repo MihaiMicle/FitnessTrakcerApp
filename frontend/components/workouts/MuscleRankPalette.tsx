@@ -18,7 +18,7 @@ interface MuscleRankPaletteProps {
   profile: any; // Used to extract weight, age, and gender
 }
 
-// Rank Thresholds (0 - 600+)
+/* Rank thresholds on the 0 to 600 point scale */
 const RANKS = [
   { name: 'Iron', color: '#52525b', threshold: 0 }, // Untrained -> Beginner
   { name: 'Bronze', color: '#b45309', threshold: 100 }, // Beginner -> Novice
@@ -29,14 +29,14 @@ const RANKS = [
   { name: 'Master', color: '#ef4444', threshold: 600 }, // Peak
 ];
 
-// Expanded Lift Ratios [Beginner, Novice, Intermediate, Advanced, Elite]
+/* Bodyweight multiples per level: beginner, novice, intermediate, advanced, elite */
 const LIFT_RATIOS: Record<string, number[]> = {
   'bench press': [0.75, 1.0, 1.25, 1.75, 2.0],
   squat: [1.0, 1.25, 1.5, 2.0, 2.5],
   deadlift: [1.2, 1.5, 2.0, 2.5, 3.0],
   'overhead press': [0.5, 0.7, 0.9, 1.2, 1.5],
   'romanian deadlift': [1.0, 1.2, 1.5, 1.9, 2.3],
-  // Generic fallbacks for isolation/accessory work so the whole body can be ranked
+  /* Fallbacks for accessory work so the whole body can still be ranked */
   default_upper: [0.3, 0.5, 0.75, 1.0, 1.25],
   default_lower: [0.5, 0.8, 1.1, 1.5, 1.8],
 };
@@ -55,7 +55,7 @@ function calculateStrengthScore(
     normalizedName.includes(key),
   );
 
-  // Determine fallback if not a primary compound
+  /* Pick a fallback when the lift is not one of the named compounds */
   const isLower = ['squat', 'leg', 'calf', 'deadlift', 'glute'].some((k) =>
     normalizedName.includes(k),
   );
@@ -63,10 +63,10 @@ function calculateStrengthScore(
 
   let ratios = [...LIFT_RATIOS[ratioKey]];
 
-  // Standard biological scaling
+  /* Standard biological scaling */
   if (gender.toLowerCase() === 'female') ratios = ratios.map((r) => r * 0.65);
 
-  // Age curve adjustment
+  /* Age curve adjustment */
   let ageFactor = 1.0;
   if (age > 40 && age <= 50) ageFactor = 0.9;
   else if (age > 50 && age <= 60) ageFactor = 0.8;
@@ -76,14 +76,14 @@ function calculateStrengthScore(
   const userRatio = max1RM / bw;
   const [b, n, i, a, e] = ratios;
 
-  // Map ratio to the 0-600 point scale
+  /* Map the ratio onto the point scale */
   if (userRatio < b) return 100 * (userRatio / b);
   if (userRatio < n) return 100 + 100 * ((userRatio - b) / (n - b));
   if (userRatio < i) return 200 + 100 * ((userRatio - n) / (i - n));
   if (userRatio < a) return 300 + 100 * ((userRatio - i) / (a - i));
   if (userRatio < e) return 400 + 100 * ((userRatio - a) / (e - a));
 
-  // Anything over Elite pushes into Diamond/Master territory
+  /* Anything past elite runs on into diamond and master */
   return 500 + 100 * ((userRatio - e) / (e * 0.2));
 }
 
@@ -100,7 +100,7 @@ function getRankData(score: number) {
     }
   }
 
-  // Maxed out at Master
+  /* Maxed out at master */
   if (!nextRank) {
     return {
       name: currentRank.name,
@@ -155,7 +155,7 @@ export default function MuscleRankPalette({
   exerciseDict,
   profile,
 }: MuscleRankPaletteProps) {
-  // Find highest 1RM for each muscle group across all sessions, then translate to rank
+  /* Best scoring lift per region across every session, turned into a rank */
   const muscleScores = useMemo(() => {
     const highest1RMByMuscle: Record<
       string,

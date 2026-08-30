@@ -1,4 +1,4 @@
-// lib/workouts/bodyMap.ts
+/* lib/workouts/bodyMap.ts */
 
 import { MUSCLES } from './constants';
 

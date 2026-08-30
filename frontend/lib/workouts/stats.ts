@@ -65,7 +65,7 @@ export function calculateMuscleDistribution(
     }
 
     session.exercises?.forEach((ex: any) => {
-      // Lookup the muscle via the dictionary if it's missing from the historical log
+      /* Fall back to the dictionary when the logged set carries no muscle */
       const muscle = ex.primary_muscle || exerciseDict[ex.name];
       const validSets = ex.sets?.filter((s: any) => s.completed) || [];
       const setCount = validSets.length;

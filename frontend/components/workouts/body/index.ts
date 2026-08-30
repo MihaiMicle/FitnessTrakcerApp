@@ -1,4 +1,4 @@
-// components/workouts/body/index.ts
+/* components/workouts/body/index.ts */
 
 import { MALE_FRONT } from './maleFront';
 import { MALE_BACK } from './maleBack';

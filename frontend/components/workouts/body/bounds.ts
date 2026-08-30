@@ -1,4 +1,4 @@
-// components/workouts/body/bounds.ts
+/* components/workouts/body/bounds.ts */
 
 import { bodyFigure } from './index';
 import { BODY_VIEWBOX } from './types';

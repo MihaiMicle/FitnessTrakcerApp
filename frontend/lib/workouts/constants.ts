@@ -1,4 +1,4 @@
-// lib/workouts/constants.ts
+/* lib/workouts/constants.ts */
 
 export const MUSCLES = [
   'Chest',

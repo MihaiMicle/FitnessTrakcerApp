@@ -1,4 +1,4 @@
-// lib/workouts/standards.ts
+/* lib/workouts/standards.ts */
 
 export type StrengthLevel =
   | 'Untrained'
@@ -8,9 +8,9 @@ export type StrengthLevel =
   | 'Advanced'
   | 'Elite';
 
-// Ratios of 1RM to Bodyweight for a standard adult male.
+/* 1RM as a multiple of bodyweight for a standard adult male */
 const LIFT_RATIOS: Record<string, number[]> = {
-  // [Beginner, Novice, Intermediate, Advanced, Elite]
+  /* Beginner, novice, intermediate, advanced, elite */
   'bench press': [0.75, 1.0, 1.25, 1.75, 2.0],
   squat: [1.0, 1.25, 1.5, 2.0, 2.5],
   deadlift: [1.2, 1.5, 2.0, 2.5, 3.0],
@@ -38,7 +38,7 @@ export function calculateStrengthStandard(
 
   const normalizedName = exerciseName.toLowerCase();
 
-  // Fuzzy match to catch variations like "Barbell Bench Press" or "Smith Machine Squat"
+  /* Loose match so 'Barbell Bench Press' still finds the bench standard */
   const match = Object.keys(LIFT_RATIOS).find((key) =>
     normalizedName.includes(key),
   );
@@ -46,12 +46,12 @@ export function calculateStrengthStandard(
 
   let ratios = [...LIFT_RATIOS[match]];
 
-  // Standard biological scaling
+  /* Standard biological scaling */
   if (gender?.toLowerCase() === 'female') {
     ratios = ratios.map((r) => r * 0.65);
   }
 
-  // Age adjustment curve
+  /* Age adjustment curve */
   let ageFactor = 1.0;
   if (age > 40 && age <= 50) ageFactor = 0.9;
   else if (age > 50 && age <= 60) ageFactor = 0.8;
