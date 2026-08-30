@@ -20,6 +20,7 @@ export const MUSCLES = [
   'Neck',
   'Lower Back',
   'Brachialis',
+  'Glutes',
 ];
 
 export const EQUIPMENT = [
