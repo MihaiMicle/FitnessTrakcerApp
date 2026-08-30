@@ -21,6 +21,7 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
+import { calculateStrengthStandard } from '@/lib/workouts/standards';
 
 interface ExerciseProfileViewProps {
   exercise: any;
@@ -32,6 +33,7 @@ export default function ExerciseProfileView({
   onBack,
 }: ExerciseProfileViewProps) {
   const [history, setHistory] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // 1RM Calculator State
@@ -39,27 +41,38 @@ export default function ExerciseProfileView({
   const [reps, setReps] = useState<number | ''>('');
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchData = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/workouts/exercises/${encodeURIComponent(exercise.name)}/history`,
-        {
+      // Run both network requests in parallel
+      const [historyRes, profileRes] = await Promise.all([
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/workouts/exercises/${encodeURIComponent(exercise.name)}/history`,
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          },
+        ),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
+        }),
+      ]);
 
-      if (res.ok) {
-        const data = await res.json();
+      if (historyRes.ok) {
+        const data = await historyRes.json();
         setHistory(data);
       }
+      if (profileRes.ok) {
+        const data = await profileRes.json();
+        setProfile(data);
+      }
+
       setLoading(false);
     };
 
-    fetchHistory();
+    fetchData();
   }, [exercise.name]);
 
   // Performance Intelligence: Find the best historical set for auto-fill
@@ -94,6 +107,17 @@ export default function ExerciseProfileView({
   const oneRepMax = calculate1RM();
   const TypeIcon = exercise.type === 'strength' ? Dumbbell : Activity;
 
+  // Calculate worldwide strength standard if data is available
+  const standard = oneRepMax && profile
+  ? calculateStrengthStandard(
+      exercise.name, 
+      oneRepMax,
+      profile.weight_kg,
+      profile.gender, 
+      profile.age
+    )
+  : null;
+
   // Group history by date for the list view
   const groupedHistory = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -106,27 +130,35 @@ export default function ExerciseProfileView({
     return groups;
   }, [history]);
 
-  // Generate Chart Data & Progression Stats (Calculates best 1RM per session)
+  // Generate Chart Data & Progression Stats
   const { chartData, progression } = useMemo(() => {
     if (history.length === 0 || exercise.type !== 'strength') {
       return { chartData: [], progression: null };
     }
 
-    const statsByDate: Record<string, { dateObj: Date; max1RM: number }> = {};
+    const statsByDate: Record<
+      string,
+      { dateObj: Date; maxWeight: number; totalVolume: number }
+    > = {};
 
     history.forEach((set) => {
       if (set.weight_kg && set.reps) {
         const dateObj = new Date(set.created_at);
         const dateKey = dateObj.toISOString().split('T')[0];
-        const e1RM = set.weight_kg * (1 + 0.0333 * set.reps);
+        const volume = set.weight_kg * set.reps;
 
         if (!statsByDate[dateKey]) {
-          statsByDate[dateKey] = { dateObj, max1RM: e1RM };
+          statsByDate[dateKey] = {
+            dateObj,
+            maxWeight: set.weight_kg,
+            totalVolume: volume,
+          };
         } else {
-          statsByDate[dateKey].max1RM = Math.max(
-            statsByDate[dateKey].max1RM,
-            e1RM,
+          statsByDate[dateKey].maxWeight = Math.max(
+            statsByDate[dateKey].maxWeight,
+            set.weight_kg,
           );
+          statsByDate[dateKey].totalVolume += volume;
         }
       }
     });
@@ -139,14 +171,15 @@ export default function ExerciseProfileView({
           month: 'short',
           day: 'numeric',
         }),
-        e1RM: Math.round(stat.max1RM * 10) / 10,
+        maxWeight: Math.round(stat.maxWeight * 10) / 10,
+        totalVolume: Math.round(stat.totalVolume * 10) / 10,
       }));
 
-    // Calculate progression delta (Last session vs Previous session)
+    // Calculate progression delta (Last session vs Previous session based on Max Weight)
     let progressionStat = null;
     if (sortedData.length >= 2) {
-      const current = sortedData[sortedData.length - 1].e1RM;
-      const previous = sortedData[sortedData.length - 2].e1RM;
+      const current = sortedData[sortedData.length - 1].maxWeight;
+      const previous = sortedData[sortedData.length - 2].maxWeight;
       const diff = current - previous;
       progressionStat = { diff: Math.round(diff * 10) / 10, current, previous };
     }
@@ -156,7 +189,7 @@ export default function ExerciseProfileView({
 
   const minChartValue =
     chartData.length > 0
-      ? Math.floor(Math.min(...chartData.map((d) => d.e1RM)) * 0.9)
+      ? Math.floor(Math.min(...chartData.map((d) => d.maxWeight)) * 0.9)
       : 0;
 
   return (
@@ -209,7 +242,7 @@ export default function ExerciseProfileView({
                     <Minus size={12} />
                   )}
                   {progression.diff > 0 ? '+' : ''}
-                  {progression.diff} kg e1RM
+                  {progression.diff} kg Max Lift
                 </div>
               )}
             </div>
@@ -223,7 +256,7 @@ export default function ExerciseProfileView({
                     stroke="#525252"
                     fontSize={9}
                     tickMargin={8}
-                    tickFormatter={(val) => val.split(' ')[0]} // Show just the month/day briefly
+                    tickFormatter={(val) => val.split(' ')[0]}
                   />
                   <YAxis domain={[minChartValue, 'dataMax + 5']} hide />
                   <Tooltip
@@ -234,11 +267,17 @@ export default function ExerciseProfileView({
                     }}
                     itemStyle={{ color: '#34d399', fontWeight: 'bold' }}
                     labelStyle={{ color: '#737373', fontSize: '10px' }}
-                    formatter={(value) => [`${value} kg`, 'Est. 1RM']}
+                    formatter={(value, name) => {
+                      if (name === 'maxWeight')
+                        return [`${value} kg`, 'Max Weight'];
+                      if (name === 'totalVolume')
+                        return [`${value} kg`, 'Total Volume'];
+                      return value;
+                    }}
                   />
                   <Line
                     type="monotone"
-                    dataKey="e1RM"
+                    dataKey="maxWeight"
                     stroke="#34d399"
                     strokeWidth={2}
                     dot={{
@@ -249,11 +288,19 @@ export default function ExerciseProfileView({
                     }}
                     activeDot={{ r: 5 }}
                   />
+                  {/* Invisible line just to feed totalVolume data to the tooltip */}
+                  <Line
+                    type="monotone"
+                    dataKey="totalVolume"
+                    stroke="transparent"
+                    dot={false}
+                    activeDot={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
             <p className="text-[9px] text-neutral-500 font-mono text-center mt-2">
-              Progression based on Estimated 1RM
+              Progression based on Max Weight lifted per session
             </p>
           </div>
         )}
@@ -300,14 +347,33 @@ export default function ExerciseProfileView({
             </div>
 
             {oneRepMax && (
-              <div className="flex flex-col items-center p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg animate-in fade-in">
-                <span className="text-[10px] text-indigo-400 font-mono uppercase">
+              <div className="flex flex-col items-center p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg animate-in fade-in">
+                <span className="text-[10px] text-indigo-400 font-mono uppercase mb-1">
                   Estimated 1RM
                 </span>
-                <span className="text-2xl font-bold text-white">
+                <span className="text-3xl font-bold text-white mb-3">
                   {oneRepMax}{' '}
                   <span className="text-sm text-indigo-300">kg</span>
                 </span>
+
+                {/* Worldwide Strength Standard Badge */}
+                {standard && (
+                  <div className="w-full border-t border-indigo-500/20 pt-3 flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-white bg-indigo-600 px-2 py-0.5 rounded uppercase tracking-wider">
+                        {standard.level}
+                      </span>
+                      <span className="text-xs font-mono text-indigo-300">
+                        ({standard.ratio}x BW)
+                      </span>
+                    </div>
+                    {standard.nextTarget && (
+                      <span className="text-[10px] font-mono text-neutral-400">
+                        Next milestone: {standard.nextTarget} kg
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

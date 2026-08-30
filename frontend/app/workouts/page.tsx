@@ -21,12 +21,18 @@ import { newLocalSession } from '@/lib/offline/draft';
 import { queueSessionSave } from '@/lib/offline/manager';
 import WorkoutCalendar from '@/components/workouts/WorkoutCalendar';
 import ExerciseLibraryModal from '@/components/workouts/ExerciseLibraryModal';
+import MuscleDistribution from '@/components/workouts/MuscleDistribution';
+import WidgetStack from '@/components/workouts/WidgetStack';
+import MuscleRankPalette from '@/components/workouts/MuscleRankPalette';
 
 export default function WorkoutsDashboard() {
   const router = useRouter();
 
   const { startWorkout, activeSession } = useWorkout();
   const { pending, syncing } = useSyncStatus();
+
+  const [exerciseDict, setExerciseDict] = useState<Record<string, string>>({});
+  const [profile, setProfile] = useState<any>(null);
 
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -55,26 +61,42 @@ export default function WorkoutsDashboard() {
       } = await supabase.auth.getSession();
       if (!session) return router.replace('/login');
 
-      // Fetch Past Sessions
-      const historyRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/workouts/`,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
+      // Fetch Sessions, Routines, Profile, and Exercises concurrently
+      const [historyRes, templatesRes, profileRes, exercisesRes] =
+        await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/workouts/`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/workouts/templates`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/me`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/workouts/exercises`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }),
+        ]);
+
       if (historyRes.ok) {
         const allSessions = await historyRes.json();
         setSessions(allSessions.filter((s: any) => s.status === 'completed'));
       }
 
-      // Fetch Routines
-      const templatesRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/workouts/templates`,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
       if (templatesRes.ok) setTemplates(await templatesRes.json());
+
+      if (profileRes.ok) {
+        setProfile(await profileRes.json());
+      }
+
+      if (exercisesRes.ok) {
+        const data = await exercisesRes.json();
+        const dict: Record<string, string> = {};
+        data.forEach((e: any) => {
+          if (e.primary_muscle) dict[e.name] = e.primary_muscle;
+        });
+        setExerciseDict(dict);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -326,17 +348,31 @@ export default function WorkoutsDashboard() {
           )}
         </div>
 
-        {/* Workout Calendar */}
+        {/* Analytics & Calendar Stack */}
         <div className="space-y-4 pt-4 border-t border-neutral-800/50">
           <h2 className="text-xs font-mono text-neutral-500 tracking-wider">
-            ACTIVITY CALENDAR
+            ANALYTICS & CALENDAR
           </h2>
-          <WorkoutCalendar
-            sessions={sessions}
-            onDayClick={(date, daySessions) =>
-              setSelectedDayWorkouts({ date, sessions: daySessions })
-            }
-          />
+
+          <WidgetStack>
+            {/* Widget 1: Workout Calendar */}
+            <WorkoutCalendar
+              sessions={sessions}
+              onDayClick={(date, daySessions) =>
+                setSelectedDayWorkouts({ date, sessions: daySessions })
+              }
+            />
+
+            {/* Widget 2: Muscle Distribution */}
+            <MuscleDistribution sessions={sessions} />
+
+            {/* Widget 3: Muscle Rank Palette */}
+            <MuscleRankPalette
+              sessions={sessions}
+              exerciseDict={exerciseDict}
+              profile={profile}
+            />
+          </WidgetStack>
         </div>
 
         {/* Past sessions */}
@@ -353,41 +389,65 @@ export default function WorkoutsDashboard() {
               </p>
             </div>
           ) : (
-            sessions.map((s) => (
-              <div
-                key={s.id}
-                onClick={() => startWorkout(s)}
-                className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 sm:p-5 group flex justify-between items-center"
-              >
-                <div>
-                  <div className="flex items-start mb-1.5">
-                    <h3 className="font-bold text-white text-lg">{s.name}</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
-                      {new Date(s.start_time).toLocaleDateString()}
-                    </span>
-                    <span className="text-[10px] text-neutral-500 font-mono">
-                      {s.exercises?.length || 0} exercises •{' '}
-                      {Math.floor(s.duration_seconds / 60)}m
-                    </span>
-                  </div>
-                </div>
+            sessions.map((s) => {
+              const completedSets =
+                s.exercises?.reduce(
+                  (acc: number, ex: any) =>
+                    acc +
+                    (ex.sets?.filter((set: any) => set.completed).length || 0),
+                  0,
+                ) || 0;
+              const totalVolume =
+                s.exercises?.reduce(
+                  (acc: number, ex: any) =>
+                    acc +
+                    (ex.sets
+                      ?.filter((set: any) => set.completed)
+                      .reduce(
+                        (sum: number, set: any) =>
+                          sum + (set.weight_kg || 0) * (set.reps || 0),
+                        0,
+                      ) || 0),
+                  0,
+                ) || 0;
 
-                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSessionToDelete(s.id);
-                    }}
-                    className="text-neutral-600 hover:text-rose-500 p-2 transition-colors"
-                    title="Delete Workout"
-                  >
-                    <Trash2 size={20} />
-                  </button>
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => startWorkout(s)}
+                  className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 sm:p-5 group flex justify-between items-center"
+                >
+                  <div>
+                    <div className="flex items-start mb-1.5">
+                      <h3 className="font-bold text-white text-lg">{s.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
+                        {new Date(s.start_time).toLocaleDateString()}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 font-mono">
+                        {s.exercises?.length || 0} exercises • {completedSets}{' '}
+                        sets • {totalVolume.toLocaleString()} kg •{' '}
+                        {Math.floor(s.duration_seconds / 60)}m
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSessionToDelete(s.id);
+                      }}
+                      className="text-neutral-600 hover:text-rose-500 p-2 transition-colors"
+                      title="Delete Workout"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

@@ -40,6 +40,9 @@ import {
   writeJson,
 } from '@/lib/offline/storage';
 
+// Key for caching Personal Records locally
+const PR_KEY = 'fittracker.workout.prs.v1';
+
 const FIELD_KEYS: Record<string, string> = {
   weight: 'weight_kg',
   reps: 'reps',
@@ -51,6 +54,7 @@ const FIELD_KEYS: Record<string, string> = {
   difficulty: 'difficulty',
 };
 
+// ... (Keep existing WorkoutContextProps interfaces the same) ...
 interface WorkoutContextProps {
   activeSession: any | null;
   isMinimized: boolean;
@@ -80,8 +84,6 @@ interface WorkoutContextProps {
   toggleSuperset: (index: number) => void;
   getNextSet: () => any | null;
   saveSession: (status?: string) => Promise<boolean>;
-
-  /* Rest timer */
   restLabel: string;
   restRemaining: number;
   restTotal: number;
@@ -95,7 +97,6 @@ interface WorkoutContextProps {
     seconds: number | null,
   ) => void;
   setSetRest: (exId: string, setIndex: number, seconds: number | null) => void;
-
   isTimerPaused: boolean;
   toggleTimer: () => void;
   overrideTimer: (seconds: number) => void;
@@ -117,32 +118,32 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const [exercises, setExercises] = useState<any[]>([]);
   const [workoutName, setWorkoutName] = useState('Workout');
   const [previousSets, setPreviousSets] = useState<Record<string, any[]>>({});
+
+  // NEW: State to hold all-time Personal Records
+  const [personalRecords, setPersonalRecords] = useState<
+    Record<
+      string,
+      {
+        max1RM: number;
+        maxVolume: number;
+        bestSets: Record<number, { weight_kg: number; reps: number }>;
+      }
+    >
+  >({});
+
   const [elapsed, setElapsed] = useState(0);
   const [rest, setRest] = useState<RestState | null>(null);
   const [restRemaining, setRestRemaining] = useState(0);
-
   const [isTimerPaused, setIsTimerPaused] = useState(false);
-  const [accumulatedTime, setAccumulatedTime] = useState(0);
-
-  /* Blocks the draft writer until the restore below has finished */
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => startSyncManager(), []);
 
-  /*
-   * Recover the workout in progress
-   *
-   * The local draft is applied first because it needs no network and holds any
-   * sets that have not been uploaded yet. The server is then asked what it
-   * thinks is active, and the two are reconciled
-   */
   useEffect(() => {
     let cancelled = false;
-
     const restore = async () => {
       const stored = readJson<unknown>(DRAFT_KEY, null);
       const draft: WorkoutDraft | null = isDraft(stored) ? stored : null;
-
       const apply = (data: any) => {
         if (cancelled || !data) return;
         setActiveSession(data);
@@ -171,7 +172,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {}
 
-      /* Re-applying the same session would discard anything typed meanwhile */
       const resolved = chooseActiveWorkout(draft, server, Date.now());
       if (resolved && resolved.id !== (local as any)?.id) apply(resolved);
       if (!cancelled) setHydrated(true);
@@ -204,10 +204,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     setIsTimerPaused(false);
   };
 
-  /*
-   * Cancelling drops any queued save for this session before queueing the
-   * delete, so an unsent workout never reaches the server just to be removed
-   */
   const cancelWorkout = async () => {
     if (activeSession?.id) {
       queueSessionDelete(activeSession.id);
@@ -223,23 +219,15 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!activeSession || activeSession.status === 'completed' || isTimerPaused)
       return;
-
     const interval = setInterval(() => {
       setElapsed((prev) => prev + 1);
     }, 1000);
-
     return () => clearInterval(interval);
   }, [activeSession, isTimerPaused]);
 
   const toggleTimer = () => setIsTimerPaused((prev) => !prev);
   const overrideTimer = (seconds: number) => setElapsed(seconds);
 
-  /*
-   * Mirror the workout to local storage
-   *
-   * Elapsed time is deliberately not a dependency: it changes every second and
-   * is recomputed from start_time on restore anyway
-   */
   useEffect(() => {
     if (!hydrated || !activeSession?.id) return;
     if (activeSession.status === 'completed') return;
@@ -266,14 +254,13 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  /*
-   * Last time's numbers are the reference a user lifts against, so they are
-   * cached rather than fetched fresh. Without this the column reads "-" for
-   * every exercise the moment the signal drops
-   */
+  // Load cached Previous Sets and Personal Records
   useEffect(() => {
     const cached = readJson<Record<string, any[]>>(PREV_SETS_KEY, {});
     if (Object.keys(cached).length > 0) setPreviousSets(cached);
+
+    const cachedPRs = readJson<Record<string, any>>(PR_KEY, {});
+    if (Object.keys(cachedPRs).length > 0) setPersonalRecords(cachedPRs);
   }, []);
 
   useEffect(() => {
@@ -282,44 +269,92 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
+
       const newPreviousSets = { ...previousSets };
+      const newPersonalRecords = { ...personalRecords };
       let hasChanges = false;
+
       for (const ex of exercises) {
         if (!newPreviousSets[ex.name]) {
           try {
+            // 1. Fetch the last session's sets for the UI preview
             const res = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/workouts/exercises/${encodeURIComponent(ex.name)}/last-sets`,
-              {
-                headers: { Authorization: `Bearer ${session.access_token}` },
-              },
+              { headers: { Authorization: `Bearer ${session.access_token}` } },
             );
             if (res.ok) {
               newPreviousSets[ex.name] = await res.json();
               hasChanges = true;
             }
+
+            // 2. NEW: Fetch ALL history to calculate true all-time PRs
+            const histRes = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/workouts/exercises/${encodeURIComponent(ex.name)}/history?limit=100`,
+              { headers: { Authorization: `Bearer ${session.access_token}` } },
+            );
+
+            if (histRes.ok) {
+              const history = await histRes.json();
+              let max1RM = 0;
+              let maxVolume = 0;
+              const bestSets: Record<
+                number,
+                { weight_kg: number; reps: number }
+              > = {};
+
+              history.forEach((s: any) => {
+                const weight = Number(s.weight_kg) || 0;
+                const reps = Number(s.reps) || 0;
+
+                if (weight > 0 && reps > 0) {
+                  const e1RM = weight * (1 + 0.0333 * reps);
+                  const vol = weight * reps;
+
+                  if (e1RM > max1RM) max1RM = e1RM;
+                  if (vol > maxVolume) maxVolume = vol;
+
+                  // Parse set index (0-based) for strict set progression
+                  const setIdx = (s.set_number || 1) - 1;
+                  if (!bestSets[setIdx]) {
+                    bestSets[setIdx] = { weight_kg: weight, reps: reps };
+                  } else {
+                    const prevBest = bestSets[setIdx];
+                    // Strict rule: Must beat weight, OR tie weight and beat reps
+                    if (
+                      weight > prevBest.weight_kg ||
+                      (weight === prevBest.weight_kg && reps > prevBest.reps)
+                    ) {
+                      bestSets[setIdx] = { weight_kg: weight, reps: reps };
+                    }
+                  }
+                }
+              });
+
+              newPersonalRecords[ex.name] = { max1RM, maxVolume, bestSets };
+              hasChanges = true;
+            }
           } catch (err) {}
         }
       }
+
       if (hasChanges) {
         setPreviousSets(newPreviousSets);
         writeJson(PREV_SETS_KEY, newPreviousSets);
+
+        setPersonalRecords(newPersonalRecords);
+        writeJson(PR_KEY, newPersonalRecords);
       }
     };
-    if (exercises.length > 0) fetchPreviousSets();
-  }, [exercises, previousSets]);
 
-  /*
-   * Rest countdown
-   *
-   * Stored as a deadline rather than a decrementing number so a backgrounded
-   * tab, which throttles intervals, still reads the right time when it wakes
-   */
+    if (exercises.length > 0) fetchPreviousSets();
+  }, [exercises, previousSets, personalRecords]);
+
+  // Rest countdown
   useEffect(() => {
     if (!rest) {
       setRestRemaining(0);
       return;
     }
-
     let finished = false;
     const tick = () => {
       const left = Math.max(0, Math.ceil((rest.endsAt - Date.now()) / 1000));
@@ -327,11 +362,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       if (left === 0 && !finished) {
         finished = true;
         notifyRestComplete(rest.label);
-        toast.success(`Rest over · ${rest.label}`, { id: 'rest-timer' });
+        toast.success(`Rest over • ${rest.label}`, { id: 'rest-timer' });
         setRest(null);
       }
     };
-
     tick();
     const interval = setInterval(tick, 250);
     return () => clearInterval(interval);
@@ -350,7 +384,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     setRestRemaining(0);
   }, []);
 
-  /* Plus and minus on the running timer, floored so it cannot go negative */
   const adjustRest = useCallback((deltaSeconds: number) => {
     setRest((prev) => {
       if (!prev) return prev;
@@ -379,7 +412,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Set & Exercise Management
   const addSet = useCallback((exId: string) => {
     setExercises((prev) =>
       prev.map((ex) => {
@@ -413,28 +445,119 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  /*
-   * Checking a set off is what starts rest, so this works off the current
-   * array rather than a functional update: `planRestAfterSet` needs to see the
-   * whole list after the toggle to know whether a superset round just closed
-   */
   const toggleSetComplete = useCallback(
     (exId: string, setIndex: number) => {
+      let newlyCompleted = false;
+      let currentSetData: any = null;
+      let exName = '';
+
       const next = exercises.map((ex) => {
         if (ex.id !== exId) return ex;
         const newSets = [...ex.sets];
+        const isCompleting = !newSets[setIndex].completed;
+
         newSets[setIndex] = {
           ...newSets[setIndex],
-          completed: !newSets[setIndex].completed,
+          completed: isCompleting,
         };
+
+        if (isCompleting) {
+          newlyCompleted = true;
+          currentSetData = newSets[setIndex];
+          exName = ex.name;
+        }
+
         return { ...ex, sets: newSets };
       });
+
       setExercises(next);
+
+      // PR Celebration Logic
+      if (newlyCompleted && currentSetData && exName) {
+        const cWeight = Number(currentSetData.weight_kg) || 0;
+        const cReps = Number(currentSetData.reps) || 0;
+
+        if (cWeight > 0 && cReps > 0) {
+          const c1RM = cWeight * (1 + 0.0333 * cReps);
+          const cVol = cWeight * cReps;
+
+          // Pull the current PRs directly from state
+          const prs = personalRecords[exName];
+
+          if (prs) {
+            let isNew1RM = false;
+            let isNewVol = false;
+            let isSetProgression = false;
+
+            // Clone to mutate
+            const updatedPRs = { ...prs, bestSets: { ...prs.bestSets } };
+
+            // 1RM Check
+            if (c1RM > updatedPRs.max1RM && updatedPRs.max1RM > 0) {
+              isNew1RM = true;
+              updatedPRs.max1RM = c1RM;
+            }
+
+            // Volume Check
+            if (cVol > updatedPRs.maxVolume && updatedPRs.maxVolume > 0) {
+              isNewVol = true;
+              updatedPRs.maxVolume = cVol;
+            }
+
+            // Set Progression Check
+            const bestForSet = updatedPRs.bestSets[setIndex];
+            if (bestForSet) {
+              if (
+                cWeight > bestForSet.weight_kg ||
+                (cWeight === bestForSet.weight_kg && cReps > bestForSet.reps)
+              ) {
+                isSetProgression = true;
+                updatedPRs.bestSets[setIndex] = {
+                  weight_kg: cWeight,
+                  reps: cReps,
+                };
+              }
+            } else {
+              // First time logging this set index
+              updatedPRs.bestSets[setIndex] = {
+                weight_kg: cWeight,
+                reps: cReps,
+              };
+            }
+
+            // Fire the toasts OUTSIDE the state updater
+            if (isNew1RM) {
+              toast.success(`New 1RM for ${exName}: ${Math.round(c1RM)}kg!`, {
+                icon: '🏆',
+                duration: 4000,
+              });
+            } else if (isNewVol) {
+              toast.success(
+                `New Volume PR for ${exName}: ${Math.round(cVol)}kg!`,
+                { icon: '📈', duration: 4000 },
+              );
+            } else if (isSetProgression) {
+              toast.success(
+                `Set Progression: You beat your best Set ${setIndex + 1}!`,
+                { icon: '✨', duration: 3000 },
+              );
+            }
+
+            // Only trigger a state update and storage write if a record was actually broken or established
+            if (isNew1RM || isNewVol || isSetProgression || !bestForSet) {
+              const nextRecords = { ...personalRecords, [exName]: updatedPRs };
+              setPersonalRecords(nextRecords);
+              writeJson(PR_KEY, nextRecords);
+            }
+          }
+        }
+      }
 
       const plan = planRestAfterSet(next, exId, setIndex);
       if (plan) startRest(plan.seconds, plan.label);
     },
-    [exercises, startRest],
+    // Make sure to add personalRecords to the dependency array
+    [exercises, personalRecords, startRest],
   );
 
   const updateSetType = useCallback(
@@ -476,9 +599,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       const previous = newEx[index - 1];
 
       if (current.superset_id && current.superset_id === previous.superset_id) {
-        // Unlink
         newEx[index] = { ...current, superset_id: null };
-        // Clean up previous if it's now orphaned
         const isPrevOrphaned = !newEx.some(
           (e, i) => i !== index - 1 && e.superset_id === previous.superset_id,
         );
@@ -486,7 +607,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           newEx[index - 1] = { ...previous, superset_id: null };
         }
       } else {
-        // Link
         const setId = previous.superset_id || `ss-${Date.now()}`;
         newEx[index - 1] = { ...previous, superset_id: setId };
         newEx[index] = { ...current, superset_id: setId };
@@ -504,17 +624,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     return null;
   }, [exercises]);
 
-  /*
-   * Record the workout locally and upload it when possible
-   *
-   * The write goes to the queue instead of the network, so this succeeds with
-   * no signal and callers never have to handle a failed save. start_time is
-   * always sent because the queued PUT may be the first the server hears of
-   * this session
-   */
   const saveSession = async (status = 'in_progress') => {
     if (!activeSession?.id) return false;
-
     const payload: any = {
       name: workoutName,
       status,
@@ -522,13 +633,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       duration_seconds: elapsed,
       exercises,
     };
-
     if (status === 'completed') {
       payload.end_time = activeSession.end_time || new Date().toISOString();
     }
-
     queueSessionSave(activeSession.id, payload);
-
     if (status === 'completed') removeKey(DRAFT_KEY);
     return true;
   };

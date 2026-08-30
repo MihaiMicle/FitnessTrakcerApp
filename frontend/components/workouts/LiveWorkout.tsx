@@ -91,6 +91,22 @@ export default function LiveWorkout() {
     setSetRest,
   } = useWorkout();
 
+  const completedSetsCount = exercises.reduce(
+    (acc, ex) => acc + (ex.sets?.filter((s: any) => s.completed).length || 0),
+    0,
+  );
+  const totalVolume = exercises.reduce(
+    (acc, ex) =>
+      acc +
+      (ex.sets
+        ?.filter((s: any) => s.completed)
+        .reduce(
+          (sum: number, s: any) => sum + (s.weight_kg || 0) * (s.reps || 0),
+          0,
+        ) || 0),
+    0,
+  );
+
   const [isSaving, setIsSaving] = useState(false);
   const [selectorType, setSelectorType] = useState<
     'strength' | 'cardio' | null
@@ -128,6 +144,7 @@ export default function LiveWorkout() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/workouts/templates`,
         {
@@ -136,8 +153,11 @@ export default function LiveWorkout() {
       );
       if (res.ok) setTemplates(await res.json());
     };
-    fetchTemplates();
-  }, []);
+
+    if (activeSession && !isMinimized) {
+      fetchTemplates();
+    }
+  }, [activeSession, isMinimized]);
 
   if (!activeSession || isMinimized) return null;
 
@@ -308,12 +328,19 @@ export default function LiveWorkout() {
                 />
                 <div
                   onClick={() => setShowTimerModal(true)}
-                  className="flex items-center gap-1.5 text-indigo-400 font-mono text-[10px] sm:text-xs mt-0.5 cursor-pointer hover:text-indigo-300 transition-colors"
+                  className="flex items-center gap-2 text-indigo-400 font-mono text-[10px] sm:text-xs mt-0.5 cursor-pointer hover:text-indigo-300 transition-colors"
                 >
-                  <Clock size={12} /> {formattedTime}
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} /> {formattedTime}
+                  </span>
                   {isTimerPaused && (
-                    <span className="text-rose-500 ml-1">(Paused)</span>
+                    <span className="text-rose-500">(Paused)</span>
                   )}
+                  <span className="text-neutral-600">•</span>
+                  <span>{completedSetsCount} sets</span>
+                  <span className="text-neutral-600">•</span>
+                  <span>{totalVolume.toLocaleString()} kg</span>
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
