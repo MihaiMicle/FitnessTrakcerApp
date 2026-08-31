@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, User, ShieldAlert } from 'lucide-react';
+import { ChevronLeft, User, ShieldAlert, HeartPulse } from 'lucide-react';
 import GDPRSettings from '@/components/settings/GDPRSettings';
+import HealthSyncPanel from '@/components/health/HealthSyncPanel';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -42,7 +43,20 @@ export default function SettingsPage() {
           </button>
         </section>
 
-        {/* Section 2: Privacy & GDPR */}
+        {/* Section 2: Health & Devices */}
+        <section>
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <HeartPulse className="text-emerald-400" size={20} />
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Health &amp; Devices
+            </h2>
+          </div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-sm">
+            <HealthSyncPanel />
+          </div>
+        </section>
+
+        {/* Section 3: Privacy & GDPR */}
         <section>
           <div className="flex items-center gap-3 mb-4 px-1">
             <ShieldAlert className="text-rose-400" size={20} />

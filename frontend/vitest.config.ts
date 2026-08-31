@@ -27,6 +27,8 @@ export default defineConfig({
       // lib/offline/manager.ts and workoutSender.ts are left out for the same
       // reason as lib/api.ts: they are browser and network glue, and every
       // decision they make lives in queue.ts, sync.ts, draft.ts and storage.ts
+      // lib/health/bridge.ts is left out on the same grounds: it is plugin and
+      // platform detection, and its decisions live in metrics, normalize and sync
       include: [
         'lib/nutrition/**/*.ts',
         'lib/workouts/**/*.ts',
@@ -36,6 +38,9 @@ export default defineConfig({
         'lib/offline/draft.ts',
         'lib/offline/storage.ts',
         'lib/offline/ids.ts',
+        'lib/health/metrics.ts',
+        'lib/health/normalize.ts',
+        'lib/health/sync.ts',
       ],
       exclude: ['**/__tests__/**', '**/*.d.ts'],
 

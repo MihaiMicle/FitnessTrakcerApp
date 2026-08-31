@@ -21,6 +21,7 @@ from fastapi.encoders import jsonable_encoder
 from models.foods import CustomFood
 from models.nutrition import DailyLog
 from models.workouts import WorkoutSession, WorkoutTemplate
+from models.health import HealthConnection, HealthSample
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
@@ -309,11 +310,27 @@ def export_user_data(
         .all()
     )
 
+    # Health data is special category data under GDPR, so an export that left
+    # it out would be the one omission that actually matters
+    health_connections = (
+        db.query(HealthConnection)
+        .filter(HealthConnection.user_id == current_user_id)
+        .all()
+    )
+    health_samples = (
+        db.query(HealthSample)
+        .filter(HealthSample.user_id == current_user_id)
+        .order_by(HealthSample.start_at.asc())
+        .all()
+    )
+
     # Helper to safely convert SQLAlchemy objects to dictionaries
     def alchemy_to_dict(obj):
         if not obj:
             return None
-        return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+        data = dict(obj.__dict__)
+        data.pop("_sa_instance_state", None)
+        return data
 
     # Construct the payload
     export_payload = {
@@ -323,6 +340,8 @@ def export_user_data(
         "custom_foods": [alchemy_to_dict(f) for f in custom_foods],
         "workout_sessions": [alchemy_to_dict(w) for w in workouts],
         "workout_routines": [alchemy_to_dict(r) for r in routines],
+        "health_connections": [alchemy_to_dict(c) for c in health_connections],
+        "health_samples": [alchemy_to_dict(s) for s in health_samples],
     }
 
     # jsonable_encoder automatically handles UUIDs and datetime strings

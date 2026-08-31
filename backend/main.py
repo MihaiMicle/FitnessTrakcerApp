@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import engine, Base
-from routers import profile, nutrition, foods, chat, workouts, social
+from routers import profile, nutrition, foods, chat, workouts, social, health
 
 # Create database tables automatically if they don't exist yet
 Base.metadata.create_all(bind=engine)
@@ -19,6 +19,12 @@ app.add_middleware(
         "http://localhost:3000",
         "https://fitness-trakcer-app-tau.vercel.app",
         "https://fitness-trakcer-eatkf5b61-misu5.vercel.app",
+        # A packaged build serves the app from the device, not from a website.
+        # These are the origins Capacitor uses on each platform, and without
+        # them every request from the store builds fails CORS
+        "capacitor://localhost",
+        "ionic://localhost",
+        "http://localhost",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -32,6 +38,7 @@ app.include_router(foods.router)
 app.include_router(chat.router)
 app.include_router(workouts.router)
 app.include_router(social.router)
+app.include_router(health.router)
 
 
 @app.get("/", tags=["Health"])
