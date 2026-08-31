@@ -79,5 +79,5 @@ export function regionForMuscle(muscle: string | null | undefined) {
 
 /* Muscles in MUSCLES that no region claims, so they paint nothing */
 export function unmappedMuscles() {
-  return MUSCLES.filter((m) => !(m in MUSCLE_TO_REGION));
+  return MUSCLES.filter((m) => !(m in MUSCLE_TO_REGION) && m !== 'Cardio');
 }

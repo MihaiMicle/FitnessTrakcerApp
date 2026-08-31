@@ -19,6 +19,7 @@ import { useWorkoutDashboard } from '@/components/workouts/dashboard/useWorkoutD
 import { useWorkout } from '@/lib/context/WorkoutContext';
 import { newLocalSession } from '@/lib/offline/draft';
 import { queueSessionSave } from '@/lib/offline/manager';
+import CardioAnalytics from '@/components/workouts/CardioAnalytics';
 
 const ACTION_BUTTON =
   'flex-1 font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 font-mono text-sm tracking-widest';
@@ -148,12 +149,16 @@ export default function WorkoutsDashboard() {
                 setSelectedDay({ date, sessions: daySessions })
               }
             />
+
             <MuscleDistribution sessions={dashboard.sessions} />
+
             <MuscleRankPalette
               sessions={dashboard.sessions}
               exerciseDict={dashboard.exerciseDict}
               profile={dashboard.profile}
             />
+
+            <CardioAnalytics sessions={dashboard.sessions} />
           </WidgetStack>
         </div>
 

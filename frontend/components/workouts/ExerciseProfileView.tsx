@@ -108,15 +108,16 @@ export default function ExerciseProfileView({
   const TypeIcon = exercise.type === 'strength' ? Dumbbell : Activity;
 
   // Calculate worldwide strength standard if data is available
-  const standard = oneRepMax && profile
-  ? calculateStrengthStandard(
-      exercise.name, 
-      oneRepMax,
-      profile.weight_kg,
-      profile.gender, 
-      profile.age
-    )
-  : null;
+  const standard =
+    oneRepMax && profile
+      ? calculateStrengthStandard(
+          exercise.name,
+          oneRepMax,
+          profile.weight_kg,
+          profile.gender,
+          profile.age,
+        )
+      : null;
 
   // Group history by date for the list view
   const groupedHistory = useMemo(() => {
@@ -132,34 +133,42 @@ export default function ExerciseProfileView({
 
   // Generate Chart Data & Progression Stats
   const { chartData, progression } = useMemo(() => {
-    if (history.length === 0 || exercise.type !== 'strength') {
+    if (history.length === 0) {
       return { chartData: [], progression: null };
     }
 
     const statsByDate: Record<
       string,
-      { dateObj: Date; maxWeight: number; totalVolume: number }
+      {
+        dateObj: Date;
+        maxWeight: number;
+        totalVolume: number;
+        totalDistance: number;
+        totalTime: number;
+      }
     > = {};
 
     history.forEach((set) => {
-      if (set.weight_kg && set.reps) {
-        const dateObj = new Date(set.created_at);
-        const dateKey = dateObj.toISOString().split('T')[0];
-        const volume = set.weight_kg * set.reps;
+      const dateObj = new Date(set.created_at);
+      const dateKey = dateObj.toISOString().split('T')[0];
+      const volume = (set.weight_kg || 0) * (set.reps || 0);
 
-        if (!statsByDate[dateKey]) {
-          statsByDate[dateKey] = {
-            dateObj,
-            maxWeight: set.weight_kg,
-            totalVolume: volume,
-          };
-        } else {
-          statsByDate[dateKey].maxWeight = Math.max(
-            statsByDate[dateKey].maxWeight,
-            set.weight_kg,
-          );
-          statsByDate[dateKey].totalVolume += volume;
-        }
+      if (!statsByDate[dateKey]) {
+        statsByDate[dateKey] = {
+          dateObj,
+          maxWeight: set.weight_kg || 0,
+          totalVolume: volume,
+          totalDistance: set.distance_km || 0,
+          totalTime: set.duration_minutes || 0,
+        };
+      } else {
+        statsByDate[dateKey].maxWeight = Math.max(
+          statsByDate[dateKey].maxWeight,
+          set.weight_kg || 0,
+        );
+        statsByDate[dateKey].totalVolume += volume;
+        statsByDate[dateKey].totalDistance += set.distance_km || 0;
+        statsByDate[dateKey].totalTime += set.duration_minutes || 0;
       }
     });
 
@@ -173,15 +182,39 @@ export default function ExerciseProfileView({
         }),
         maxWeight: Math.round(stat.maxWeight * 10) / 10,
         totalVolume: Math.round(stat.totalVolume * 10) / 10,
+        totalDistance: Math.round(stat.totalDistance * 10) / 10,
+        totalTime: Math.round(stat.totalTime * 10) / 10,
       }));
 
     // Calculate progression delta (Last session vs Previous session based on Max Weight)
     let progressionStat = null;
     if (sortedData.length >= 2) {
-      const current = sortedData[sortedData.length - 1].maxWeight;
-      const previous = sortedData[sortedData.length - 2].maxWeight;
-      const diff = current - previous;
-      progressionStat = { diff: Math.round(diff * 10) / 10, current, previous };
+      if (exercise.type === 'strength') {
+        const current = sortedData[sortedData.length - 1].maxWeight;
+        const previous = sortedData[sortedData.length - 2].maxWeight;
+        const diff = current - previous;
+        progressionStat = {
+          type: 'strength',
+          diff: Math.round(diff * 10) / 10,
+          current,
+          previous,
+        };
+      } else {
+        const isDist = sortedData.some((d) => d.totalDistance > 0);
+        const current = isDist
+          ? sortedData[sortedData.length - 1].totalDistance
+          : sortedData[sortedData.length - 1].totalTime;
+        const previous = isDist
+          ? sortedData[sortedData.length - 2].totalDistance
+          : sortedData[sortedData.length - 2].totalTime;
+        const diff = current - previous;
+        progressionStat = {
+          type: isDist ? 'distance' : 'time',
+          diff: Math.round(diff * 10) / 10,
+          current,
+          previous,
+        };
+      }
     }
 
     return { chartData: sortedData, progression: progressionStat };
@@ -212,8 +245,8 @@ export default function ExerciseProfileView({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-        {/* Performance Statistics & Chart (Strength Only) */}
-        {exercise.type === 'strength' && chartData.length > 0 && (
+        {/* Performance Statistics & Chart */}
+        {chartData.length > 0 && (
           <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -242,7 +275,12 @@ export default function ExerciseProfileView({
                     <Minus size={12} />
                   )}
                   {progression.diff > 0 ? '+' : ''}
-                  {progression.diff} kg Max Lift
+                  {progression.diff}{' '}
+                  {progression.type === 'strength'
+                    ? 'kg Max Lift'
+                    : progression.type === 'distance'
+                      ? 'km'
+                      : 'min'}
                 </div>
               )}
             </div>
@@ -258,49 +296,85 @@ export default function ExerciseProfileView({
                     tickMargin={8}
                     tickFormatter={(val) => val.split(' ')[0]}
                   />
-                  <YAxis domain={[minChartValue, 'dataMax + 5']} hide />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#0a0a0a',
                       borderColor: '#262626',
                       borderRadius: '8px',
                     }}
-                    itemStyle={{ color: '#34d399', fontWeight: 'bold' }}
+                    itemStyle={{
+                      color:
+                        exercise.type === 'strength' ? '#34d399' : '#f43f5e',
+                      fontWeight: 'bold',
+                    }}
                     labelStyle={{ color: '#737373', fontSize: '10px' }}
                     formatter={(value, name) => {
                       if (name === 'maxWeight')
                         return [`${value} kg`, 'Max Weight'];
                       if (name === 'totalVolume')
                         return [`${value} kg`, 'Total Volume'];
+                      if (name === 'totalDistance')
+                        return [`${value} km`, 'Distance'];
+                      if (name === 'totalTime')
+                        return [`${value} min`, 'Duration'];
                       return value;
                     }}
                   />
-                  <Line
-                    type="monotone"
-                    dataKey="maxWeight"
-                    stroke="#34d399"
-                    strokeWidth={2}
-                    dot={{
-                      r: 3,
-                      fill: '#34d399',
-                      strokeWidth: 2,
-                      stroke: '#171717',
-                    }}
-                    activeDot={{ r: 5 }}
-                  />
-                  {/* Invisible line just to feed totalVolume data to the tooltip */}
-                  <Line
-                    type="monotone"
-                    dataKey="totalVolume"
-                    stroke="transparent"
-                    dot={false}
-                    activeDot={false}
-                  />
+                  {exercise.type === 'strength' ? (
+                    <>
+                      <YAxis domain={[minChartValue, 'dataMax + 5']} hide />
+                      <Line
+                        type="monotone"
+                        dataKey="maxWeight"
+                        stroke="#34d399"
+                        strokeWidth={2}
+                        dot={{
+                          r: 3,
+                          fill: '#34d399',
+                          strokeWidth: 2,
+                          stroke: '#171717',
+                        }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="totalVolume"
+                        stroke="transparent"
+                        dot={false}
+                        activeDot={false}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <YAxis hide />
+                      <Line
+                        type="monotone"
+                        dataKey={
+                          chartData.some((d) => d.totalDistance > 0)
+                            ? 'totalDistance'
+                            : 'totalTime'
+                        }
+                        stroke="#f43f5e"
+                        strokeWidth={2}
+                        dot={{
+                          r: 3,
+                          fill: '#f43f5e',
+                          strokeWidth: 2,
+                          stroke: '#171717',
+                        }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </>
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
             <p className="text-[9px] text-neutral-500 font-mono text-center mt-2">
-              Progression based on Max Weight lifted per session
+              Progression based on{' '}
+              {exercise.type === 'strength'
+                ? 'Max Weight lifted'
+                : 'Total Distance / Time'}{' '}
+              per session
             </p>
           </div>
         )}

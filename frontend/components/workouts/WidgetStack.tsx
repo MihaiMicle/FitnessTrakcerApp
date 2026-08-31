@@ -46,7 +46,7 @@ export default function WidgetStack({ children }: { children: ReactNode[] }) {
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className="w-full transition-opacity duration-300"
+        className="w-full transition-opacity duration-300 touch-pan-y"
       >
         {children[activeIndex]}
       </div>

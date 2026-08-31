@@ -21,6 +21,7 @@ export const MUSCLES = [
   'Lower Back',
   'Brachialis',
   'Glutes',
+  'Cardio',
 ];
 
 export const EQUIPMENT = [
@@ -91,6 +92,12 @@ export const TRACKING_TYPES: TrackingType[] = [
     label: 'Weight & Distance',
     example: 'Farmers Walk',
     fields: ['weight', 'distance'],
+  },
+  {
+    id: 'machine_cardio',
+    label: 'Machine Cardio',
+    example: 'Treadmill, Stairmaster',
+    fields: ['distance', 'time', 'incline', 'speed'],
   },
 ];
 

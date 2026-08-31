@@ -165,6 +165,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           setIndex,
           Number(set.weight_kg) || 0,
           Number(set.reps) || 0,
+          Number(set.distance_km) || 0,
+          Number(set.duration_minutes) || 0
         );
 
         const celebration = recordToast(check, exercise.name, setIndex);

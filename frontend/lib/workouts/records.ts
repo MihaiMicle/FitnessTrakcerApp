@@ -11,6 +11,8 @@ export interface BestSet {
 export interface ExerciseRecords {
   max1RM: number;
   maxVolume: number;
+  maxDistance: number;
+  maxDuration: number;
   /* Keyed by zero based set index, so set 3 is only compared against set 3 */
   bestSets: Record<number, BestSet>;
 }
@@ -18,12 +20,16 @@ export interface ExerciseRecords {
 export interface HistorySet {
   weight_kg?: number | string | null;
   reps?: number | string | null;
+  distance_km?: number | string | null;
+  duration_minutes?: number | string | null;
   set_number?: number | null;
 }
 
 export const EMPTY_RECORDS: ExerciseRecords = {
   max1RM: 0,
   maxVolume: 0,
+  maxDistance: 0,
+  maxDuration: 0,
   bestSets: {},
 };
 
@@ -41,21 +47,38 @@ export function beatsSet(candidate: BestSet, best: BestSet) {
 
 /* Roll a full set history down into the three records worth celebrating */
 export function summarizeHistory(history: HistorySet[]): ExerciseRecords {
-  const records: ExerciseRecords = { max1RM: 0, maxVolume: 0, bestSets: {} };
+  const records: ExerciseRecords = {
+    max1RM: 0,
+    maxVolume: 0,
+    maxDistance: 0,
+    maxDuration: 0,
+    bestSets: {},
+  };
 
   for (const entry of history) {
     const weight = Number(entry.weight_kg) || 0;
     const reps = Number(entry.reps) || 0;
-    if (weight <= 0 || reps <= 0) continue;
+    const distance = Number(entry.distance_km) || 0;
+    const duration = Number(entry.duration_minutes) || 0;
 
-    records.max1RM = Math.max(records.max1RM, estimate1RM(weight, reps));
-    records.maxVolume = Math.max(records.maxVolume, weight * reps);
+    // Strength records
+    if (weight > 0 && reps > 0) {
+      records.max1RM = Math.max(records.max1RM, estimate1RM(weight, reps));
+      records.maxVolume = Math.max(records.maxVolume, weight * reps);
 
-    /* set_number is one based on the wire, bestSets is zero based */
-    const index = (entry.set_number || 1) - 1;
-    const candidate = { weight_kg: weight, reps };
-    const best = records.bestSets[index];
-    if (!best || beatsSet(candidate, best)) records.bestSets[index] = candidate;
+      /* set_number is one based on the wire, bestSets is zero based */
+      const index = (entry.set_number || 1) - 1;
+      const candidate = { weight_kg: weight, reps };
+      const best = records.bestSets[index];
+      if (!best || beatsSet(candidate, best))
+        records.bestSets[index] = candidate;
+    }
+
+    // Cardio records
+    if (distance > 0)
+      records.maxDistance = Math.max(records.maxDistance, distance);
+    if (duration > 0)
+      records.maxDuration = Math.max(records.maxDuration, duration);
   }
 
   return records;
@@ -65,6 +88,8 @@ export interface RecordCheck {
   is1RM: boolean;
   isVolume: boolean;
   isSetProgression: boolean;
+  isDistance: boolean;
+  isDuration: boolean;
   /* True the first time a set index is logged, so nothing is celebrated yet */
   isFirstForSet: boolean;
   /* Whether anything changed and the cache is worth rewriting */
@@ -83,6 +108,8 @@ export function checkSetAgainstRecords(
   setIndex: number,
   weight: number,
   reps: number,
+  distance: number = 0,
+  duration: number = 0,
 ): RecordCheck {
   const next: ExerciseRecords = {
     ...records,
@@ -92,40 +119,58 @@ export function checkSetAgainstRecords(
     is1RM: false,
     isVolume: false,
     isSetProgression: false,
+    isDistance: false,
+    isDuration: false,
     isFirstForSet: false,
   };
 
-  if (weight <= 0 || reps <= 0) {
+  if (weight <= 0 && reps <= 0 && distance <= 0 && duration <= 0) {
     return { ...verdict, changed: false, records };
   }
 
-  const e1RM = estimate1RM(weight, reps);
-  const volume = weight * reps;
+  // Evaluate Strength
+  if (weight > 0 && reps > 0) {
+    const e1RM = estimate1RM(weight, reps);
+    const volume = weight * reps;
 
-  if (next.max1RM > 0 && e1RM > next.max1RM) {
-    verdict.is1RM = true;
-    next.max1RM = e1RM;
-  }
-  if (next.maxVolume > 0 && volume > next.maxVolume) {
-    verdict.isVolume = true;
-    next.maxVolume = volume;
+    if (next.max1RM > 0 && e1RM > next.max1RM) {
+      verdict.is1RM = true;
+      next.max1RM = e1RM;
+    }
+    if (next.maxVolume > 0 && volume > next.maxVolume) {
+      verdict.isVolume = true;
+      next.maxVolume = volume;
+    }
+
+    const candidate = { weight_kg: weight, reps };
+    const best = next.bestSets[setIndex];
+    if (!best) {
+      verdict.isFirstForSet = true;
+      next.bestSets[setIndex] = candidate;
+    } else if (beatsSet(candidate, best)) {
+      verdict.isSetProgression = true;
+      next.bestSets[setIndex] = candidate;
+    }
   }
 
-  const candidate = { weight_kg: weight, reps };
-  const best = next.bestSets[setIndex];
-  if (!best) {
-    verdict.isFirstForSet = true;
-    next.bestSets[setIndex] = candidate;
-  } else if (beatsSet(candidate, best)) {
-    verdict.isSetProgression = true;
-    next.bestSets[setIndex] = candidate;
+  // Evaluate Cardio
+  if (distance > 0 && next.maxDistance > 0 && distance > next.maxDistance) {
+    verdict.isDistance = true;
   }
+  if (distance > 0) next.maxDistance = Math.max(next.maxDistance, distance);
+
+  if (duration > 0 && next.maxDuration > 0 && duration > next.maxDuration) {
+    verdict.isDuration = true;
+  }
+  if (duration > 0) next.maxDuration = Math.max(next.maxDuration, duration);
 
   const changed =
     verdict.is1RM ||
     verdict.isVolume ||
     verdict.isSetProgression ||
-    verdict.isFirstForSet;
+    verdict.isFirstForSet ||
+    verdict.isDistance ||
+    verdict.isDuration;
 
   return { ...verdict, changed, records: changed ? next : records };
 }
@@ -136,6 +181,20 @@ export function recordToast(
   exerciseName: string,
   setIndex: number,
 ) {
+  if (check.isDistance) {
+    return {
+      icon: '🏃',
+      duration: 4000,
+      message: `New distance record for ${exerciseName}!`,
+    };
+  }
+  if (check.isDuration) {
+    return {
+      icon: '⏱️',
+      duration: 4000,
+      message: `New duration record for ${exerciseName}!`,
+    };
+  }
   if (check.is1RM) {
     return {
       icon: '🏆',
@@ -152,7 +211,7 @@ export function recordToast(
   }
   if (check.isSetProgression) {
     return {
-      icon: '✨',
+      icon: '🔥',
       duration: 3000,
       message: `Set progression: you beat your best set ${setIndex + 1}`,
     };
