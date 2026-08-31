@@ -65,13 +65,6 @@ export default function ProfileModal({
             </h2>
             <div className="flex items-center gap-4 sm:gap-5">
               <button
-                onClick={form.signOut}
-                className="text-xs font-mono text-neutral-400 hover:text-white transition-colors flex items-center gap-1.5"
-              >
-                <SignOutIcon />
-                SIGN OUT
-              </button>
-              <button
                 onClick={onClose}
                 className="text-neutral-400 hover:text-white font-mono text-xl sm:text-sm ml-1"
               >

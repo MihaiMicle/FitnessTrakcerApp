@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, AlertTriangle } from 'lucide-react';
+import { Download, AlertTriangle, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useConfirm } from '@/components/shared/useConfirm';
@@ -46,6 +46,23 @@ export default function GDPRSettings() {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleSignOutClick = () => {
+    confirm.ask({
+      title: 'SIGN OUT',
+      message: 'Are you sure you want to sign out of your account?',
+      confirmText: 'Sign Out',
+      isDestructive: false,
+      action: async () => {
+        try {
+          await supabase.auth.signOut();
+          window.location.href = '/login';
+        } catch (error) {
+          toast.error('Failed to sign out');
+        }
+      },
+    });
   };
 
   const handleDeleteAccount = () => {
@@ -105,6 +122,14 @@ export default function GDPRSettings() {
           >
             <Download size={16} />
             {isExporting ? 'Packaging...' : 'Export All Data'}
+          </button>
+
+          <button
+            onClick={handleSignOutClick}
+            className="flex-1 flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-4 py-3 rounded-lg font-bold font-mono text-sm transition-colors"
+          >
+            <LogOut size={16} />
+            Sign Out
           </button>
 
           <button
