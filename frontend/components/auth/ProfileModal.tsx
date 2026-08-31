@@ -12,6 +12,8 @@ import {
   PersonalDetailsSection,
   PhysicalMetricsSection,
 } from './profile/ProfileFields';
+import { useRouter } from 'next/navigation';
+import { ShieldAlert } from 'lucide-react';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -29,6 +31,7 @@ export default function ProfileModal({
   const [showWebcam, setShowWebcam] = useState(false);
   const form = useProfileForm(isOpen, { onProfileUpdate, onClose });
   const confirm = useConfirm();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isOpen) {
@@ -91,7 +94,7 @@ export default function ProfileModal({
 
             <ActivityGoalsSection form={form} />
 
-            <div className="pt-2 pb-4">
+            <div className="pt-2 pb-4 space-y-3">
               <button
                 type="button"
                 onClick={onOpenSecurity}
@@ -100,19 +103,24 @@ export default function ProfileModal({
                 <LockIcon />
                 Manage Account Security (Email &amp; Password)
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push('/settings');
+                }}
+                className="w-full py-3 rounded-lg border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-mono text-xs transition-colors flex items-center justify-center gap-2"
+              >
+                <ShieldAlert size={14} className="text-neutral-400" />
+                Privacy, Data &amp; Advanced Settings
+              </button>
             </div>
           </div>
 
           {/* Footer (Pinned) */}
-          <div className="flex flex-col sm:flex-row justify-between gap-3 pt-5 border-t border-neutral-800 mt-2 shrink-0">
-            <button
-              onClick={askDeleteAccount}
-              disabled={form.saving}
-              className="px-4 py-2 rounded font-mono text-xs text-rose-500 hover:bg-rose-500/10 transition text-center sm:text-left disabled:opacity-50"
-            >
-              Delete Account
-            </button>
-            <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex justify-end pt-5 border-t border-neutral-800 mt-2 shrink-0">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
                 onClick={onClose}
                 className="px-4 py-2 rounded font-mono text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition text-center"

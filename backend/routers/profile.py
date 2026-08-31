@@ -16,6 +16,11 @@ from schemas.profile import (
     WeightLogCreate,
     WeightLogResponse,
 )
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+from models.foods import CustomFood
+from models.nutrition import DailyLog
+from models.workouts import WorkoutSession, WorkoutTemplate
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
@@ -279,3 +284,53 @@ def delete_account(
         raise HTTPException(
             status_code=500, detail=f"Database error during deletion: {str(e)}"
         )
+
+
+@router.get("/me/export")
+def export_user_data(
+    current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Compiles all user data into a JSON file for GDPR compliance."""
+    user_uuid = UUID(current_user_id)
+
+    # Query all personal data
+    profile = (
+        db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
+    )
+    weight_logs = db.query(WeightLog).filter(WeightLog.user_id == str(user_uuid)).all()
+    daily_logs = db.query(DailyLog).filter(DailyLog.user_id == str(user_uuid)).all()
+    custom_foods = db.query(CustomFood).filter(CustomFood.user_id == user_uuid).all()
+    workouts = (
+        db.query(WorkoutSession).filter(WorkoutSession.user_id == current_user_id).all()
+    )
+    routines = (
+        db.query(WorkoutTemplate)
+        .filter(WorkoutTemplate.user_id == current_user_id)
+        .all()
+    )
+
+    # Helper to safely convert SQLAlchemy objects to dictionaries
+    def alchemy_to_dict(obj):
+        if not obj:
+            return None
+        return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
+    # Construct the payload
+    export_payload = {
+        "profile": alchemy_to_dict(profile),
+        "weight_history": [alchemy_to_dict(w) for w in weight_logs],
+        "nutrition_logs": [alchemy_to_dict(l) for l in daily_logs],
+        "custom_foods": [alchemy_to_dict(f) for f in custom_foods],
+        "workout_sessions": [alchemy_to_dict(w) for w in workouts],
+        "workout_routines": [alchemy_to_dict(r) for r in routines],
+    }
+
+    # jsonable_encoder automatically handles UUIDs and datetime strings
+    encoded_data = jsonable_encoder(export_payload)
+
+    return JSONResponse(
+        content=encoded_data,
+        headers={
+            "Content-Disposition": "attachment; filename=fitness_tracker_data_export.json"
+        },
+    )

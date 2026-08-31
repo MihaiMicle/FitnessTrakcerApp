@@ -126,6 +126,16 @@ export default function Dashboard() {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.search.includes('profile=open')
+    ) {
+      setIsProfileModalOpen(true);
+      window.history.replaceState(null, '', '/');
+    }
+  }, []);
+
   if (authLoading || !layoutLoaded)
     return <div className="p-8 text-white font-mono">Loading...</div>;
   if (!session) return null;
@@ -289,7 +299,10 @@ export default function Dashboard() {
       />
       <AccountSecurityModal
         isOpen={isSecurityModalOpen}
-        onClose={() => setIsSecurityModalOpen(false)}
+        onClose={() => {
+          setIsSecurityModalOpen(false);
+          setIsProfileModalOpen(true);
+        }}
       />
       <DetailedNutritionModal
         isOpen={isDetailedModalOpen}
