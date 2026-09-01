@@ -29,7 +29,14 @@ export default defineConfig({
       // decision they make lives in queue.ts, sync.ts, draft.ts and storage.ts
       // lib/health/bridge.ts is left out on the same grounds: it is plugin and
       // platform detection, and its decisions live in metrics, normalize and sync
+      // lib/copilot/api.ts and types.ts are left out for the same reason as
+      // lib/api.ts: one is network glue, the other is types with no behaviour
       include: [
+        'lib/copilot/position.ts',
+        'lib/copilot/routine.ts',
+        'lib/copilot/meals.ts',
+        'lib/copilot/attachments.ts',
+        'lib/copilot/events.ts',
         'lib/nutrition/**/*.ts',
         'lib/workouts/**/*.ts',
         'lib/social/visibility.ts',

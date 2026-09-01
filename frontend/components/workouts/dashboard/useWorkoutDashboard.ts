@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useSyncStatus } from '@/hooks/useSyncStatus';
+import { onCopilotChange } from '@/lib/copilot/events';
 
 /*
  * Everything the dashboard reads and deletes. Loading is a single round of
@@ -66,6 +67,12 @@ export function useWorkoutDashboard() {
   useEffect(() => {
     if (pending === 0 && !syncing) fetchAll();
   }, [pending, syncing, fetchAll]);
+
+  /* A routine saved from the copilot panel lands in the same list this page
+     renders, so it has to be told rather than left one refresh behind */
+  useEffect(() => {
+    return onCopilotChange('routines', fetchAll);
+  }, [fetchAll]);
 
   const authedRequest = async (path: string, init: RequestInit) => {
     const {

@@ -7,6 +7,7 @@ import ProgressGallery from './ProgressGallery';
 import WeightHistoryChart from './WeightHistoryChart';
 import WeightLogCard from './WeightLogCard';
 import { useWeightHistory } from './hooks/useWeightHistory';
+import WeightAveragesCard from './WeightAveragesCard';
 
 interface WeightHistoryModalProps {
   isOpen: boolean;
@@ -72,6 +73,8 @@ export default function WeightHistoryModal({
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
+            <WeightAveragesCard logs={history.logs} />
+
             <WeightHistoryChart logs={history.logs} loading={history.loading} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

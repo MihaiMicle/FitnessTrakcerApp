@@ -38,6 +38,9 @@ export interface WorkoutContextProps {
   updateSetType: (exId: string, setIndex: number, type: string) => void;
   removeSet: (exId: string, setIndex: number) => void;
   removeExercise: (exId: string) => void;
+  /* Append whole exercises, used by the copilot to drop a suggestion straight
+     into the open session */
+  addExercises: (additions: WorkoutExercise[]) => void;
   toggleSuperset: (index: number) => void;
   getNextSet: () => any | null;
   saveSession: (status?: string) => Promise<boolean>;
@@ -57,4 +60,5 @@ export interface WorkoutContextProps {
   isTimerPaused: boolean;
   toggleTimer: () => void;
   overrideTimer: (seconds: number) => void;
+  updateExerciseNotes: (exId: string, notes: string) => void;
 }

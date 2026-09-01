@@ -5,6 +5,8 @@ import './globals.css';
 import { WorkoutProvider } from '@/lib/context/WorkoutContext';
 import LiveWorkout from '@/components/workouts/LiveWorkout';
 import FloatingWorkoutBar from '@/components/workouts/FloatingWorkoutBar';
+import { CopilotProvider } from '@/lib/context/CopilotContext';
+import CopilotRoot from '@/components/copilot/CopilotRoot';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -35,11 +37,18 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-neutral-950 text-neutral-100">
         {/* Wrap everything in the WorkoutProvider */}
         <WorkoutProvider>
-          {children}
+          {/* Nested inside WorkoutProvider so the copilot can read the session
+              in progress and write suggested exercises back into it */}
+          <CopilotProvider>
+            {children}
 
-          {/* Global Workout Overlays */}
-          <LiveWorkout />
-          <FloatingWorkoutBar />
+            {/* Global Workout Overlays */}
+            <LiveWorkout />
+            <FloatingWorkoutBar />
+
+            {/* Sits above the workout overlay, so it stays reachable mid-set */}
+            <CopilotRoot />
+          </CopilotProvider>
         </WorkoutProvider>
 
         {/* Global toast notifications */}

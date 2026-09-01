@@ -17,7 +17,18 @@ import {
  * a chart
  */
 
-const KNOWN_SET_FIELDS = ['weight', 'reps', 'rir', 'time', 'distance'];
+/* Every field with a column on WorkoutSet. Adding a tracking type that uses a
+   field not in this list means the set has nowhere to be stored */
+const KNOWN_SET_FIELDS = [
+  'weight',
+  'reps',
+  'rir',
+  'time',
+  'distance',
+  'incline',
+  'speed',
+  'difficulty',
+];
 
 describe('MUSCLES', () => {
   it('has no duplicates', () => {

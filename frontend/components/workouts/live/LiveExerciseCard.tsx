@@ -32,6 +32,7 @@ interface LiveExerciseCardProps {
     onDrop: (e: React.DragEvent, index: number) => void;
     onDragEnd: () => void;
   };
+  onUpdateNotes: (notes: string) => void;
 }
 
 export default function LiveExerciseCard({
@@ -41,6 +42,7 @@ export default function LiveExerciseCard({
   isLinkedToPrevious,
   previousSets,
   isReordering,
+  onUpdateNotes,
   isDragged,
   isDragTarget,
   openSetIndex,
@@ -115,6 +117,18 @@ export default function LiveExerciseCard({
           </button>
         </div>
       </div>
+
+      {!isReordering && (
+        <div className="mb-4">
+          <input
+            type="text"
+            value={exercise.notes || ''}
+            onChange={(e) => onUpdateNotes(e.target.value)}
+            placeholder="Add note or cue (e.g. 2s pause, pin 4)..."
+            className="w-full bg-transparent text-xs text-neutral-400 placeholder:text-neutral-600 border-b border-neutral-800/80 focus:border-indigo-500/60 pb-1 outline-none transition-colors font-mono"
+          />
+        </div>
+      )}
 
       {!isReordering && (
         <div className="space-y-2">

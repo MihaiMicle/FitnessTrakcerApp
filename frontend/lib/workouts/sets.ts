@@ -19,6 +19,7 @@ export interface WorkoutExercise {
   id: string;
   name: string;
   type?: string;
+  notes?: string;
   tracking_fields?: string[];
   superset_id?: string | null;
   sets: WorkoutSet[];
@@ -179,4 +180,12 @@ export function asRoutineExercises(
     ...ex,
     sets: ex.sets.map((s) => ({ ...s, completed: false })),
   }));
+}
+
+export function updateExerciseNotesIn(
+  exercises: WorkoutExercise[],
+  exId: string,
+  notes: string,
+): WorkoutExercise[] {
+  return exercises.map((ex) => (ex.id === exId ? { ...ex, notes } : ex));
 }

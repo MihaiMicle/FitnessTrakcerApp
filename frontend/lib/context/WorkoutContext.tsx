@@ -37,6 +37,7 @@ import {
   useSessionRestore,
 } from './workout/useSessionRestore';
 import type { WorkoutContextProps } from './workout/types';
+import { updateExerciseNotesIn } from '@/lib/workouts/sets';
 
 const WorkoutContext = createContext<WorkoutContextProps | undefined>(
   undefined,
@@ -130,6 +131,18 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     setExercises((prev) => removeExerciseFrom(prev, exId));
   }, []);
 
+  /* Appends rather than replaces, and drops anything already in the session by
+     name, so asking the copilot twice does not give you two of the same lift */
+  const addExercises = useCallback((additions: WorkoutExercise[]) => {
+    setExercises((prev) => {
+      const present = new Set(prev.map((ex) => ex.name.toLowerCase()));
+      const fresh = additions.filter(
+        (ex) => !present.has(ex.name.toLowerCase()),
+      );
+      return fresh.length ? [...prev, ...fresh] : prev;
+    });
+  }, []);
+
   const toggleSuperset = useCallback((index: number) => {
     setExercises((prev) => toggleSupersetAt(prev, index));
   }, []);
@@ -166,7 +179,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           Number(set.weight_kg) || 0,
           Number(set.reps) || 0,
           Number(set.distance_km) || 0,
-          Number(set.duration_minutes) || 0
+          Number(set.duration_minutes) || 0,
         );
 
         const celebration = recordToast(check, exercise.name, setIndex);
@@ -206,6 +219,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const updateExerciseNotes = useCallback((exId: string, notes: string) => {
+    setExercises((prev) => updateExerciseNotesIn(prev, exId, notes));
+  }, []);
+
   return (
     <WorkoutContext.Provider
       value={{
@@ -229,6 +246,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         updateSetType,
         removeSet,
         removeExercise,
+        addExercises,
         toggleSuperset,
         getNextSet,
         saveSession,
@@ -244,6 +262,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         isTimerPaused: timer.isPaused,
         toggleTimer: timer.toggle,
         overrideTimer: timer.override,
+        updateExerciseNotes,
       }}
     >
       {children}

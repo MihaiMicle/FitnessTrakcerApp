@@ -257,6 +257,11 @@ export default function RoutineEditor({
     setDraggedExIndex(null);
     setDragOverExIndex(null);
   };
+  const updateExerciseNotes = (exId: string, notes: string) => {
+    setExercises(
+      exercises.map((ex) => (ex.id === exId ? { ...ex, notes } : ex)),
+    );
+  };
 
   const inputClass =
     'bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[16px] sm:text-sm text-white focus:border-indigo-500 outline-none transition-colors font-mono min-w-0 text-center w-full';
@@ -329,7 +334,7 @@ export default function RoutineEditor({
                     : 'col-span-1 md:col-span-2'
               } ${draggedExIndex === index ? 'opacity-50 border-indigo-500' : 'border-neutral-800'} ${dragOverExIndex === index ? 'border-indigo-500 bg-indigo-950/20' : ''}`}
             >
-              <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="flex items-center gap-3 min-w-0">
                   {isReordering ? (
                     <div className="text-neutral-500">
@@ -337,7 +342,11 @@ export default function RoutineEditor({
                     </div>
                   ) : (
                     <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${isSuperset ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'}`}
+                      className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                        isSuperset
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'bg-indigo-500/20 text-indigo-400'
+                      }`}
                     >
                       {isSuperset ? 'S' : index + 1}
                     </div>
@@ -377,6 +386,18 @@ export default function RoutineEditor({
                   </button>
                 </div>
               </div>
+              
+              {!isReordering && (
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    value={ex.notes || ''}
+                    onChange={(e) => updateExerciseNotes(ex.id, e.target.value)}
+                    placeholder="Add note or cue (e.g. 2s pause at bottom, pin 4)..."
+                    className="w-full bg-transparent text-xs text-neutral-400 placeholder:text-neutral-600 border-b border-neutral-800/80 focus:border-indigo-500/60 pb-1 outline-none transition-colors font-mono"
+                  />
+                </div>
+              )}
 
               {!isReordering && (
                 <div className="space-y-2">

@@ -14,8 +14,9 @@ import ProfileModal from '@/components/auth/ProfileModal';
 import WeightHistoryModal from '@/components/dashboard/WeightHistoryModal';
 import DetailedNutritionModal from '@/components/dashboard/DetailedNutritionModal';
 import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
-import Copilot from '@/components/chat/Copilot';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
+import { useCopilot } from '@/lib/context/CopilotContext';
+import { onCopilotChange } from '@/lib/copilot/events';
 import AccountSecurityModal from '@/components/auth/AccountSecurityModal';
 
 export default function Dashboard() {
@@ -52,6 +53,18 @@ export default function Dashboard() {
   } = useDailyLog(session && !needsOnboarding ? selectedDate : '');
 
   const { layout, updateLayout, isLoaded: layoutLoaded } = useDashboardLayout();
+  const { setLogDate } = useCopilot();
+
+  /* The copilot answers about whichever day is on screen, not always today */
+  useEffect(() => {
+    setLogDate(selectedDate);
+  }, [selectedDate, setLogDate]);
+
+  /* The panel floats above this page and can log a meal from anywhere, so the
+     rings have to be told rather than left showing stale totals */
+  useEffect(() => {
+    return onCopilotChange('nutrition', () => refreshLog && refreshLog());
+  }, [refreshLog]);
 
   // Auth & Profile Fetching Logic
   useEffect(() => {
@@ -263,13 +276,6 @@ export default function Dashboard() {
           />
         )}
       </div>
-
-      {/* Modals and Copilot */}
-      <Copilot
-        selectedDate={selectedDate}
-        onUpdateSuccess={() => refreshLog && refreshLog()}
-        onAddMeal={addMeal}
-      />
 
       <LogMealModal
         isOpen={isModalOpen}
