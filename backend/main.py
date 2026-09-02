@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import engine, Base
 from routers import profile, nutrition, foods, chat, workouts, social, health
+from fastapi.responses import JSONResponse
+import traceback
 
 # Create database tables automatically if they don't exist yet
 Base.metadata.create_all(bind=engine)
@@ -11,6 +13,13 @@ app = FastAPI(
     description="A modular backend supporting automated TDEE/macro calculations and custom overrides.",
     version="1.0.0",
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    traceback.print_exc()
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
 
 # Configure CORS for your Next.js frontend
 app.add_middleware(
