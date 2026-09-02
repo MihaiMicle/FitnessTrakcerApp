@@ -11,6 +11,13 @@ from core.social import VISIBILITY_PRIVATE, normalize_visibility
 from core.rest import resolve_rest_seconds
 from core.sync import creation_defaults
 from core.social_queries import assert_not_blocked, visible_content_filter
+from core.feed_queries import (
+    SUBJECT_SESSION,
+    SUBJECT_TEMPLATE,
+    delete_events_for_subject,
+    emit_session_events,
+    emit_template_event,
+)
 from models.profile import UserProfile
 from models.workouts import WorkoutSession, Exercise, WorkoutTemplate, WorkoutSet
 from schemas.workouts import (
@@ -126,6 +133,11 @@ def create_session(
     sync_workout_sets(db, new_session)
     db.commit()
 
+    # Publish after the sets are normalized, because record detection reads
+    # them back to compare this session against everything logged before it
+    emit_session_events(db, new_session)
+    db.commit()
+
     return new_session
 
 
@@ -180,6 +192,11 @@ def update_session(
     sync_workout_sets(db, workout)
     db.commit()
 
+    # Safe to call on every save: emission upserts on a dedupe key, so a
+    # replayed offline write updates the existing card rather than posting again
+    emit_session_events(db, workout)
+    db.commit()
+
     return workout
 
 
@@ -199,6 +216,11 @@ def delete_session(
     )
     if not workout:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Events reference the session by id rather than by foreign key, so the
+    # database cascade does not reach them
+    delete_events_for_subject(db, current_user_id, SUBJECT_SESSION, session_id)
+
     db.delete(workout)
     db.commit()
     return None
@@ -259,6 +281,10 @@ def create_template(
     db.add(new_template)
     db.commit()
     db.refresh(new_template)
+
+    emit_template_event(db, new_template)
+    db.commit()
+
     return new_template
 
 
@@ -279,6 +305,9 @@ def delete_template(
     )
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
+
+    delete_events_for_subject(db, current_user_id, SUBJECT_TEMPLATE, template_id)
+
     db.delete(template)
     db.commit()
     return None
@@ -309,6 +338,11 @@ def update_template(
         template.visibility = payload.visibility
     db.commit()
     db.refresh(template)
+
+    # Also retracts the card when a shared routine is set back to private
+    emit_template_event(db, template)
+    db.commit()
+
     return template
 
 

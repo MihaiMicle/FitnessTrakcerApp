@@ -200,6 +200,12 @@ export default function Dashboard() {
                 >
                   Training
                 </button>
+                <button
+                  onClick={() => router.push('/feed')}
+                  className="text-[10px] sm:text-xs bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white px-2 sm:px-2.5 py-1 rounded transition-colors"
+                >
+                  Activity
+                </button>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-lg p-0.5 shadow-sm">

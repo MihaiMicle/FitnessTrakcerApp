@@ -41,6 +41,7 @@ export default defineConfig({
         'lib/nutrition/**/*.ts',
         'lib/workouts/**/*.ts',
         'lib/social/visibility.ts',
+        'lib/feed/events.ts',
         'lib/offline/queue.ts',
         'lib/offline/sync.ts',
         'lib/offline/draft.ts',

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, ChevronLeft, Play, Plus } from 'lucide-react';
+import { BookOpen, ChevronLeft, Heart, Play, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RoutineEditor from '@/components/workouts/RoutineEditor';
 import WorkoutCalendar from '@/components/workouts/WorkoutCalendar';
@@ -95,6 +95,13 @@ export default function WorkoutsDashboard() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-indigo-400">
               Training Log
             </h1>
+            <button
+              onClick={() => router.push('/feed')}
+              className="ml-auto flex items-center gap-1.5 text-[10px] sm:text-xs font-mono bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white px-2.5 py-1.5 rounded transition-colors"
+            >
+              <Heart size={13} />
+              ACTIVITY
+            </button>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">

@@ -29,6 +29,12 @@ EXPECTED_ROUTES = {
     ("POST", "/social/block/{user_id}"),
     ("DELETE", "/social/block/{user_id}"),
     ("GET", "/social/blocks"),
+    ("GET", "/social/feed"),
+    ("POST", "/social/feed/{event_id}/like"),
+    ("DELETE", "/social/feed/{event_id}/like"),
+    ("GET", "/social/feed/{event_id}/comments"),
+    ("POST", "/social/feed/{event_id}/comments"),
+    ("DELETE", "/social/feed/comments/{comment_id}"),
 }
 
 
@@ -55,12 +61,13 @@ class TestSocialRoutes:
         from routers.social import (
             blocking,
             discovery,
+            feed,
             graph,
             requests,
             settings,
         )
 
-        for module in (settings, discovery, graph, requests, blocking):
+        for module in (settings, discovery, graph, requests, blocking, feed):
             assert module.router.routes, f"{module.__name__} registered nothing"
 
     def test_submodules_share_one_prefix(self):
@@ -68,6 +75,7 @@ class TestSocialRoutes:
         from routers.social import (
             blocking,
             discovery,
+            feed,
             graph,
             requests,
             settings,
@@ -75,6 +83,6 @@ class TestSocialRoutes:
 
         prefixes = {
             module.router.prefix
-            for module in (settings, discovery, graph, requests, blocking)
+            for module in (settings, discovery, graph, requests, blocking, feed)
         }
         assert prefixes == {"/social"}

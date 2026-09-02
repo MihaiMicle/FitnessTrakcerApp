@@ -7,11 +7,11 @@ package stitches them together, so main.py still imports one router
 
 from fastapi import APIRouter
 
-from . import blocking, discovery, graph, requests, settings
+from . import blocking, discovery, feed, graph, requests, settings
 
 router = APIRouter()
 
-for module in (settings, discovery, graph, requests, blocking):
+for module in (settings, discovery, graph, requests, blocking, feed):
     router.include_router(module.router)
 
 __all__ = ["router"]
