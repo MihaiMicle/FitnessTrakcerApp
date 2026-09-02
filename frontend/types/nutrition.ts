@@ -32,6 +32,7 @@ export interface DailySummary {
   id: number;
   user_id: string;
   log_date: string;
+  is_completed?: boolean;
   meals: MealEntry[];
   total_calories: number;
   total_protein_g: number;

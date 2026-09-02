@@ -92,6 +92,8 @@ def get_log_by_date(
             id=0,
             user_id=user_uuid,
             date=log_date,
+            # A day with nothing logged is only complete once the user says so
+            is_completed=False,
             total_calories=0,
             total_protein_g=0,
             total_carbs_g=0,

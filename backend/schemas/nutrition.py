@@ -53,6 +53,7 @@ class DailyLogResponse(BaseModel):
     id: int
     user_id: UUID
     date: date
+    is_completed: bool = False
     total_calories: int
     total_protein_g: float
     total_carbs_g: float

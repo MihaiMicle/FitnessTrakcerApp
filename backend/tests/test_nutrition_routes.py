@@ -39,6 +39,14 @@ def test_toggle_complete_has_no_query_parameters():
     assert "query" not in locations
 
 
+def test_daily_log_response_carries_the_completion_flag():
+    """The column existed on the model but not on the response, so the UI
+    never saw a completed day and the status stayed In Progress forever"""
+    schema = _spec()["components"]["schemas"]["DailyLogResponse"]
+    assert "is_completed" in schema["properties"]
+    assert schema["properties"]["is_completed"]["type"] == "boolean"
+
+
 def test_every_body_annotation_resolves_to_a_model():
     """A demoted body parameter shows up as a query arg named after the argument"""
     spec = _spec()
