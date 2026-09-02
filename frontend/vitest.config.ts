@@ -32,6 +32,7 @@ export default defineConfig({
       // lib/copilot/api.ts and types.ts are left out for the same reason as
       // lib/api.ts: one is network glue, the other is types with no behaviour
       include: [
+        'lib/apiError.ts',
         'lib/copilot/position.ts',
         'lib/copilot/routine.ts',
         'lib/copilot/meals.ts',

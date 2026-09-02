@@ -8,6 +8,7 @@ from core.database import get_db
 from core.security import get_current_user
 from models.nutrition import DailyLog, Meal
 from schemas.nutrition import (
+    CompleteDayRequest,
     DailyLogCreate,
     DailyLogResponse,
     MealCreate,
