@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useDailyLog } from '@/hooks/useDailyLog';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
-
 import WidgetGrid from '@/components/dashboard/WidgetGrid';
 import LogMealModal from '@/components/meals/LogMealDialog';
 import GoalsModal from '@/components/dashboard/GoalsModal';
@@ -18,6 +17,7 @@ import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { useCopilot } from '@/lib/context/CopilotContext';
 import { onCopilotChange } from '@/lib/copilot/events';
 import AccountSecurityModal from '@/components/auth/AccountSecurityModal';
+import CompleteDayButton from '@/components/dashboard/CompleteDayButton';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -49,6 +49,7 @@ export default function Dashboard() {
     addMeal,
     removeMeal,
     updateMeal,
+    toggleCompleteDay,
     refreshLog,
   } = useDailyLog(session && !needsOnboarding ? selectedDate : '');
 
@@ -273,6 +274,15 @@ export default function Dashboard() {
               setEditingLog(meal);
               setIsModalOpen(true);
             }}
+          />
+        )}
+
+        {/* Complete Day Button at the bottom */}
+        {dailyLog && (
+          <CompleteDayButton
+            selectedDate={selectedDate}
+            isCompleted={Boolean(dailyLog.is_completed)}
+            onToggle={toggleCompleteDay}
           />
         )}
       </div>

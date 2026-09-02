@@ -33,7 +33,9 @@ def get_log_by_date(
     user_uuid = UUID(current_user_id)
 
     # Fetch the user's saved targets from their profile
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_uuid).first()
+    profile = (
+        db.query(UserProfile).filter(UserProfile.user_id == current_user_id).first()
+    )
 
     # Set fallback defaults just in case a new user has no profile yet
     t_cals = profile.target_calories if profile and profile.target_calories else 2500
@@ -79,7 +81,7 @@ def get_log_by_date(
     log_entry = (
         db.query(DailyLog)
         .options(joinedload(DailyLog.meals))
-        .filter(DailyLog.date == log_date, DailyLog.user_id == user_uuid)
+        .filter(DailyLog.date == log_date, DailyLog.user_id == current_user_id)
         .first()
     )
 
@@ -124,8 +126,13 @@ def get_log_by_date(
             meals=[],
         )
 
-    response = DailyLogResponse.model_validate(log_entry)
+    is_past_day = log_date < date.today()
+    if is_past_day and not log_entry.is_completed:
+        log_entry.is_completed = True
+        db.commit()
+        db.refresh(log_entry)
 
+    response = DailyLogResponse.model_validate(log_entry)
     response.target_calories = t_cals
     response.target_protein_g = t_prot
     response.target_carbs_g = t_carbs
@@ -254,7 +261,9 @@ def log_water_intake(
     db.refresh(log_entry)
 
     # We still need to attach the target to the response
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_uuid).first()
+    profile = (
+        db.query(UserProfile).filter(UserProfile.user_id == str(user_uuid)).first()
+    )
     t_water = profile.target_water_ml if profile and profile.target_water_ml else 3000
 
     response = DailyLogResponse.model_validate(log_entry)
@@ -485,3 +494,34 @@ def delete_meal(
     db.delete(meal)
     db.commit()
     return {"success": True, "message": "Meal deleted successfully"}
+
+
+@router.post("/logs/{log_date}/toggle-complete", response_model=DailyLogResponse)
+def toggle_log_complete(
+    log_date: date,
+    payload: CompleteDayRequest,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Manually mark a daily nutrition diary as completed or open."""
+    user_uuid = UUID(current_user_id)
+    log_entry = (
+        db.query(DailyLog)
+        .filter(DailyLog.date == log_date, DailyLog.user_id == str(user_uuid))
+        .first()
+    )
+
+    if not log_entry:
+        # Create the daily log if the user completes before logging any food
+        log_entry = DailyLog(
+            user_id=str(user_uuid),
+            date=log_date,
+            is_completed=payload.is_completed,
+        )
+        db.add(log_entry)
+    else:
+        log_entry.is_completed = payload.is_completed
+
+    db.commit()
+    db.refresh(log_entry)
+    return get_log_by_date(log_date=log_date, current_user_id=current_user_id, db=db)

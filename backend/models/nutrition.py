@@ -1,8 +1,7 @@
-from sqlalchemy import Column, Integer, Float, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, Float, String, Date, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
-
 from core.database import Base
 
 
@@ -12,6 +11,8 @@ class DailyLog(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(String, ForeignKey("user_profiles.id"), nullable=False)
     date = Column(Date, nullable=False)
+
+    is_completed = Column(Boolean, default=False, nullable=False)
 
     total_calories = Column(Integer, default=0)
     total_protein_g = Column(Float, default=0.0)

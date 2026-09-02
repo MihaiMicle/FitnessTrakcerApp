@@ -6,6 +6,7 @@ import {
   getDailyLog,
   logMeal as apiLogMeal,
   deleteMeal as apiDeleteMeal,
+  toggleDayCompletion,
 } from '@/lib/api';
 import { DailySummary, LogMealPayload, MealEntry } from '@/types/nutrition';
 
@@ -91,6 +92,19 @@ export function useDailyLog(date: string) {
     }
   };
 
+  
+  const toggleCompleteDay = async (isCompleted: boolean) => {
+  if (!date) return;
+  try {
+    const updated = await toggleDayCompletion(date, isCompleted);
+    setDailyLog(updated);
+    return updated;
+  } catch (err: any) {
+    console.error('Error toggling day completion:', err);
+    throw err;
+  }
+};
+
   return {
     dailyLog,
     loading,
@@ -99,6 +113,7 @@ export function useDailyLog(date: string) {
     addMeal,
     removeMeal,
     updateMeal,
+    toggleCompleteDay,
     refreshLog: fetchLog,
   };
 }

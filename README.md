@@ -177,10 +177,10 @@ Tracked on a Notion board. Roughly in dependency order:
 - [x] Social data model, follow graph, visibility
 - [x] 1RM calculator and per-exercise statistics
 - [x] Worldwide strength classification
-- [ ] Cardio logging and analysis
-- [ ] Health App / Google Fit import
-- [ ] GDPR export and hard delete
-- [ ] Activity feed
+- [x] Cardio logging and analysis
+- [x] Health App / Google Fit import
+- [x] GDPR export and hard delete
+- [x] Activity feed
 
 ---
 

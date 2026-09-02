@@ -8,6 +8,8 @@ class WaterLogRequest(BaseModel):
     date: date
     amount_ml: int
 
+class CompleteDayRequest(BaseModel):
+    is_completed: bool
 
 # Daily Log Schemas
 class DailyLogCreate(BaseModel):

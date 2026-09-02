@@ -164,3 +164,22 @@ export async function updateCustomFood(
   if (!res.ok) throw new Error("Failed to update custom food");
   return res.json();
 }
+
+// Toggle daily diary completion status
+export async function toggleDayCompletion(
+  date: string,
+  isCompleted: boolean,
+): Promise<DailySummary> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${BASE_URL}/logs/${date}/toggle-complete`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ is_completed: isCompleted }),
+    },
+  );
+  
+  if (!res.ok) throw new Error('Failed to update day completion status');
+  return res.json();
+}

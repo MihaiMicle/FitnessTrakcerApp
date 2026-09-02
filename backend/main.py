@@ -17,6 +17,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
         "https://fitness-trakcer-app-tau.vercel.app",
         "https://fitness-trakcer-eatkf5b61-misu5.vercel.app",
         # A packaged build serves the app from the device, not from a website.
