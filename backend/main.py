@@ -21,7 +21,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-# Configure CORS for your Next.js frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -29,13 +28,11 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "https://fitness-trakcer-app-tau.vercel.app",
         "https://fitness-trakcer-eatkf5b61-misu5.vercel.app",
-        # A packaged build serves the app from the device, not from a website.
-        # These are the origins Capacitor uses on each platform, and without
-        # them every request from the store builds fails CORS
         "capacitor://localhost",
         "ionic://localhost",
         "http://localhost",
     ],
+    allow_origin_regex=r"https://fitness-trakcer.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
