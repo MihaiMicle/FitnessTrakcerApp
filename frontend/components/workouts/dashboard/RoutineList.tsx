@@ -4,6 +4,7 @@ import { BookOpen, Pencil, Trash2, Share2, Rss } from 'lucide-react';
 import { nativeShare } from '@/lib/share';
 import { postToFeed } from '@/lib/feed/api';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 
 interface RoutineListProps {
   templates: any[];
@@ -47,18 +48,39 @@ export default function RoutineList({
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
-                  toast.loading('Posting...', { id: 'feed-post' });
+                  toast.loading('Fetching details & posting...', {
+                    id: 'feed-post',
+                  });
                   try {
+                    const {
+                      data: { session },
+                    } = await supabase.auth.getSession();
+                    if (!session) throw new Error('No session');
+
+                    // Fetch the full routine with all exercises
+                    const res = await fetch(
+                      `${process.env.NEXT_PUBLIC_API_URL}/workouts/templates/${t.id}`,
+                      {
+                        headers: {
+                          Authorization: `Bearer ${session.access_token}`,
+                        },
+                      },
+                    );
+                    const fullRoutine = await res.json();
+
+                    // Post the full data to the feed
                     await postToFeed({
                       event_type: 'routine_shared',
                       subject_id: `${t.id}-${Date.now()}`,
                       title: t.name,
                       payload: {
-                        exercise_count: t.exercises?.length || 0,
+                        exercise_count: fullRoutine.exercises?.length || 0,
+                        exercises: fullRoutine.exercises || [],
                       },
                     });
                     toast.success('Posted to feed!', { id: 'feed-post' });
-                  } catch {
+                  } catch (err) {
+                    console.error(err);
                     toast.error('Failed to post', { id: 'feed-post' });
                   }
                 }}

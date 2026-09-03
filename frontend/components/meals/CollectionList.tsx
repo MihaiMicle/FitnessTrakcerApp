@@ -109,13 +109,14 @@ export default function CollectionList({
                               ? 'meal_shared'
                               : 'recipe_shared',
                             subject_id: `${item.id}-${Date.now()}`,
-                            title: item.name || 'Shared Item',
+                           title: item.name || 'Shared Item',
                             payload: {
                               calories: Number(totalCals) || 0,
                               protein_g: Number(totalProtein) || 0,
                               carbs_g: Number(totalCarbs) || 0,
                               fats_g: Number(totalFats) || 0,
-                            },
+                              foods: (isMeal ? item.foods : item.ingredients) || []
+                            }
                           });
                           toast.success('Posted to feed!', { id: 'feed-post' });
                         } catch (err) {

@@ -3,7 +3,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, HTTPException, Query, status, Body
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
@@ -232,21 +232,28 @@ def get_feed(
 
 @router.post("/feed/share", status_code=status.HTTP_201_CREATED)
 def share_to_feed_manually(
-    req: FeedShareRequest,
+    req: dict = Body(...),
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Explicitly post an item (meal, diary, routine) to the activity feed"""
+    from core.feed_queries import _upsert_event
+    from core.feed import dedupe_key
+    from datetime import datetime, timezone
+
+    event_type = req.get("event_type", "workout")
+    subject_id = req.get("subject_id", "")
+
     _upsert_event(
         db,
         user_id=current_user_id,
-        event_type=req.event_type,
-        key=dedupe_key(req.event_type, req.subject_id),
-        visibility=req.visibility,
-        subject_type=req.event_type,
-        subject_id=req.subject_id,
-        title=req.title,
-        payload=req.payload,
+        event_type=event_type,
+        key=dedupe_key(event_type, subject_id),
+        visibility=req.get("visibility", "followers"),
+        subject_type=event_type,
+        subject_id=subject_id,
+        title=req.get("title", "Shared Activity"),
+        payload=req.get("payload", {}),
         occurred_at=datetime.now(timezone.utc),
     )
     db.commit()
@@ -413,7 +420,7 @@ def delete_comment(
 
 @router.post("/feed/share", status_code=status.HTTP_201_CREATED)
 def share_to_feed_manually(
-    req: dict,
+    req: dict = Body(...),
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -422,17 +429,40 @@ def share_to_feed_manually(
     from core.feed import dedupe_key
     from datetime import datetime, timezone
 
+    event_type = req.get("event_type", "workout")
+    subject_id = req.get("subject_id", "")
+
     _upsert_event(
         db,
         user_id=current_user_id,
-        event_type=req.get("event_type", "workout"),
-        key=dedupe_key(req.get("event_type", "workout"), req.get("subject_id", "")),
+        event_type=event_type,
+        key=dedupe_key(event_type, subject_id),
         visibility=req.get("visibility", "followers"),
-        subject_type=req.get("event_type", "workout"),
-        subject_id=req.get("subject_id", ""),
+        subject_type=event_type,
+        subject_id=subject_id,
         title=req.get("title", "Shared Activity"),
         payload=req.get("payload", {}),
         occurred_at=datetime.now(timezone.utc),
     )
     db.commit()
     return {"success": True}
+
+
+@router.delete("/feed/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_feed_post(
+    event_id: UUID,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a feed post created by the user"""
+    event = (
+        db.query(FeedEvent)
+        .filter(FeedEvent.id == event_id, FeedEvent.user_id == current_user_id)
+        .first()
+    )
+    if not event:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    db.delete(event)
+    db.commit()
+    return None

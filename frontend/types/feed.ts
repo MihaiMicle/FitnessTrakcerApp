@@ -44,12 +44,14 @@ export interface MacroPayload {
   protein_g?: number;
   carbs_g?: number;
   fats_g?: number;
+  foods?: any[];
+  meals?: any[];
 }
 
 export type FeedPayload = WorkoutPayload &
   RecordPayload &
   RoutinePayload &
-  MacroPayload;
+  MacroPayload & { exercises?: any[] };
 
 export interface FeedEventItem {
   id: string;

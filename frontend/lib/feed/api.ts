@@ -101,6 +101,12 @@ export function deleteComment(commentId: string): Promise<void> {
   });
 }
 
+export function deletePost(eventId: string): Promise<void> {
+  return request<void>(`/social/feed/${eventId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function postToFeed(payload: {
   event_type: string;
   subject_id: string;

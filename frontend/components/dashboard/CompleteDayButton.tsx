@@ -76,6 +76,7 @@ export default function CompleteDayButton({
           protein_g: dailyLog.total_protein_g,
           carbs_g: dailyLog.total_carbs_g,
           fats_g: dailyLog.total_fats_g,
+          meals: dailyLog.meals || [],
         },
       });
       toast.success('Posted to activity feed!', { id: 'feed-post' });

@@ -5,7 +5,14 @@ from core.feed import FeedError, normalize_comment
 from schemas.social import PublicUserSummary, Visibility
 from typing import Dict, Any
 
-EventType = Literal["workout", "personal_record", "routine_shared"]
+EventType = Literal[
+    "workout",
+    "personal_record",
+    "routine_shared",
+    "meal_shared",
+    "recipe_shared",
+    "diary_shared",
+]
 
 # Which authors a feed page is drawn from
 FeedScope = Literal["following", "me", "user"]

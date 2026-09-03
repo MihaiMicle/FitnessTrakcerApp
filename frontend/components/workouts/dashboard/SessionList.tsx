@@ -5,6 +5,7 @@ import { sessionTotals } from '@/lib/workouts/session';
 import { nativeShare } from '@/lib/share';
 import { postToFeed } from '@/lib/feed/api';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 
 interface SessionListProps {
   sessions: any[];
@@ -61,22 +62,46 @@ export default function SessionList({
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
-                  const { sets, volume } = sessionTotals(s.exercises || []);
-                  toast.loading('Posting...', { id: 'feed-post' });
+                  toast.loading('Fetching details & posting...', {
+                    id: 'feed-post',
+                  });
                   try {
+                    const {
+                      data: { session },
+                    } = await supabase.auth.getSession();
+                    if (!session) throw new Error('No session');
+
+                    // Fetch the full workout session with all exercises and sets
+                    const res = await fetch(
+                      `${process.env.NEXT_PUBLIC_API_URL}/workouts/sessions/${s.id}`,
+                      {
+                        headers: {
+                          Authorization: `Bearer ${session.access_token}`,
+                        },
+                      },
+                    );
+                    const fullSession = await res.json();
+
+                    const { sets, volume } = sessionTotals(
+                      fullSession.exercises || [],
+                    );
+
+                    // Post the full data to the feed
                     await postToFeed({
                       event_type: 'workout',
-                      subject_id: s.id,
+                      subject_id: `${s.id}-${Date.now()}`,
                       title: s.name,
                       payload: {
                         duration_seconds: s.duration_seconds,
-                        exercise_count: s.exercises?.length || 0,
+                        exercise_count: fullSession.exercises?.length || 0,
                         set_count: sets,
                         total_volume_kg: volume,
+                        exercises: fullSession.exercises || [],
                       },
                     });
                     toast.success('Posted to feed!', { id: 'feed-post' });
-                  } catch {
+                  } catch (err) {
+                    console.error(err);
                     toast.error('Failed to post', { id: 'feed-post' });
                   }
                 }}
