@@ -14,12 +14,18 @@ import {
   GripVertical,
   Link,
   Unlink,
+  Globe,
+  Users,
+  Lock,
+  Rss
 } from 'lucide-react';
 import ExerciseSelectorModal from './ExerciseSelectorModal';
 import SetTypeMenu from './SetTypeMenu';
 import RestSettingsButton from './RestSettingsButton';
 import type { SetType } from '@/lib/workouts/constants';
 import { withExerciseRest, withSetRest } from '@/lib/workouts/rest';
+import { VISIBILITY_OPTIONS } from '@/lib/social/visibility';
+import type { Visibility } from '@/types/social';
 
 const FIELD_LABELS: Record<string, string> = {
   weight: 'kg',
@@ -55,6 +61,9 @@ export default function RoutineEditor({
   const [name, setName] = useState(template?.name || 'New Routine');
   const [exercises, setExercises] = useState<any[]>(template?.exercises || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [visibility, setVisibility] = useState<Visibility>(
+    template?.visibility || 'followers',
+  );
   const [selectorType, setSelectorType] = useState<
     'strength' | 'cardio' | null
   >(null);
@@ -90,7 +99,7 @@ export default function RoutineEditor({
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      const payload = { name, exercises };
+      const payload = { name, exercises, visibility };
       const url = template
         ? `${process.env.NEXT_PUBLIC_API_URL}/workouts/templates/${template.id}`
         : `${process.env.NEXT_PUBLIC_API_URL}/workouts/templates`;
@@ -286,13 +295,33 @@ export default function RoutineEditor({
                 className="bg-transparent text-lg sm:text-xl font-bold text-white outline-none focus:border-b focus:border-indigo-500 placeholder:text-neutral-600 w-full truncate"
                 placeholder="Routine Name"
               />
-              <div className="flex items-center gap-1.5">
-                <span className="text-neutral-500 font-mono text-[10px] sm:text-xs mt-0.5">
-                  Template Builder
-                </span>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex bg-neutral-900 rounded border border-neutral-800 p-0.5">
+                  {VISIBILITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setVisibility(opt.value)}
+                      className={`px-2 py-1 flex items-center gap-1.5 rounded text-[10px] font-mono transition-colors ${
+                        visibility === opt.value
+                          ? 'bg-indigo-500 text-white'
+                          : 'text-neutral-500 hover:text-white'
+                      }`}
+                      title={opt.label}
+                    >
+                      {opt.value === 'public' ? (
+                        <Globe size={12} />
+                      ) : opt.value === 'followers' ? (
+                        <Users size={12} />
+                      ) : (
+                        <Lock size={12} />
+                      )}
+                      <span className="hidden sm:inline">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
                 <button
                   onClick={() => setIsReordering(!isReordering)}
-                  className={`ml-2 px-2 py-0.5 rounded text-[10px] sm:text-xs transition-colors font-mono ${isReordering ? 'bg-indigo-500 text-white' : 'bg-neutral-800 text-neutral-300 hover:text-white'}`}
+                  className={`ml-1 px-2 py-1 rounded text-[10px] sm:text-xs transition-colors font-mono ${isReordering ? 'bg-indigo-500 text-white' : 'bg-neutral-800 text-neutral-300 hover:text-white'}`}
                 >
                   {isReordering ? 'Done' : 'Reorder'}
                 </button>
@@ -386,7 +415,7 @@ export default function RoutineEditor({
                   </button>
                 </div>
               </div>
-              
+
               {!isReordering && (
                 <div className="mb-4">
                   <input

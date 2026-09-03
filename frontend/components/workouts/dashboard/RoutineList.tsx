@@ -1,6 +1,9 @@
 'use client';
 
-import { BookOpen, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, Pencil, Trash2, Share2, Rss } from 'lucide-react';
+import { nativeShare } from '@/lib/share';
+import { postToFeed } from '@/lib/feed/api';
+import toast from 'react-hot-toast';
 
 interface RoutineListProps {
   templates: any[];
@@ -41,6 +44,56 @@ export default function RoutineList({
             </h3>
             {/* Always visible on touch, revealed on hover with a pointer */}
             <div className="flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  toast.loading('Posting...', { id: 'feed-post' });
+                  try {
+                    await postToFeed({
+                      event_type: 'routine_shared',
+                      subject_id: `${t.id}-${Date.now()}`,
+                      title: t.name,
+                      payload: {
+                        exercise_count: t.exercises?.length || 0,
+                      },
+                    });
+                    toast.success('Posted to feed!', { id: 'feed-post' });
+                  } catch {
+                    toast.error('Failed to post', { id: 'feed-post' });
+                  }
+                }}
+                className="text-neutral-600 hover:text-sky-400 transition-colors"
+                title="Post to Feed"
+              >
+                <Rss size={18} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+
+                  let exerciseText = '';
+                  if (t.exercises && t.exercises.length > 0) {
+                    exerciseText =
+                      '\n\nRoutine Details:\n' +
+                      t.exercises
+                        .map((ex: any) => {
+                          let line = `  • ${ex.name} (${ex.sets?.length || 0} sets)`;
+                          if (ex.notes) {
+                            line += `\n    Notes: ${ex.notes}`;
+                          }
+                          return line;
+                        })
+                        .join('\n');
+                  }
+
+                  const text = `Check out my routine on FitnessTracker: '${t.name}' (${t.exercises?.length || 0} exercises).${exerciseText}`;
+                  nativeShare('Workout Routine', text);
+                }}
+                className="text-neutral-600 hover:text-emerald-400 transition-colors"
+                title="Share Routine"
+              >
+                <Share2 size={18} />
+              </button>
               <button
                 onClick={() => onEdit(t)}
                 className="text-neutral-600 hover:text-blue-400 transition-colors"

@@ -1,7 +1,10 @@
 'use client';
 
-import { Clock, Dumbbell, Trash2 } from 'lucide-react';
+import { Clock, Dumbbell, Trash2, Share2, Rss } from 'lucide-react';
 import { sessionTotals } from '@/lib/workouts/session';
+import { nativeShare } from '@/lib/share';
+import { postToFeed } from '@/lib/feed/api';
+import toast from 'react-hot-toast';
 
 interface SessionListProps {
   sessions: any[];
@@ -56,19 +59,87 @@ export default function SessionList({
 
             <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={(e) => {
-                  /* The card opens the session, these buttons must not */
+                onClick={async (e) => {
                   e.stopPropagation();
-                  onEditDuration(s);
+                  const { sets, volume } = sessionTotals(s.exercises || []);
+                  toast.loading('Posting...', { id: 'feed-post' });
+                  try {
+                    await postToFeed({
+                      event_type: 'workout',
+                      subject_id: s.id,
+                      title: s.name,
+                      payload: {
+                        duration_seconds: s.duration_seconds,
+                        exercise_count: s.exercises?.length || 0,
+                        set_count: sets,
+                        total_volume_kg: volume,
+                      },
+                    });
+                    toast.success('Posted to feed!', { id: 'feed-post' });
+                  } catch {
+                    toast.error('Failed to post', { id: 'feed-post' });
+                  }
                 }}
-                className="text-neutral-600 hover:text-indigo-400 p-2 transition-colors"
-                title="Edit Duration"
+                className="text-neutral-600 hover:text-sky-400 p-2 transition-colors"
+                title="Post to Feed"
               >
-                <Clock size={20} />
+                <Rss size={20} />
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  const { sets, volume } = sessionTotals(s.exercises || []);
+                  const mins = Math.floor(s.duration_seconds / 60);
+
+                  let exerciseText = '';
+                  if (s.exercises && s.exercises.length > 0) {
+                    exerciseText =
+                      '\n\nWorkout Details:\n' +
+                      s.exercises
+                        .map((ex: any) => {
+                          const setLines = (ex.sets || [])
+                            .filter((set: any) => set.completed)
+                            .map((set: any, idx: number) => {
+                              const mainParts = [];
+                              if (set.weight_kg)
+                                mainParts.push(`${set.weight_kg}kg`);
+                              if (set.reps) mainParts.push(`${set.reps} reps`);
+
+                              let setString = mainParts.join(' x ');
+
+                              const extras = [];
+                              if (set.distance_km)
+                                extras.push(`${set.distance_km}km`);
+                              if (set.duration_minutes)
+                                extras.push(`${set.duration_minutes}m`);
+                              if (set.rir != null)
+                                extras.push(`RIR ${set.rir}`);
+
+                              if (extras.length > 0) {
+                                setString +=
+                                  (setString ? ' ' : '') +
+                                  `(${extras.join(', ')})`;
+                              }
+
+                              return `    Set ${set.set || idx + 1}: ${setString || 'Done'}`;
+                            });
+                          return `  • ${ex.name}\n${setLines.join('\n')}`;
+                        })
+                        .join('\n\n');
+                  }
+
+                  const text = `Just crushed a workout on FitnessTracker! \n${s.name} - ${s.exercises?.length || 0} exercises, ${sets} sets, ${volume.toLocaleString()} kg volume in ${mins}m.${exerciseText}`;
+                  nativeShare('Workout Complete', text);
+                }}
+                className="text-neutral-600 hover:text-emerald-400 p-2 transition-colors"
+                title="Share Workout"
+              >
+                <Share2 size={20} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"></div>;
                   onDelete(s.id);
                 }}
                 className="text-neutral-600 hover:text-rose-500 p-2 transition-colors"

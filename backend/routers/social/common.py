@@ -4,7 +4,12 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 
 from core.social import relationship_state
-from core.social_queries import assert_not_blocked, get_follow, is_blocked_between, is_following
+from core.social_queries import (
+    assert_not_blocked,
+    get_follow,
+    is_blocked_between,
+    is_following,
+)
 from models.profile import UserProfile
 from schemas.social import PublicUserSummary
 
@@ -26,8 +31,9 @@ def summarize(
 ) -> PublicUserSummary:
     """Build the list-item shape, resolving the viewer's relationship to it"""
     edge = get_follow(db, viewer_id, profile.user_id) if viewer_id else None
+
     return PublicUserSummary(
-        id=profile.user_id,
+        id=str(profile.user_id),
         username=profile.username,
         first_name=profile.first_name,
         last_name=profile.last_name,
@@ -35,9 +41,9 @@ def summarize(
         is_private=bool(profile.is_private),
         relationship=relationship_state(
             viewer_id=viewer_id,
-            target_id=profile.user_id,
+            target_id=str(profile.user_id),
             follow_status=edge.status if edge else None,
-            is_blocked=is_blocked_between(db, viewer_id, profile.user_id),
+            is_blocked=is_blocked_between(db, viewer_id, str(profile.user_id)),
         ),
     )
 

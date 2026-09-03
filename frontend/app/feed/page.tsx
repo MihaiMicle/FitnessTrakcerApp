@@ -1,13 +1,17 @@
 'use client';
 
+import FeedList from '@/components/feed/FeedList';
+import UserDiscovery from '@/components/feed/UserDiscovery';
+import MyProfileView from '@/components/feed/MyProfileView';
+import { useFeed } from '@/components/feed/useFeed';
+import type { FeedScope } from '@/types/feed';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import FeedList from '@/components/feed/FeedList';
-import { useFeed } from '@/components/feed/useFeed';
-import type { FeedScope } from '@/types/feed';
 
-const TABS: { scope: FeedScope; label: string; empty: string }[] = [
+type TabScope = FeedScope | 'discover';
+
+const TABS: { scope: TabScope; label: string; empty?: string }[] = [
   {
     scope: 'following',
     label: 'FOLLOWING',
@@ -15,17 +19,24 @@ const TABS: { scope: FeedScope; label: string; empty: string }[] = [
       'Nothing here yet. Follow some people, or finish a workout and it will show up.',
   },
   {
+    scope: 'discover',
+    label: 'DISCOVER',
+  },
+  {
     scope: 'me',
-    label: 'MY ACTIVITY',
+    label: 'MY PROFILE',
     empty: 'Finish a workout and it will appear here.',
   },
 ];
 
 export default function FeedPage() {
   const router = useRouter();
-  const [scope, setScope] = useState<FeedScope>('following');
+  const [scope, setScope] = useState<TabScope>('following');
 
-  const feed = useFeed({ scope });
+  // Feed hooks shouldn't fetch when we're in discovery mode
+  const feedScope: FeedScope = scope === 'discover' ? 'following' : scope;
+  const feed = useFeed({ scope: feedScope });
+
   const active = TABS.find((tab) => tab.scope === scope) ?? TABS[0];
 
   return (
@@ -61,18 +72,24 @@ export default function FeedPage() {
           </div>
         </header>
 
-        <FeedList
-          events={feed.events}
-          loading={feed.loading}
-          loadingMore={feed.loadingMore}
-          error={feed.error}
-          hasMore={feed.hasMore}
-          emptyMessage={active.empty}
-          onRetry={feed.refetch}
-          onLoadMore={feed.loadMore}
-          onToggleLike={feed.toggleEventLike}
-          onCommentCountChange={feed.setCommentCount}
-        />
+        {scope === 'discover' ? (
+          <UserDiscovery />
+        ) : scope === 'me' ? (
+          <MyProfileView feed={feed} emptyMessage={active.empty || ''} />
+        ) : (
+          <FeedList
+            events={feed.events}
+            loading={feed.loading}
+            loadingMore={feed.loadingMore}
+            error={feed.error}
+            hasMore={feed.hasMore}
+            emptyMessage={active.empty || ''}
+            onRetry={feed.refetch}
+            onLoadMore={feed.loadMore}
+            onToggleLike={feed.toggleEventLike}
+            onCommentCountChange={feed.setCommentCount}
+          />
+        )}
       </div>
     </main>
   );

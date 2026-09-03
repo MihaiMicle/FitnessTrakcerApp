@@ -12,12 +12,16 @@ from core.feed import clamp_page_size, decode_cursor, encode_cursor
 from core.feed_queries import recount_engagement
 from core.security import get_current_user
 from core.social import relationship_state
+from datetime import datetime, timezone
+from core.feed import dedupe_key
+from core.feed_queries import _upsert_event
 from core.social_queries import (
     accepted_following_ids,
     assert_not_blocked,
     blocked_user_ids,
     visible_content_filter,
 )
+
 from models.feed import FeedComment, FeedEvent, FeedLike
 from models.profile import UserProfile
 from models.social import Follow, UserBlock
@@ -27,6 +31,7 @@ from schemas.feed import (
     FeedEventItem,
     FeedLikeResult,
     FeedPage,
+    FeedShareRequest,
 )
 from schemas.social import PublicUserSummary
 
@@ -41,10 +46,6 @@ def _author_map(
     """
     Build the author summary for every id on the page in a fixed number of
     queries
-
-    `common.summarize` runs two lookups per profile, which is fine for a
-    follower list and not fine for a feed page: twenty cards would be sixty
-    round trips. The relationship data is loaded in bulk here instead
     """
     ids = [uid for uid in dict.fromkeys(user_ids) if uid]
     if not ids:
@@ -52,11 +53,12 @@ def _author_map(
 
     profiles = db.query(UserProfile).filter(UserProfile.user_id.in_(ids)).all()
 
-    follow_status = dict(
-        db.query(Follow.following_id, Follow.status)
+    follow_status = {
+        str(k): v
+        for k, v in db.query(Follow.following_id, Follow.status)
         .filter(Follow.follower_id == viewer_id, Follow.following_id.in_(ids))
         .all()
-    )
+    }
 
     block_rows = (
         db.query(UserBlock.blocker_id, UserBlock.blocked_id)
@@ -68,14 +70,15 @@ def _author_map(
         )
         .all()
     )
+
     blocked = {
-        blocked_id if blocker_id == viewer_id else blocker_id
+        str(blocked_id) if str(blocker_id) == str(viewer_id) else str(blocker_id)
         for blocker_id, blocked_id in block_rows
     }
 
     return {
-        profile.user_id: PublicUserSummary(
-            id=profile.user_id,
+        str(profile.user_id): PublicUserSummary(
+            id=str(profile.user_id),
             username=profile.username,
             first_name=profile.first_name,
             last_name=profile.last_name,
@@ -83,9 +86,9 @@ def _author_map(
             is_private=bool(profile.is_private),
             relationship=relationship_state(
                 viewer_id=viewer_id,
-                target_id=profile.user_id,
-                follow_status=follow_status.get(profile.user_id),
-                is_blocked=profile.user_id in blocked,
+                target_id=str(profile.user_id),
+                follow_status=follow_status.get(str(profile.user_id)),
+                is_blocked=str(profile.user_id) in blocked,
             ),
         )
         for profile in profiles
@@ -227,6 +230,29 @@ def get_feed(
     return FeedPage(items=items, next_cursor=next_cursor)
 
 
+@router.post("/feed/share", status_code=status.HTTP_201_CREATED)
+def share_to_feed_manually(
+    req: FeedShareRequest,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Explicitly post an item (meal, diary, routine) to the activity feed"""
+    _upsert_event(
+        db,
+        user_id=current_user_id,
+        event_type=req.event_type,
+        key=dedupe_key(req.event_type, req.subject_id),
+        visibility=req.visibility,
+        subject_type=req.event_type,
+        subject_id=req.subject_id,
+        title=req.title,
+        payload=req.payload,
+        occurred_at=datetime.now(timezone.utc),
+    )
+    db.commit()
+    return {"success": True}
+
+
 @router.post("/feed/{event_id}/like", response_model=FeedLikeResult)
 def like_event(
     event_id: UUID,
@@ -337,9 +363,7 @@ def create_comment(
     event = _load_visible_event(db, event_id, current_user_id)
     assert_not_blocked(db, current_user_id, event.user_id)
 
-    comment = FeedComment(
-        event_id=event.id, user_id=current_user_id, body=payload.body
-    )
+    comment = FeedComment(event_id=event.id, user_id=current_user_id, body=payload.body)
     db.add(comment)
     db.flush()
     recount_engagement(db, [event.id])
@@ -357,9 +381,7 @@ def create_comment(
     )
 
 
-@router.delete(
-    "/feed/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/feed/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment(
     comment_id: UUID,
     current_user_id: str = Depends(get_current_user),
@@ -387,3 +409,30 @@ def delete_comment(
     recount_engagement(db, [event_id])
     db.commit()
     return None
+
+
+@router.post("/feed/share", status_code=status.HTTP_201_CREATED)
+def share_to_feed_manually(
+    req: dict,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Explicitly post an item (meal, diary, routine) to the activity feed"""
+    from core.feed_queries import _upsert_event
+    from core.feed import dedupe_key
+    from datetime import datetime, timezone
+
+    _upsert_event(
+        db,
+        user_id=current_user_id,
+        event_type=req.get("event_type", "workout"),
+        key=dedupe_key(req.get("event_type", "workout"), req.get("subject_id", "")),
+        visibility=req.get("visibility", "followers"),
+        subject_type=req.get("event_type", "workout"),
+        subject_id=req.get("subject_id", ""),
+        title=req.get("title", "Shared Activity"),
+        payload=req.get("payload", {}),
+        occurred_at=datetime.now(timezone.utc),
+    )
+    db.commit()
+    return {"success": True}

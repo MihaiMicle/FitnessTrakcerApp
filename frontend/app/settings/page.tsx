@@ -1,9 +1,16 @@
 'use client';
-
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, User, ShieldAlert, HeartPulse } from 'lucide-react';
+import {
+  ChevronLeft,
+  User,
+  ShieldAlert,
+  HeartPulse,
+  AtSign,
+} from 'lucide-react';
+
 import GDPRSettings from '@/components/settings/GDPRSettings';
 import HealthSyncPanel from '@/components/health/HealthSyncPanel';
+import SocialSettingsPanel from '@/components/settings/SocialSettingsPanel';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -36,11 +43,22 @@ export default function SettingsPage() {
             Update your body metrics, goals, and personal details.
           </p>
           <button
-            onClick={() => router.push('/')} // This redirects to the dashboard where they can open the Profile modal
+            onClick={() => router.push('/?profile=open')}
             className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-mono text-sm transition-colors"
           >
             Edit Profile Metrics
           </button>
+        </section>
+
+        {/* Section 1.5: Social & Profile */}
+        <section>
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <AtSign className="text-indigo-400" size={20} />
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Public Profile & Social
+            </h2>
+          </div>
+          <SocialSettingsPanel />
         </section>
 
         {/* Section 2: Health & Devices */}

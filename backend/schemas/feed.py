@@ -1,10 +1,9 @@
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
-
 from pydantic import BaseModel, Field, field_validator
-
 from core.feed import FeedError, normalize_comment
 from schemas.social import PublicUserSummary, Visibility
+from typing import Dict, Any
 
 EventType = Literal["workout", "personal_record", "routine_shared"]
 
@@ -76,10 +75,17 @@ class FeedCommentItem(BaseModel):
     author: PublicUserSummary
     body: str
     created_at: Optional[datetime] = None
-
     # True when the caller may delete it, as the comment's author or the
     # event's owner. Moderating your own post is the minimum a feed needs
     can_delete: bool = False
 
     class Config:
         from_attributes = True
+
+
+class FeedShareRequest(BaseModel):
+    event_type: str
+    subject_id: str
+    title: str
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    visibility: str = "followers"

@@ -31,8 +31,18 @@ from typing import Any, Iterable, Mapping, Optional, Sequence
 EVENT_WORKOUT = "workout"
 EVENT_PERSONAL_RECORD = "personal_record"
 EVENT_ROUTINE_SHARED = "routine_shared"
+EVENT_MEAL_SHARED = "meal_shared"
+EVENT_RECIPE_SHARED = "recipe_shared"
+EVENT_DIARY_SHARED = "diary_shared"
 
-EVENT_TYPES = (EVENT_WORKOUT, EVENT_PERSONAL_RECORD, EVENT_ROUTINE_SHARED)
+EVENT_TYPES = (
+    EVENT_WORKOUT,
+    EVENT_PERSONAL_RECORD,
+    EVENT_ROUTINE_SHARED,
+    EVENT_MEAL_SHARED,
+    EVENT_RECIPE_SHARED,
+    EVENT_DIARY_SHARED,
+)
 
 # What a personal record was set on
 RECORD_ESTIMATED_1RM = "estimated_1rm"

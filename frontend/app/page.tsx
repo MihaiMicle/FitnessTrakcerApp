@@ -289,6 +289,7 @@ export default function Dashboard() {
             selectedDate={selectedDate}
             isCompleted={Boolean(dailyLog.is_completed)}
             onToggle={toggleCompleteDay}
+            dailyLog={dailyLog}
           />
         )}
       </div>

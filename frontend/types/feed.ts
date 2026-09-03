@@ -1,11 +1,17 @@
 /* Mirrors backend/schemas/feed.py */
 
-import type { PublicUserSummary, Visibility } from "@/types/social";
+import type { PublicUserSummary, Visibility } from '@/types/social';
 
-export type FeedEventType = "workout" | "personal_record" | "routine_shared";
+export type FeedEventType =
+  | 'workout'
+  | 'personal_record'
+  | 'routine_shared'
+  | 'meal_shared'
+  | 'recipe_shared'
+  | 'diary_shared';
 
 /* Which authors a page is drawn from */
-export type FeedScope = "following" | "me" | "user";
+export type FeedScope = 'following' | 'me' | 'user';
 
 /* Denormalised on the event, so a card renders without a follow-up request */
 export interface WorkoutPayload {
@@ -33,7 +39,17 @@ export interface RoutinePayload {
   exercise_count?: number;
 }
 
-export type FeedPayload = WorkoutPayload & RecordPayload & RoutinePayload;
+export interface MacroPayload {
+  calories?: number;
+  protein_g?: number;
+  carbs_g?: number;
+  fats_g?: number;
+}
+
+export type FeedPayload = WorkoutPayload &
+  RecordPayload &
+  RoutinePayload &
+  MacroPayload;
 
 export interface FeedEventItem {
   id: string;

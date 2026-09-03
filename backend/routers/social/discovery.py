@@ -36,7 +36,6 @@ def search_users(
         db.query(UserProfile)
         .filter(
             UserProfile.username.isnot(None),
-            UserProfile.user_id != current_user_id,
             or_(
                 UserProfile.username.ilike(term),
                 UserProfile.first_name.ilike(term),
@@ -69,9 +68,7 @@ def get_user_profile(
     user's workouts or render a locked state instead
     """
     handle = normalize_username(username)
-    profile = (
-        db.query(UserProfile).filter(UserProfile.username == handle).first()
-    )
+    profile = db.query(UserProfile).filter(UserProfile.username == handle).first()
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -79,8 +76,10 @@ def get_user_profile(
 
     summary = summarize(db, profile, current_user_id)
     is_self = profile.user_id == current_user_id
-    can_view = is_self or not profile.is_private or is_following(
-        db, current_user_id, profile.user_id
+    can_view = (
+        is_self
+        or not profile.is_private
+        or is_following(db, current_user_id, profile.user_id)
     )
 
     return PublicUserProfile(

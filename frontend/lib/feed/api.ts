@@ -1,21 +1,21 @@
 /* lib/feed/api.ts */
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from '@/lib/supabase';
 import type {
   FeedCommentItem,
   FeedLikeResult,
   FeedPage,
   FeedScope,
-} from "@/types/feed";
+} from '@/types/feed';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 async function getAuthHeaders() {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   return {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...(session?.access_token
       ? { Authorization: `Bearer ${session.access_token}` }
       : {}),
@@ -56,28 +56,28 @@ export interface FeedQuery {
 }
 
 export function getFeed({
-  scope = "following",
+  scope = 'following',
   userId,
   cursor,
   limit,
 }: FeedQuery = {}): Promise<FeedPage> {
   const params = new URLSearchParams({ scope });
-  if (userId) params.set("user_id", userId);
-  if (cursor) params.set("cursor", cursor);
-  if (limit) params.set("limit", String(limit));
+  if (userId) params.set('user_id', userId);
+  if (cursor) params.set('cursor', cursor);
+  if (limit) params.set('limit', String(limit));
 
   return request<FeedPage>(`/social/feed?${params.toString()}`);
 }
 
 export function likeEvent(eventId: string): Promise<FeedLikeResult> {
   return request<FeedLikeResult>(`/social/feed/${eventId}/like`, {
-    method: "POST",
+    method: 'POST',
   });
 }
 
 export function unlikeEvent(eventId: string): Promise<FeedLikeResult> {
   return request<FeedLikeResult>(`/social/feed/${eventId}/like`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
 }
 
@@ -90,13 +90,26 @@ export function postComment(
   body: string,
 ): Promise<FeedCommentItem> {
   return request<FeedCommentItem>(`/social/feed/${eventId}/comments`, {
-    method: "POST",
+    method: 'POST',
     body: JSON.stringify({ body }),
   });
 }
 
 export function deleteComment(commentId: string): Promise<void> {
   return request<void>(`/social/feed/comments/${commentId}`, {
-    method: "DELETE",
+    method: 'DELETE',
+  });
+}
+
+export function postToFeed(payload: {
+  event_type: string;
+  subject_id: string;
+  title: string;
+  payload: Record<string, any>;
+  visibility?: string;
+}): Promise<void> {
+  return request<void>('/social/feed/share', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }

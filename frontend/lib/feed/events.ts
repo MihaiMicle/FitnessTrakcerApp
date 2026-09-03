@@ -13,26 +13,29 @@ import type {
   FeedEventItem,
   FeedEventType,
   FeedPayload,
-} from "@/types/feed";
-import { displayName } from "@/lib/social/visibility";
+} from '@/types/feed';
+import { displayName } from '@/lib/social/visibility';
 
 export const COMMENT_MAX_LENGTH = 500;
 
 const EVENT_TYPES: readonly FeedEventType[] = [
-  "workout",
-  "personal_record",
-  "routine_shared",
+  'workout',
+  'personal_record',
+  'routine_shared',
+  'meal_shared',
+  'recipe_shared',
+  'diary_shared',
 ] as const;
 
 export function isFeedEventType(value: unknown): value is FeedEventType {
   return (
-    typeof value === "string" && EVENT_TYPES.includes(value as FeedEventType)
+    typeof value === 'string' && EVENT_TYPES.includes(value as FeedEventType)
   );
 }
 
 /* Unknown types render as a plain workout rather than an empty card */
 export function normalizeEventType(value: unknown): FeedEventType {
-  return isFeedEventType(value) ? value : "workout";
+  return isFeedEventType(value) ? value : 'workout';
 }
 
 function toNumber(value: unknown): number {
@@ -59,7 +62,7 @@ export function formatDuration(seconds: unknown): string {
 
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m`;
-  return "< 1m";
+  return '< 1m';
 }
 
 /* Relative until it stops being useful, then an absolute date */
@@ -67,13 +70,13 @@ export function formatWhen(
   timestamp: string | null | undefined,
   now: number = Date.now(),
 ): string {
-  if (!timestamp) return "";
+  if (!timestamp) return '';
 
   const moment = new Date(timestamp).getTime();
-  if (Number.isNaN(moment)) return "";
+  if (Number.isNaN(moment)) return '';
 
   const seconds = Math.round((now - moment) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return 'just now';
 
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -94,17 +97,29 @@ export function summaryLine(
 ): string {
   const data = payload ?? {};
 
-  if (normalizeEventType(eventType) === "personal_record") {
+  if (normalizeEventType(eventType) === 'personal_record') {
     const parts = [`${formatWeight(data.weight_kg)} x ${toNumber(data.reps)}`];
     if (toNumber(data.improvement_kg) > 0) {
       parts.push(`+${formatWeight(data.improvement_kg)} est. 1RM`);
     }
-    return parts.join(" • ");
+    return parts.join(' • ');
   }
 
-  if (normalizeEventType(eventType) === "routine_shared") {
+  if (normalizeEventType(eventType) === 'routine_shared') {
     const count = toNumber(data.exercise_count);
-    return `${count} ${count === 1 ? "exercise" : "exercises"}`;
+    return `${count} ${count === 1 ? 'exercise' : 'exercises'}`;
+  }
+
+  if (
+    ['meal_shared', 'recipe_shared', 'diary_shared'].includes(
+      normalizeEventType(eventType),
+    )
+  ) {
+    const cals = Math.round(toNumber(data.calories));
+    const p = Math.round(toNumber(data.protein_g));
+    const c = Math.round(toNumber(data.carbs_g));
+    const f = Math.round(toNumber(data.fats_g));
+    return `${cals} kcal | P: ${p}g | C: ${c}g | F: ${f}g`;
   }
 
   const parts: string[] = [];
@@ -112,9 +127,9 @@ export function summaryLine(
   const sets = toNumber(data.set_count);
 
   if (exercises > 0) {
-    parts.push(`${exercises} ${exercises === 1 ? "exercise" : "exercises"}`);
+    parts.push(`${exercises} ${exercises === 1 ? 'exercise' : 'exercises'}`);
   }
-  if (sets > 0) parts.push(`${sets} ${sets === 1 ? "set" : "sets"}`);
+  if (sets > 0) parts.push(`${sets} ${sets === 1 ? 'set' : 'sets'}`);
   if (toNumber(data.total_volume_kg) > 0) {
     parts.push(formatVolume(data.total_volume_kg));
   }
@@ -125,7 +140,7 @@ export function summaryLine(
     parts.push(formatDuration(data.duration_seconds));
   }
 
-  return parts.join(" • ");
+  return parts.join(' • ');
 }
 
 /* The sentence above the headline, naming who did the thing */
@@ -133,10 +148,16 @@ export function actorLine(event: FeedEventItem): string {
   const who = displayName(event.author);
 
   switch (normalizeEventType(event.event_type)) {
-    case "personal_record":
+    case 'personal_record':
       return `${who} hit a personal record`;
-    case "routine_shared":
+    case 'routine_shared':
       return `${who} shared a routine`;
+    case 'meal_shared':
+      return `${who} shared a meal`;
+    case 'recipe_shared':
+      return `${who} shared a recipe`;
+    case 'diary_shared':
+      return `${who} completed their diary`;
     default:
       return `${who} finished a workout`;
   }
@@ -144,12 +165,12 @@ export function actorLine(event: FeedEventItem): string {
 
 export function likeLabel(count: number): string {
   const total = Math.max(0, Math.round(toNumber(count)));
-  return `${total} ${total === 1 ? "like" : "likes"}`;
+  return `${total} ${total === 1 ? 'like' : 'likes'}`;
 }
 
 export function commentLabel(count: number): string {
   const total = Math.max(0, Math.round(toNumber(count)));
-  return `${total} ${total === 1 ? "comment" : "comments"}`;
+  return `${total} ${total === 1 ? 'comment' : 'comments'}`;
 }
 
 /*
@@ -200,11 +221,11 @@ export interface CommentCheck {
 
 /* Same rules as normalize_comment in core/feed.py, for inline form feedback */
 export function checkComment(raw: string | null | undefined): CommentCheck {
-  const body = (raw ?? "").trim();
+  const body = (raw ?? '').trim();
 
   let reason: string | null = null;
   if (!body) {
-    reason = "Comment cannot be empty";
+    reason = 'Comment cannot be empty';
   } else if (body.length > COMMENT_MAX_LENGTH) {
     reason = `Comment must be at most ${COMMENT_MAX_LENGTH} characters`;
   }
