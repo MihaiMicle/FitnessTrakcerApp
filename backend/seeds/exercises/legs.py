@@ -394,11 +394,12 @@ LEG_EXERCISES = [
     {
         "name": "Bodyweight Bulgarian Split Squats",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bodyweight_Squat/0.jpg",
         "instructions": [
-            "Stand with your feet shoulder width apart. You can place your hands behind your head. This will be your starting position.",
-            "Begin the movement by flexing your knees and hips, sitting back with your hips.",
-            "Continue down to full depth if you are able,and quickly reverse the motion until you return to the starting position. As you squat, keep your head and chest up and push your knees out.",
+            "Stand two to three feet in front of a flat bench or elevated platform, facing away from it.",
+            "Reach one leg back and place the top of your foot flat on the bench. This is your starting position.",
+            "Inhale and lower your body by bending your front knee until your back knee is just above the floor. Keep your torso upright and ensure your front knee tracks in line with your toes.",
+            "Exhale and drive through the heel of your front foot to return to the starting position.",
+            "Complete all repetitions on one leg before switching sides."
         ],
         "equipment": "None",
         "primary_muscle": "Quads",
@@ -436,12 +437,12 @@ LEG_EXERCISES = [
     {
         "name": "Reverse Lunges (Barbell or Dumbbell)",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Lunges/0.jpg",
         "instructions": [
-            "Stand with your torso upright holding two dumbbells in your hands by your sides. This will be your starting position.",
-            "Step forward with your right leg around 2 feet or so from the foot being left stationary behind and lower your upper body down, while keeping the torso upright and maintaining balance. Inhale as you go down. Note: As in the other exercises, do not allow your knee to go forward beyond your toes as you come down, as this will put undue stress on the knee joint. Make sure that you keep your front shin perpendicular to the ground.",
-            "Using mainly the heel of your foot, push up and go back to the starting position as you exhale.",
-            "Repeat the movement for the recommended amount of repetitions and then perform with the left leg.",
+            "Stand upright with your feet hip-width apart, holding a pair of dumbbells by your sides or balancing a barbell across your upper back. This is your starting position.",
+            "Inhale and take a large step backward with one foot, planting the ball of that foot on the ground.",
+            "Lower your hips down until both knees are bent at a 90-degree angle. Your back knee should hover just above the floor, and your front shin should be perpendicular to the ground.",
+            "Exhale and push off your back foot to drive yourself forward, returning to the starting position.",
+            "Repeat the movement by alternating legs."
         ],
         "equipment": "Dumbbell",
         "primary_muscle": "Glutes",

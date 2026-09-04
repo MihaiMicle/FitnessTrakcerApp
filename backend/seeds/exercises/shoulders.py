@@ -495,13 +495,11 @@ SHOULDER_EXERCISES = [
     {
         "name": "Pike Push-Ups",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Handstand_Push-Ups/0.jpg",
         "instructions": [
-            "With your back to the wall bend at the waist and place both hands on the floor at shoulder width.",
-            "Kick yourself up against the wall with your arms straight. Your body should be upside down with the arms and legs fully extended. Keep your whole body as straight as possible. Tip: If doing this for the first time, have a spotter help you. Also, make sure that you keep facing the wall with your head, rather than looking down.",
-            "Slowly lower yourself to the ground as you inhale until your head almost touches the floor. Tip: It is of utmost importance that you come down slow in order to avoid head injury.",
-            "Push yourself back up slowly as you exhale until your elbows are nearly locked.",
-            "Repeat for the recommended amount of repetitions.",
+            "Assume a standard push-up position, then walk your feet forward toward your hands so your hips are raised high, forming an inverted V-shape with your body.",
+            "Keep your arms and legs as straight as possible, and position your hands slightly wider than shoulder-width apart.",
+            "Inhale as you bend your elbows to lower your head toward the floor, keeping your elbows tucked in slightly rather than flared out.",
+            "Exhale and push through your hands to extend your elbows, returning to the inverted V starting position."
         ],
         "equipment": "None",
         "primary_muscle": "Anterior Delt",

@@ -151,12 +151,12 @@ BACK_EXERCISES = [
     {
         "name": "Bench Chest Supported Dumbbell Row",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_Two-Dumbbell_Row/0.jpg",
         "instructions": [
-            "With a dumbbell in each hand (palms facing your torso), bend your knees slightly and bring your torso forward by bending at the waist; as you bend make sure to keep your back straight until it is almost parallel to the floor. Tip: Make sure that you keep the head up. The weights should hang directly in front of you as your arms hang perpendicular to the floor and your torso. This is your starting position.",
-            "While keeping the torso stationary, lift the dumbbells to your side (as you breathe out), keeping the elbows close to the body (do not exert any force with the forearm other than holding the weights). On the top contracted position, squeeze the back muscles and hold for a second.",
-            "Slowly lower the weight again to the starting position as you inhale.",
-            "Repeat for the recommended amount of repetitions.",
+            "Set an adjustable bench to an incline of about 30 to 45 degrees.",
+            "Lie face down on the bench with your chest supported by the pad, holding a dumbbell in each hand with your arms hanging straight down.",
+            "Keep your chest pressed against the pad and exhale as you pull the dumbbells upward by retracting your shoulder blades and driving your elbows toward the ceiling.",
+            "Hold the contracted position for a second at the top.",
+            "Inhale as you slowly lower the dumbbells back to the starting position."
         ],
         "equipment": "Dumbbell",
         "primary_muscle": "Mid Back",

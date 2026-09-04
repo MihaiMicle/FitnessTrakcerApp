@@ -496,13 +496,13 @@ CHEST_EXERCISES = [
     {
         "name": "Smith Machine Flat Press",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Smith_Press/0.jpg",
         "instructions": [
-            "Place a decline bench underneath the Smith machine. Now place the barbell at a height that you can reach when lying down and your arms are almost fully extended. Using a pronated grip that is wider than shoulder width, unlock the bar from the rack and hold it straight over you with your arms extended. This will be your starting position.",
-            "As you inhale, lower the bar under control by allowing the elbows to flex, lightly contacting the torso.",
-            "After a brief pause, bring the bar back to the starting position by extending the elbows, exhaling as you do so.",
-            "Repeat the movement for the prescribed amount of repetitions.",
-            "When the set is complete, lock the bar back in the rack.",
+            "Place a flat bench underneath the Smith machine. Adjust the barbell to a height you can reach when lying down with your arms almost fully extended.",
+            "Lie down and grasp the bar with a pronated grip slightly wider than shoulder-width.",
+            "Unrack the bar and hold it straight over your chest. This is your starting position.",
+            "Inhale and slowly lower the bar under control until it lightly touches your mid-chest.",
+            "Exhale and press the bar back up to the starting position by extending your elbows.",
+            "When the set is complete, lock the bar back into the rack."
         ],
         "equipment": "Machine",
         "primary_muscle": "Chest",
@@ -956,12 +956,11 @@ CHEST_EXERCISES = [
     {
         "name": "Landmine Chest Press",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leverage_Chest_Press/0.jpg",
         "instructions": [
-            "Load an appropriate weight onto the pins and adjust the seat for your height. The handles should be near the bottom or middle of the pectorals at the beginning of the motion.",
-            "Your chest and head should be up and your shoulder blades retracted. This will be your starting position.",
-            "Press the handles forward by extending through the elbow.",
-            "After a brief pause at the top, return the weight just above the start position, keeping tension on the muscles by not returning the weight to the stops until the set is complete.",
+            "Load one end of a barbell into a landmine attachment (or wedge it securely into a corner) and load the desired weight onto the free end.",
+            "Stand facing the landmine, holding the weighted end of the collar with both hands at chest level. Lean slightly forward into the weight. This is your starting position.",
+            "Exhale and press the barbell up and away from your chest until your arms are fully extended.",
+            "Inhale and slowly lower the barbell back to your chest under control."
         ],
         "equipment": "Barbell",
         "primary_muscle": "Chest",

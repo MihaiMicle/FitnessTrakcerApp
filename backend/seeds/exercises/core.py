@@ -131,12 +131,12 @@ CORE_EXERCISES = [
     {
         "name": "Captain's Chair Leg Raises",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hanging_Leg_Raise/0.jpg",
         "instructions": [
-            "Hang from a chin-up bar with both arms extended at arms length in top of you using either a wide grip or a medium grip. The legs should be straight down with the pelvis rolled slightly backwards. This will be your starting position.",
-            "Raise your legs until the torso makes a 90-degree angle with the legs. Exhale as you perform this movement and hold the contraction for a second or so.",
-            "Go back slowly to the starting position as you breathe in.",
-            "Repeat for the recommended amount of repetitions.",
+            "Position yourself in the captain's chair with your back flat against the backrest and your forearms resting firmly on the arm pads.",
+            "Let your legs hang straight down toward the floor. This is your starting position.",
+            "Exhale and contract your abdominals to raise your knees toward your chest, or keep your legs straight and raise them until they are parallel to the floor.",
+            "Hold the contraction for a brief pause at the top of the movement.",
+            "Inhale and slowly lower your legs back to the starting position without swinging."
         ],
         "equipment": "None",
         "primary_muscle": "Abs",
@@ -350,14 +350,12 @@ CORE_EXERCISES = [
     {
         "name": "Bicycle Crunches",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crunches/0.jpg",
         "instructions": [
-            "Lie flat on your back with your feet flat on the ground, or resting on a bench with your knees bent at a 90 degree angle. If you are resting your feet on a bench, place them three to four inches apart and point your toes inward so they touch.",
-            "Now place your hands lightly on either side of your head keeping your elbows in. Tip: Don't lock your fingers behind your head.",
-            "While pushing the small of your back down in the floor to better isolate your abdominal muscles, begin to roll your shoulders off the floor.",
-            "Continue to push down as hard as you can with your lower back as you contract your abdominals and exhale. Your shoulders should come up off the floor only about four inches, and your lower back should remain on the floor. At the top of the movement, contract your abdominals hard and keep the contraction for a second. Tip: Focus on slow, controlled movement - don't cheat yourself by using momentum.",
-            "After the one second contraction, begin to come down slowly again to the starting position as you inhale.",
-            "Repeat for the recommended amount of repetitions.",
+            "Lie flat on the floor with your lower back pressed to the ground and your hands lightly touching the sides of your head.",
+            "Bring your knees up to a 90-degree angle, with your shins parallel to the floor.",
+            "Simultaneously extend your right leg straight out (without touching the floor) while twisting your torso to bring your right elbow toward your left knee.",
+            "Return to the starting position and immediately repeat on the opposite side, bringing your left elbow toward your right knee.",
+            "Continue alternating sides in a smooth, controlled pedaling motion.",
         ],
         "equipment": "None",
         "primary_muscle": "Abs",

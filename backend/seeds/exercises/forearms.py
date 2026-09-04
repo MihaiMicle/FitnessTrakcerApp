@@ -69,13 +69,13 @@ FOREARM_EXERCISES = [
     {
         "name": "Barbell Forearm Curls",
         "type": "strength",
-        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Curl/0.jpg",
         "instructions": [
-            "Stand up with your torso upright while holding a barbell at a shoulder-width grip. The palm of your hands should be facing forward and the elbows should be close to the torso. This will be your starting position.",
-            "While holding the upper arms stationary, curl the weights forward while contracting the biceps as you breathe out. Tip: Only the forearms should move.",
-            "Continue the movement until your biceps are fully contracted and the bar is at shoulder level. Hold the contracted position for a second and squeeze the biceps hard.",
-            "Slowly begin to bring the bar back to starting position as your breathe in.",
-            "Repeat for the recommended amount of repetitions.",
+            "Sit on a flat bench with your feet flat on the floor.",
+            "Grasp a barbell with a supinated (underhand) grip, keeping your hands about shoulder-width apart.",
+            "Rest your forearms on your thighs so that your wrists hang just over the edge of your knees.",
+            "Allow the barbell to roll down to your fingertips, inhaling as you stretch the forearms.",
+            "Exhale and curl your wrists upward as high as possible, contracting the forearm muscles.",
+            "Pause briefly at the top, then slowly lower the barbell back to the starting position."
         ],
         "equipment": "Barbell",
         "primary_muscle": "Forearms",
