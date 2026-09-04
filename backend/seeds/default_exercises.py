@@ -1,8 +1,6 @@
 from core.database import SessionLocal
 from models.workouts import Exercise
-import models.profile
 
-# Import the combined list from your new modular structure
 from seeds.exercises import DEFAULT_EXERCISES
 
 

@@ -361,4 +361,20 @@ CHEST_EXERCISES = [
         "secondary_muscles": ["Anterior Delt"],
         "tracking_fields": ["weight", "reps", "rir"],
     },
+    {
+        "name": "Paused Barbell Bench Press",
+        "type": "strength",
+        "equipment": "Barbell",
+        "primary_muscle": "Chest",
+        "secondary_muscles": ["Anterior Delt", "Triceps"],
+        "tracking_fields": ["weight", "reps", "rir"],
+    },
+    {
+        "name": "Spoto Press",
+        "type": "strength",
+        "equipment": "Barbell",
+        "primary_muscle": "Chest",
+        "secondary_muscles": ["Anterior Delt", "Triceps"],
+        "tracking_fields": ["weight", "reps", "rir"],
+    },
 ]

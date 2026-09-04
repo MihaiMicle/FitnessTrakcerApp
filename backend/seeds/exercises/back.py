@@ -422,7 +422,15 @@ BACK_EXERCISES = [
         "type": "strength",
         "equipment": "Barbell",
         "primary_muscle": "Traps",
-        "secondary_muscles": ["Biceps"],
+        "secondary_muscles": ["Biceps", "Lateral Delt"],
+        "tracking_fields": ["weight", "reps", "rir"],
+    },
+    {
+        "name": "Cable Upright Rows (Shoulder Focus / Wide Grip)",
+        "type": "strength",
+        "equipment": "Machine",
+        "primary_muscle": "Traps",
+        "secondary_muscles": ["Biceps", "Lateral Delt"],
         "tracking_fields": ["weight", "reps", "rir"],
     },
     {
@@ -432,5 +440,13 @@ BACK_EXERCISES = [
         "primary_muscle": "Mid Back",
         "secondary_muscles": ["Posterior Delt", "Traps"],
         "tracking_fields": ["weight", "reps", "rir"],
-    }
+    },
+    {
+        "name": "Deficit Deadlift",
+        "type": "strength",
+        "equipment": "Barbell",
+        "primary_muscle": "Lower Back",
+        "secondary_muscles": ["Traps", "Forearms", "Glutes", "Hamstrings", "Lats"],
+        "tracking_fields": ["weight", "reps", "rir"],
+    },
 ]

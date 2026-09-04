@@ -1,6 +1,5 @@
 from core.database import SessionLocal
 from models.foods import CustomFood
-import models.profile
 
 from seeds.foods import DEFAULT_FOODS
 

@@ -23,6 +23,7 @@ from .supplements import SUPPLEMENTS
 from .vegetables_leafy_and_cruciferous import VEGETABLES_LEAFY_AND_CRUCIFEROUS
 from .vegetables_roots_and_tubers import VEGETABLES_ROOTS_AND_TUBERS
 from .vegetables_fruiting_and_other import VEGETABLES_FRUITING_AND_OTHER
+from .purees_and_mashes import PUREES_AND_MASHES
 
 DEFAULT_FOODS = [
     *BEEF_AND_PORK,
@@ -44,6 +45,7 @@ DEFAULT_FOODS = [
     *VEGETABLES_LEAFY_AND_CRUCIFEROUS,
     *VEGETABLES_ROOTS_AND_TUBERS,
     *VEGETABLES_FRUITING_AND_OTHER,
+    *PUREES_AND_MASHES,
 ]
 
 __all__ = ["DEFAULT_FOODS"]
