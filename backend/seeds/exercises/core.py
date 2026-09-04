@@ -167,6 +167,13 @@ CORE_EXERCISES = [
     {
         "name": "Toes to Bar",
         "type": "strength",
+        "instructions": [
+            "Hang from a pull-up bar with an overhand, shoulder-width grip and your arms fully extended, legs straight down. This is your starting position.",
+            "Brace your core and, using a slight swing if needed, drive your legs upward while keeping them as straight as possible.",
+            "Continue raising your legs until your toes touch the bar, exhaling as you lift, keeping your shoulders active and avoiding excessive swinging.",
+            "Lower your legs back down under control as you inhale, returning to the starting position.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "None",
         "primary_muscle": "Abs",
         "secondary_muscles": [],
@@ -233,6 +240,13 @@ CORE_EXERCISES = [
     {
         "name": "Hollow Body Hold / Rock",
         "type": "strength",
+        "instructions": [
+            "Lie on your back with your arms extended overhead and your legs straight. Press your lower back firmly into the floor.",
+            "Lift your shoulders and legs a few inches off the floor at the same time, forming a slight banana-shaped curve with your body. This is your starting position.",
+            "Hold this hollow position, keeping your lower back pressed down and breathing steadily, for the target duration.",
+            "For the rocking variation, gently rock forward and back along your spine while maintaining the hollow shape.",
+            "Lower your arms, shoulders, and legs back to the floor once the set is complete.",
+        ],
         "equipment": "None",
         "primary_muscle": "Abs",
         "secondary_muscles": [],
@@ -243,6 +257,13 @@ CORE_EXERCISES = [
     {
         "name": "L-Sit Hold",
         "type": "strength",
+        "instructions": [
+            "Sit between two parallel bars or blocks with your hands planted at your sides, fingers pointing forward.",
+            "Press down through your hands to lift your entire body off the ground, straightening your arms. This is your starting position.",
+            "Raise your legs out in front of you until they're parallel to the floor, keeping your knees locked straight and your toes pointed.",
+            "Hold this position, keeping your shoulders depressed away from your ears, for the target duration.",
+            "Lower your legs and then your body back down with control once the set is complete.",
+        ],
         "equipment": "None",
         "primary_muscle": "Abs",
         "secondary_muscles": [],
@@ -253,6 +274,13 @@ CORE_EXERCISES = [
     {
         "name": "Dragon Flag",
         "type": "strength",
+        "instructions": [
+            "Lie on a flat bench and grip behind your head for support. Press your upper back firmly into the bench.",
+            "Raise your legs and hips straight up off the bench until only your shoulders remain in contact with the surface, keeping your entire body in one rigid line. This is your starting position.",
+            "Slowly lower your entire body as one straight, rigid unit toward the bench, inhaling as you descend, stopping just before your lower back would touch down.",
+            "Reverse the motion to raise your body back up to the starting position, exhaling as you rise.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "None",
         "primary_muscle": "Abs",
         "secondary_muscles": [
@@ -303,6 +331,14 @@ CORE_EXERCISES = [
     {
         "name": "V-Ups",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Jackknife_Sit-Up/0.jpg",
+        "instructions": [
+            "Lie flat on the floor on your back with your arms extended straight behind your head and your legs extended as well. This will be your starting position.",
+            "As you exhale, bend at the waist while simultaneously raising your legs and arms to meet in a V-shaped jackknife position.",
+            "Keep your legs extended and lifted at around a 45-degree angle from the floor, arms extended and parallel to your legs, with your upper torso off the floor.",
+            "While inhaling, lower your arms and legs back to the starting position under control.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "None",
         "primary_muscle": "Abs",
         "secondary_muscles": [],

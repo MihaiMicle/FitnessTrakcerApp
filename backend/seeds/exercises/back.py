@@ -353,6 +353,14 @@ BACK_EXERCISES = [
     {
         "name": "Neutral Grip Pull-Ups",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/V-Bar_Pullup/0.jpg",
+        "instructions": [
+            "Set parallel neutral-grip handles onto the pull-up bar, or use a bar with built-in neutral grips, so your palms will face each other.",
+            "Take hold of the handles and hang with your arms fully extended, chest up and shoulders pulled slightly down and back. This will be your starting position.",
+            "Pull your torso up by driving your elbows down toward your hips until your chin clears the handles, exhaling as you rise.",
+            "Pause for a moment at the top, then lower yourself back down under control as you inhale until your arms are fully extended again.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "None",
         "primary_muscle": "Lats",
         "secondary_muscles": [
@@ -457,6 +465,14 @@ BACK_EXERCISES = [
     {
         "name": "Neutral Grip Pull-Downs",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/V-Bar_Pulldown/0.jpg",
+        "instructions": [
+            "Sit down at a pull-down machine with a V-bar attached to the top pulley and adjust the knee pad to fit your height.",
+            "Grab the V-bar with your palms facing each other. Stick your chest out and lean back slightly, around 30 degrees, to better engage the lats. This is your starting position.",
+            "Using your lats, pull the bar down as you squeeze your shoulder blades together until it nearly touches your chest. Exhale as you perform the movement, keeping your torso stationary.",
+            "Hold the contraction for a second, then slowly let the bar return to the starting position as you inhale.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Lats",
         "secondary_muscles": [
@@ -492,6 +508,14 @@ BACK_EXERCISES = [
     {
         "name": "Reverse Grip Pull-Downs",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Underhand_Cable_Pulldowns/0.jpg",
+        "instructions": [
+            "Sit down at a lat pulldown machine with a straight bar attached to the top pulley, and adjust the knee pad to fit your height.",
+            "Grab the bar with an underhand grip, hands placed closer than shoulder width. Lean your torso back slightly, around 30 degrees, arching your lower back and sticking your chest out. This is your starting position.",
+            "As you breathe out, pull the bar down to your upper chest by driving your elbows down and back. Keep the elbows close to your body and let only your arms move.",
+            "Hold the contracted position for a second, squeezing your lats, then breathe in as you slowly let the bar return to the starting position.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Lats",
         "secondary_muscles": [
@@ -548,6 +572,13 @@ BACK_EXERCISES = [
     {
         "name": "Wide Grip Cable Rows",
         "type": "strength",
+        "instructions": [
+            "Attach a wide, straight bar to a low pulley and sit at the cable row station with your feet braced on the platform and knees slightly bent.",
+            "Lean forward from the hips and grab the bar with a wide, overhand grip, arms fully extended. This is your starting position.",
+            "Pull the bar toward your lower chest while keeping your elbows high and out to the sides, squeezing your shoulder blades together as you exhale.",
+            "Hold the contraction for a second, then extend your arms back out slowly as you inhale, letting your shoulder blades separate at full stretch.",
+            "Repeat for the recommended amount of repetitions, keeping your torso upright throughout rather than rocking.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Mid Back",
         "secondary_muscles": [
@@ -658,6 +689,13 @@ BACK_EXERCISES = [
     {
         "name": "Low to High Chest Supported Rows",
         "type": "strength",
+        "instructions": [
+            "Set the chest pad of a chest-supported row machine to a low position and grab the handles with your arms extended in front of you.",
+            "Press your chest firmly into the pad and let your shoulder blades protract fully at the bottom. This is your starting position.",
+            "Row the handles up and back toward your upper chest or collarbones, leading with your elbows high and squeezing your shoulder blades and rear delts together. Exhale as you row.",
+            "Pause briefly at the top, then extend your arms back out under control as you inhale.",
+            "Repeat for the recommended amount of repetitions, keeping your chest pressed into the pad throughout.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Traps",
         "secondary_muscles": [
@@ -674,6 +712,13 @@ BACK_EXERCISES = [
     {
         "name": "High to Low Chest Supported Rows",
         "type": "strength",
+        "instructions": [
+            "Set the chest pad of a chest-supported row machine to a high position and grab the handles with your arms extended in front of you.",
+            "Press your chest firmly into the pad and let your shoulder blades protract fully at the front. This is your starting position.",
+            "Row the handles down and back toward your hips, leading with your elbows and driving them past your torso to fully engage the lats. Exhale as you row.",
+            "Pause briefly at the back, then extend your arms back out under control as you inhale.",
+            "Repeat for the recommended amount of repetitions, keeping your chest pressed into the pad throughout.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Lats",
         "secondary_muscles": [
@@ -1003,6 +1048,13 @@ BACK_EXERCISES = [
     {
         "name": "Lower Back Machine",
         "type": "strength",
+        "instructions": [
+            "Adjust the back extension machine so the pad sits just below your hips, and secure your feet under the footpads or rollers.",
+            "Cross your arms over your chest, then bend forward at the hips until your torso is at roughly a 90-degree angle to your legs. This is your starting position.",
+            "Extend your torso upward by contracting your lower back and glutes until your body forms a straight line, exhaling as you rise. Avoid hyperextending past neutral.",
+            "Pause briefly at the top, then lower yourself back down under control as you inhale.",
+            "Repeat for the recommended amount of repetitions, keeping the movement slow and controlled rather than swinging.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Lower Back",
         "secondary_muscles": [],

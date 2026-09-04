@@ -54,7 +54,13 @@ SHOULDER_EXERCISES = [
         "name": "Barbell Push Press",
         "type": "strength",
         "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Push_Press/0.jpg",
-        "instructions": [],
+        "instructions": [
+            "Stand with your feet shoulder-width apart and the bar racked across the front of your shoulders, elbows up, gripping it just outside shoulder width.",
+            "Dip down a few inches by bending your knees and hips slightly, keeping your torso upright. This will be your starting position.",
+            "Drive explosively through your legs and extend your hips as you press the bar overhead, using the leg drive to help launch the weight past the sticking point. Exhale as you press.",
+            "Lock the bar out fully overhead, then lower it back down to your shoulders under control as you inhale.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "Barbell",
         "primary_muscle": "Anterior Delt",
         "secondary_muscles": [
@@ -534,6 +540,13 @@ SHOULDER_EXERCISES = [
     {
         "name": "Single-Arm Landmine Shoulder Press",
         "type": "strength",
+        "instructions": [
+            "Load one end of a barbell into a landmine attachment, or wedge it securely into a corner, and stand facing it, holding the free end at shoulder height in one hand with your palm facing inward.",
+            "Brace your core and stagger your stance slightly for stability. This is your starting position.",
+            "Press the bar up and slightly forward along its natural arc until your arm is fully extended, exhaling as you press.",
+            "Pause briefly at the top, then lower the bar back to shoulder height under control as you inhale.",
+            "Complete all reps on one side before switching arms.",
+        ],
         "equipment": "Barbell",
         "primary_muscle": "Anterior Delt",
         "secondary_muscles": [

@@ -746,6 +746,13 @@ TRICEPS_EXERCISES = [
     {
         "name": "Assisted Dips (Triceps Focus)",
         "type": "strength",
+        "instructions": [
+            "Select an assistance weight on the pin stack, step onto the platform, and grip the handles with your arms extended and your torso upright.",
+            "Keep your elbows tucked close to your sides rather than flared, which biases the triceps over the chest. This is your starting position.",
+            "Lower yourself under control by bending your elbows until your upper arms are roughly parallel to the floor, inhaling as you descend.",
+            "Press back up by straightening your arms and exhaling, focusing on squeezing the triceps at the top.",
+            "Repeat for the recommended amount of repetitions, then reduce the assistance weight over time as you get stronger.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Triceps",
         "secondary_muscles": [

@@ -216,6 +216,13 @@ LEG_EXERCISES = [
     {
         "name": "Belt Squat",
         "type": "strength",
+        "instructions": [
+            "Step onto the belt squat machine platform and clip the dip belt around your hips, attaching it to the weight carriage.",
+            "Stand with your feet shoulder-width apart, chest up, and unrack the weight so it hangs from your hips. This is your starting position.",
+            "Bend your knees and hips to squat down, keeping your torso upright since the load pulls straight down rather than on your spine. Inhale as you descend.",
+            "Drive through your heels to stand back up to the starting position, exhaling as you rise.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Quads",
         "secondary_muscles": [
@@ -231,6 +238,13 @@ LEG_EXERCISES = [
     {
         "name": "Sissy Squats",
         "type": "strength",
+        "instructions": [
+            "Stand on the sissy squat machine's footplate with your ankles hooked under the pads, and grip the handles in front of you.",
+            "Keep your body in a straight line from knees to shoulders. This is your starting position.",
+            "Bend your knees and lean your torso back as one straight unit, lowering yourself down while your knees travel forward. Inhale as you descend.",
+            "Once you feel a deep stretch in the quads, reverse the motion by extending your knees to drive back up to the starting position, exhaling as you rise.",
+            "Repeat for the recommended amount of repetitions, keeping the movement slow and controlled throughout.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Quads",
         "secondary_muscles": [
@@ -358,6 +372,14 @@ LEG_EXERCISES = [
     {
         "name": "Smith Machine Bulgarian Split Squats",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Smith_Single-Leg_Split_Squat/0.jpg",
+        "instructions": [
+            "Place a flat bench two to three feet behind a Smith machine bar set at shoulder height, then step under the bar and rest it across your upper back.",
+            "Unrack the bar and position one foot forward under the bar, extending your other leg back with the top of that foot resting on the bench. This is your starting position.",
+            "Bend your front knee to lower your back knee toward the floor, keeping your torso upright. Inhale as you descend, stopping just before your back knee touches down.",
+            "Drive through the heel of your front foot to push back up to the starting position, exhaling as you rise.",
+            "Repeat for the recommended amount of repetitions, then switch legs.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Quads",
         "secondary_muscles": [
@@ -542,6 +564,13 @@ LEG_EXERCISES = [
     {
         "name": "Cossack Squats / Lateral Lunges",
         "type": "strength",
+        "instructions": [
+            "Stand with your feet wider than shoulder-width apart, toes turned slightly outward, holding a dumbbell or kettlebell at your chest if desired.",
+            "Shift your weight to one side and bend that knee to lower your hips down and to that side, keeping the opposite leg straight with its foot flat on the floor. Inhale as you descend.",
+            "Keep your chest up and your bent knee tracking over your toes as you sink as low as comfortable.",
+            "Push through the bent leg's heel to drive back up to the starting position, exhaling as you rise.",
+            "Repeat on the same side for the recommended amount of repetitions, or alternate sides each rep.",
+        ],
         "equipment": "None",
         "primary_muscle": "Quads",
         "secondary_muscles": [
@@ -1095,6 +1124,13 @@ LEG_EXERCISES = [
     {
         "name": "Leg Kick Back Machine",
         "type": "strength",
+        "instructions": [
+            "Adjust the glute kickback machine so the padded lever sits against the sole of your foot, and position your torso against the support pad.",
+            "Grip the handles and brace your core, keeping a slight bend in your standing leg. This is your starting position.",
+            "Press your working leg straight back and up by contracting your glute, exhaling as you press, without arching your lower back.",
+            "Pause briefly and squeeze the glute at the top, then return under control to the starting position as you inhale.",
+            "Repeat for the recommended amount of repetitions, then switch legs.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Glutes",
         "secondary_muscles": [
@@ -1109,6 +1145,14 @@ LEG_EXERCISES = [
     {
         "name": "Cable Leg Kick Back",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Legged_Cable_Kickback/0.jpg",
+        "instructions": [
+            "Hook a leather ankle cuff to a low cable pulley and attach the cuff to your ankle.",
+            "Face the weight stack from a distance of about two feet, grasping the frame for support.",
+            "Keeping your knees and hips bent slightly and your abs tight, contract your glutes to slowly kick the working leg back in a semicircular arc as high as it will comfortably go as you breathe out.",
+            "Squeeze your glutes for a second at full extension, then slowly bring your working leg forward, resisting the pull of the cable until you reach the starting position.",
+            "Repeat for the recommended amount of repetitions, then switch legs.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Glutes",
         "secondary_muscles": [
@@ -1349,6 +1393,13 @@ LEG_EXERCISES = [
     {
         "name": "Tibialis Raises",
         "type": "strength",
+        "instructions": [
+            "Stand with your back against a wall, heels a few inches out from it, or use a tibialis bar or plate resting on your toes.",
+            "Keep your legs straight and your weight in your heels. This is your starting position.",
+            "Raise your toes and the front of your foot up toward your shins as high as you can, exhaling as you lift, keeping your heels planted.",
+            "Lower your toes back down under control as you inhale, without letting them slam into the floor.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "None",
         "primary_muscle": "Calves",
         "secondary_muscles": [],

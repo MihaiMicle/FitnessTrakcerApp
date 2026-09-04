@@ -697,6 +697,14 @@ CHEST_EXERCISES = [
     {
         "name": "Pec Deck Machine (Machine Fly)",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Butterfly/0.jpg",
+        "instructions": [
+            "Sit on the machine with your back flat against the pad and adjust the seat height so the handles sit level with your shoulders.",
+            "Take hold of the handles with your upper arms parallel to the floor. This will be your starting position.",
+            "Push the handles together slowly as you squeeze your chest in the middle. Breathe out during this part of the motion and hold the contraction for a second.",
+            "Return to the starting position slowly as you inhale until your chest muscles are fully stretched.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Chest",
         "secondary_muscles": [
@@ -711,6 +719,13 @@ CHEST_EXERCISES = [
     {
         "name": "Incline Chest Fly Machine",
         "type": "strength",
+        "instructions": [
+            "Sit on the incline fly machine and adjust the seat so the handles sit level with your upper chest, arms angled slightly upward.",
+            "Grip the handles with a slight bend in your elbows and squeeze your shoulder blades together. This will be your starting position.",
+            "Breathe out as you bring the handles together in a wide arc, focusing on squeezing the upper chest at the midpoint.",
+            "Hold the contraction for a second, then breathe in as you slowly let the handles return to the starting position.",
+            "Repeat for the recommended amount of repetitions, keeping the movement controlled rather than using momentum.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Chest",
         "secondary_muscles": [
@@ -768,6 +783,12 @@ CHEST_EXERCISES = [
     {
         "name": "Assisted Dips Machine",
         "type": "strength",
+        "instructions": [
+            "Select an assistance weight on the pin stack, kneel or step onto the platform, and grip the handles with your arms extended.",
+            "Lean your torso slightly forward and bend your elbows to lower your body until your upper arms are roughly parallel to the floor. Inhale as you descend.",
+            "Push back up through your palms until your arms are extended again, exhaling as you press. Keep your elbows tucked to bias the chest and triceps rather than flaring them out.",
+            "Repeat for the recommended amount of repetitions, then step off carefully once the platform has stopped moving.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Chest",
         "secondary_muscles": [
@@ -849,6 +870,13 @@ CHEST_EXERCISES = [
     {
         "name": "Weighted Push-Ups",
         "type": "strength",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pushups/0.jpg",
+        "instructions": [
+            "Have a partner place a weight plate or a weighted vest across your upper back, then get into a push-up position with your hands about shoulder-width apart and your body in a straight line from head to heels.",
+            "Lower yourself down slowly until your chest almost touches the floor as you inhale, keeping your core braced so the added weight doesn't cause your hips to sag.",
+            "Press back up to the starting position as you exhale, squeezing your chest at the top.",
+            "Repeat for the recommended amount of repetitions.",
+        ],
         "equipment": "Plate",
         "primary_muscle": "Chest",
         "secondary_muscles": [

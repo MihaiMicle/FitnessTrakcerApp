@@ -157,6 +157,13 @@ CARDIO_EXERCISES = [
     {
         "name": "SkiErg",
         "type": "cardio",
+        "instructions": [
+            "Stand facing the SkiErg machine with your feet shoulder-width apart and grip a handle in each hand, arms extended overhead.",
+            "Hinge slightly at the hips and brace your core. This is your starting position.",
+            "Pull both handles down and back by driving through your lats and core, bending at the hips as you pull, similar to a double-pole skiing motion.",
+            "Let the handles return back up overhead as you reset, controlling the recoil rather than letting it snap back.",
+            "Repeat continuously for the target duration or distance, settling into a steady rhythm.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -172,6 +179,13 @@ CARDIO_EXERCISES = [
     {
         "name": "VersaClimber",
         "type": "cardio",
+        "instructions": [
+            "Step onto the VersaClimber footplates and grip the handles, standing tall with a slight bend in your knees and elbows.",
+            "Brace your core to keep your torso stable. This is your starting position.",
+            "Drive one arm down while pulling the opposite foot up, alternating sides in a climbing motion, keeping your movements smooth and continuous.",
+            "Maintain an upright posture throughout rather than leaning heavily on the handles.",
+            "Continue the alternating climbing motion for the target duration, adjusting the resistance and pace as needed.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -248,6 +262,13 @@ CARDIO_EXERCISES = [
     {
         "name": "Hiking",
         "type": "cardio",
+        "instructions": [
+            "Choose a trail suited to your fitness level and wear supportive footwear, carrying a light pack if desired.",
+            "Start at an easy, sustainable pace to warm up, keeping your posture upright and your steps controlled on uneven ground.",
+            "Settle into a steady rhythm, using your arms for balance and shortening your stride on steeper inclines.",
+            "Stay hydrated and take breaks as needed, especially on longer or hillier routes.",
+            "Continue for the target duration or distance, paying extra attention to footing on descents.",
+        ],
         "equipment": "None",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -283,6 +304,13 @@ CARDIO_EXERCISES = [
     {
         "name": "Skiing (Cross-Country)",
         "type": "cardio",
+        "instructions": [
+            "Fit into cross-country skis and poles, and begin on flat, groomed terrain if you're new to the movement.",
+            "Push off with one ski while gliding on the other, swinging the opposite arm and pole forward in a rhythmic, alternating pattern. This is your starting motion.",
+            "Plant each pole slightly behind you and push through it to add propulsion as you glide.",
+            "Keep your knees soft and your weight shifting smoothly from ski to ski as you find your rhythm.",
+            "Continue the alternating glide for the target duration or distance, increasing pace or tackling hills as your technique improves.",
+        ],
         "equipment": "None",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -298,6 +326,13 @@ CARDIO_EXERCISES = [
     {
         "name": "Swimming",
         "type": "cardio",
+        "instructions": [
+            "Enter the pool and choose a stroke suited to your ability, such as freestyle, breaststroke, or backstroke.",
+            "Push off from the wall in a streamlined position with your arms extended and body flat near the surface. This is your starting position.",
+            "Begin your stroke cycle, coordinating your arm pulls, kick, and breathing rhythm for your chosen stroke.",
+            "Keep your body as horizontal as possible to minimize drag, and exhale steadily underwater between breaths.",
+            "Continue swimming laps for the target duration or distance, resting at the wall between sets as needed.",
+        ],
         "equipment": "None",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -313,6 +348,14 @@ CARDIO_EXERCISES = [
     {
         "name": "Jump Rope / Skipping",
         "type": "cardio",
+        "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rope_Jumping/0.jpg",
+        "instructions": [
+            "Hold an end of the rope in each hand and position the rope behind you on the ground.",
+            "Raise your arms up and turn the rope over your head, bringing it down in front of you. This is your starting position.",
+            "When the rope reaches the ground, jump over it, finding a turning pace you can maintain comfortably.",
+            "Keep your jumps small and land softly on the balls of your feet, using your wrists rather than your whole arms to turn the rope.",
+            "Continue for the target duration, varying speed and footwork for variety.",
+        ],
         "equipment": "None",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -389,6 +432,13 @@ CARDIO_EXERCISES = [
     {
         "name": "Burpees",
         "type": "cardio",
+        "instructions": [
+            "Stand with your feet shoulder-width apart, arms at your sides. This is your starting position.",
+            "Drop into a squat and place your hands on the floor in front of you.",
+            "Kick your feet straight back into a push-up position, then perform a push-up if desired.",
+            "Jump your feet back up to your hands, then explosively jump straight up, reaching your arms overhead. Exhale as you jump.",
+            "Land softly with your knees slightly bent and immediately drop back into the next rep.",
+        ],
         "equipment": "None",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -422,6 +472,13 @@ CARDIO_EXERCISES = [
     {
         "name": "Jumping Jacks",
         "type": "cardio",
+        "instructions": [
+            "Stand upright with your feet together and your arms at your sides. This is your starting position.",
+            "Jump your feet out wide while simultaneously raising your arms overhead, landing softly on the balls of your feet.",
+            "Immediately reverse the motion, jumping your feet back together while lowering your arms back to your sides.",
+            "Keep the movement continuous and rhythmic, using your calves and ankles to absorb each landing.",
+            "Repeat for the target duration.",
+        ],
         "equipment": "None",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -435,6 +492,13 @@ CARDIO_EXERCISES = [
     {
         "name": "High Knees",
         "type": "cardio",
+        "instructions": [
+            "Stand tall with your feet hip-width apart, arms bent at your sides as if jogging. This is your starting position.",
+            "Drive one knee up toward your chest as high as you can while quickly pushing off the ground with the opposite foot.",
+            "Immediately switch legs, driving the other knee up as the first foot returns to the ground, pumping your arms in rhythm.",
+            "Keep your torso upright and land on the balls of your feet with each step.",
+            "Continue alternating at a quick pace for the target duration.",
+        ],
         "equipment": "None",
         "primary_muscle": "Cardio",
         "secondary_muscles": [
@@ -471,7 +535,13 @@ CARDIO_EXERCISES = [
         "name": "Kettlebell Swings",
         "type": "strength",
         "photo_url": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Kettlebell_Swings/0.jpg",
-        "instructions": [],
+        "instructions": [
+            "Stand with your feet shoulder-width apart, a kettlebell on the floor a short distance in front of you. Hinge at the hips and grip the handle with both hands.",
+            "Hike the kettlebell back between your legs like a football snap, keeping your back flat. This will be your starting position.",
+            "Drive your hips forward explosively to swing the kettlebell up to chest height, keeping your arms relaxed and letting the hip drive do the work. Exhale as you swing up.",
+            "Let the kettlebell swing back down between your legs as you hinge at the hips again, inhaling as it descends, and immediately flow into the next rep.",
+            "Repeat for the recommended amount of repetitions, keeping your core braced and your lower back neutral throughout.",
+        ],
         "equipment": "Dumbbell",
         "primary_muscle": "Glutes",
         "secondary_muscles": [

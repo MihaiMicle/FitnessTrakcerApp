@@ -318,6 +318,12 @@ FOREARM_EXERCISES = [
     {
         "name": "Dead Hangs",
         "type": "strength",
+        "instructions": [
+            "Grip a pull-up bar with an overhand, shoulder-width grip and step off any support so your full bodyweight hangs from your arms.",
+            "Let your shoulders relax slightly away from your ears without fully disengaging them, and keep your core braced. This is your starting position.",
+            "Hold this position, breathing steadily, for the target duration.",
+            "Lower yourself down to a support or drop down gently once the set is complete.",
+        ],
         "equipment": "None",
         "primary_muscle": "Forearms",
         "secondary_muscles": [
@@ -356,6 +362,13 @@ FOREARM_EXERCISES = [
     {
         "name": "Sledgehammer / Leverage Bar Levering",
         "type": "strength",
+        "instructions": [
+            "Hold a sledgehammer or a leverage bar with one hand at the very end of the handle, arm extended straight out in front of you at shoulder height.",
+            "Keep your wrist firm and your upper arm still. This is your starting position.",
+            "Slowly rotate your wrist and forearm to tip the head of the hammer forward until it points toward the floor, then reverse the motion to bring it back up to horizontal.",
+            "Move slowly and under full control in both directions, since the long lever arm makes the weight feel far heavier than it is.",
+            "Repeat for the recommended amount of repetitions, then switch arms.",
+        ],
         "equipment": "Dumbbell",
         "primary_muscle": "Forearms",
         "secondary_muscles": [],
@@ -368,6 +381,13 @@ FOREARM_EXERCISES = [
     {
         "name": "Towel Pull-Ups / Towel Hangs",
         "type": "strength",
+        "instructions": [
+            "Drape one or two towels over a pull-up bar and grip the hanging ends firmly instead of the bar itself.",
+            "Hang with your arms fully extended, gripping the towel as hard as you can. This is your starting position.",
+            "For towel hangs, simply hold this position for the target duration, keeping your shoulders active.",
+            "For towel pull-ups, pull your torso up by driving your elbows down until your chin clears the top of the towels, exhaling as you rise, then lower back down under control as you inhale.",
+            "Repeat for the recommended amount of repetitions or time.",
+        ],
         "equipment": "None",
         "primary_muscle": "Forearms",
         "secondary_muscles": [
@@ -383,6 +403,12 @@ FOREARM_EXERCISES = [
     {
         "name": "Hex Dumbbell Holds",
         "type": "strength",
+        "instructions": [
+            "Stand upright holding a hex dumbbell in each hand down by your sides, or hold one dumbbell by the head between your fingertips.",
+            "Keep your shoulders back and down and your core braced. This is your starting position.",
+            "Hold the dumbbells for the target duration without letting them roll or slip out of your grip.",
+            "Set the dumbbells down with control once the set is complete rather than dropping them.",
+        ],
         "equipment": "Dumbbell",
         "primary_muscle": "Forearms",
         "secondary_muscles": [],
@@ -394,6 +420,13 @@ FOREARM_EXERCISES = [
     {
         "name": "Hand Grippers (Captains of Crush)",
         "type": "strength",
+        "instructions": [
+            "Hold a hand gripper in one hand with the handles resting in your palm and fingers wrapped around the outer handle.",
+            "Position your wrist in a neutral, slightly extended position. This is your starting position.",
+            "Squeeze the handles together as hard as you can until they close completely, or as far as your strength allows.",
+            "Release slowly and under control rather than letting the gripper snap open.",
+            "Repeat for the recommended amount of repetitions, then switch hands.",
+        ],
         "equipment": "Plate",
         "primary_muscle": "Forearms",
         "secondary_muscles": [],
@@ -406,6 +439,12 @@ FOREARM_EXERCISES = [
     {
         "name": "Thick Bar / Fat Gripz Holds",
         "type": "strength",
+        "instructions": [
+            "Slide thick-bar attachments, such as Fat Gripz, onto a barbell, or use a bar with a thick handle directly.",
+            "Load the bar to a moderate weight and stand upright holding it with an overhand grip, arms extended down by your sides. This is your starting position.",
+            "Hold the bar for the target duration, gripping as hard as needed to keep it from rolling out of your hands.",
+            "Set the bar down with control once the set is complete.",
+        ],
         "equipment": "Barbell",
         "primary_muscle": "Forearms",
         "secondary_muscles": [

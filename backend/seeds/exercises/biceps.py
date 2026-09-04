@@ -563,6 +563,13 @@ BICEPS_EXERCISES = [
     {
         "name": "Bayesian Curls",
         "type": "strength",
+        "instructions": [
+            "Set a cable pulley to its lowest position and attach a single handle. Stand facing away from the machine, a step or two in front of it, holding the handle with your arm extended behind you.",
+            "Keep your upper arm in line with your torso, slightly behind your body, and brace your core. This is your starting position.",
+            "Curl the handle upward and forward by bending your elbow, keeping your upper arm stationary and squeezing the biceps hard at the top. Exhale as you curl.",
+            "Lower the handle back down slowly under control as you inhale, allowing a full stretch at the bottom.",
+            "Repeat for the recommended amount of repetitions, then switch arms.",
+        ],
         "equipment": "Machine",
         "primary_muscle": "Biceps",
         "secondary_muscles": [
