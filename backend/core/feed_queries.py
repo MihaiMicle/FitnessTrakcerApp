@@ -164,6 +164,7 @@ def emit_session_events(db: Session, session: WorkoutSession) -> list[FeedEvent]
             title=build_workout_title(session.name),
             payload={
                 "duration_seconds": session.duration_seconds or 0,
+                "exercises": session.exercises or [],
                 **totals,
             },
             occurred_at=occurred_at,
@@ -251,6 +252,7 @@ def emit_template_event(db: Session, template) -> Optional[FeedEvent]:
         payload={
             "routine_name": (template.name or "").strip(),
             "exercise_count": len(template.exercises or []),
+            "exercises": template.exercises or [],
         },
         occurred_at=template.created_at,
     )

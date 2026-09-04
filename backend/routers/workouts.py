@@ -50,6 +50,9 @@ def sync_workout_sets(db: Session, session: WorkoutSession):
 
     if not session.exercises:
         return
+    
+    def clean_val(v):
+        return None if v == "" else v
 
     new_sets = []
     for ex in session.exercises:
@@ -66,14 +69,14 @@ def sync_workout_sets(db: Session, session: WorkoutSession):
                     set_type=s.get("set_type", "working"),
                     completed=s.get("completed", False),
                     rest_seconds=resolve_rest_seconds(ex, s),
-                    weight_kg=s.get("weight_kg"),
-                    reps=s.get("reps"),
-                    rir=s.get("rir"),
-                    duration_minutes=s.get("duration_minutes"),
-                    distance_km=s.get("distance_km"),
-                    incline=s.get("incline"),
-                    speed=s.get("speed"),
-                    difficulty=s.get("difficulty"),
+                    weight_kg=clean_val(s.get("weight_kg")),
+                    reps=clean_val(s.get("reps")),
+                    rir=clean_val(s.get("rir")),
+                    duration_minutes=clean_val(s.get("duration_minutes")),
+                    distance_km=clean_val(s.get("distance_km")),
+                    incline=clean_val(s.get("incline")),
+                    speed=clean_val(s.get("speed")),
+                    difficulty=clean_val(s.get("difficulty")),
                 )
             )
 
@@ -92,6 +95,45 @@ def get_all_sessions(
         .order_by(WorkoutSession.start_time.desc())
         .all()
     )
+
+
+@router.get("/sessions/{session_id}", response_model=WorkoutSessionResponse)
+def get_session(
+    session_id: UUID,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve a specific workout session."""
+    workout = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.id == session_id, WorkoutSession.user_id == current_user_id
+        )
+        .first()
+    )
+    if not workout:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return workout
+
+
+@router.get("/templates/{template_id}", response_model=WorkoutTemplateResponse)
+def get_template(
+    template_id: UUID,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve a specific saved routine."""
+    template = (
+        db.query(WorkoutTemplate)
+        .filter(
+            WorkoutTemplate.id == template_id,
+            WorkoutTemplate.user_id == current_user_id,
+        )
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return template
 
 
 @router.get("/active", response_model=WorkoutSessionResponse)

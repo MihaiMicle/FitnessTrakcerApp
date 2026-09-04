@@ -18,6 +18,7 @@ import LiveWorkoutHeader from './live/LiveWorkoutHeader';
 import TimerAdjustModal from './live/TimerAdjustModal';
 import { useExerciseReorder } from './live/useExerciseReorder';
 import { useRoutineTemplates } from './live/useRoutineTemplates';
+import { useRouter } from 'next/navigation';
 
 const DEFAULT_STRENGTH_FIELDS = ['weight', 'reps', 'rir'];
 const DEFAULT_CARDIO_FIELDS = ['time'];
@@ -53,6 +54,7 @@ export default function LiveWorkout() {
 
   const confirm = useConfirm();
   const reorder = useExerciseReorder(exercises, setExercises);
+  const router = useRouter();
 
   const isOpen = Boolean(activeSession) && !isMinimized;
   const isCompleted = activeSession?.status === 'completed';
@@ -101,6 +103,7 @@ export default function LiveWorkout() {
     toast.success('Workout completed!');
     setShowFinishModal(false);
     clearWorkout();
+    router.push('/workouts');
   };
 
   const handleFinishClick = async () => {
@@ -113,6 +116,7 @@ export default function LiveWorkout() {
     toast.success('Changes saved!');
     setIsSaving(false);
     clearWorkout();
+    router.push('/workouts');
   };
 
   const handleBack = () => {
@@ -221,6 +225,13 @@ export default function LiveWorkout() {
               onRemoveSet={(setIndex) => removeSet(ex.id, setIndex)}
               onToggleSetComplete={(setIndex) =>
                 toggleSetComplete(ex.id, setIndex)
+              }
+              onUpdateNotes={(notes) =>
+                setExercises(
+                  exercises.map((exercise) =>
+                    exercise.id === ex.id ? { ...exercise, notes } : exercise,
+                  ),
+                )
               }
               dragHandlers={reorder}
             />

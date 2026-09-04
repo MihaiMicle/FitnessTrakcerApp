@@ -4,19 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
-import { useSyncStatus } from '@/hooks/useSyncStatus';
+import { subscribe } from '@/lib/offline/manager';
 import { onCopilotChange } from '@/lib/copilot/events';
 
-/*
- * Everything the dashboard reads and deletes. Loading is a single round of
- * four parallel requests, and it only reruns once the sync queue has drained,
- * so a locally finished workout is not refetched away before it reaches the
- * server
- */
 export function useWorkoutDashboard() {
   const router = useRouter();
-  const { pending, syncing } = useSyncStatus();
-
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
@@ -33,13 +25,14 @@ export function useWorkoutDashboard() {
 
       const headers = { Authorization: `Bearer ${session.access_token}` };
       const api = process.env.NEXT_PUBLIC_API_URL;
+      const t = Date.now();
 
       const [historyRes, templatesRes, profileRes, exercisesRes] =
         await Promise.all([
-          fetch(`${api}/workouts/`, { headers }),
-          fetch(`${api}/workouts/templates`, { headers }),
-          fetch(`${api}/profile/me`, { headers }),
-          fetch(`${api}/workouts/exercises`, { headers }),
+          fetch(`${api}/workouts/?t=${t}`, { headers, cache: 'no-store' }),
+          fetch(`${api}/workouts/templates?t=${t}`, { headers, cache: 'no-store' }),
+          fetch(`${api}/profile/me?t=${t}`, { headers, cache: 'no-store' }),
+          fetch(`${api}/workouts/exercises?t=${t}`, { headers, cache: 'no-store' }),
         ]);
 
       if (historyRes.ok) {
@@ -48,7 +41,6 @@ export function useWorkoutDashboard() {
       }
       if (templatesRes.ok) setTemplates(await templatesRes.json());
       if (profileRes.ok) setProfile(await profileRes.json());
-
       if (exercisesRes.ok) {
         const data = await exercisesRes.json();
         const dict: Record<string, string> = {};
@@ -64,16 +56,25 @@ export function useWorkoutDashboard() {
     }
   }, [router]);
 
+  // Load data immediately on mount
   useEffect(() => {
-    if (pending === 0 && !syncing) fetchAll();
-  }, [pending, syncing, fetchAll]);
+    fetchAll();
+  }, [fetchAll]);
 
-  /* A routine saved from the copilot panel lands in the same list this page
-     renders, so it has to be told rather than left one refresh behind */
+  // Reliable auto-refresh: listen directly to the offline queue draining
+  useEffect(() => {
+    let hadPending = false;
+    return subscribe((status) => {
+      const busy = status.pending > 0 || status.syncing;
+      // If the queue was busy and now it's not, fetch the fresh data!
+      if (hadPending && !busy) fetchAll();
+      hadPending = busy;
+    });
+  }, [fetchAll]);
+
   useEffect(() => {
     return onCopilotChange('routines', fetchAll);
   }, [fetchAll]);
-
   const authedRequest = async (path: string, init: RequestInit) => {
     const {
       data: { session },
