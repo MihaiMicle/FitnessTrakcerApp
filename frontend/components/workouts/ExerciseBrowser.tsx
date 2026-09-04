@@ -102,10 +102,23 @@ export default function ExerciseBrowser({
               <button
                 key={ex.id}
                 onClick={() => onSelect(ex)}
-                className="w-full text-left p-3 sm:p-4 rounded-xl hover:bg-neutral-800 transition-colors group flex items-center justify-between"
+                className="w-full text-left p-3 sm:p-4 rounded-xl hover:bg-neutral-800 transition-colors group flex items-center gap-3"
               >
-                <div>
-                  <h4 className="font-bold text-neutral-200 group-hover:text-indigo-400 transition-colors">
+                <div className="shrink-0 w-11 h-11 rounded-lg bg-neutral-800 border border-neutral-800 overflow-hidden flex items-center justify-center">
+                  {ex.photo_url ? (
+                    <img
+                      src={ex.photo_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <TypeIcon size={16} className="text-neutral-600" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-neutral-200 group-hover:text-indigo-400 transition-colors truncate">
                     {ex.name}
                   </h4>
                   <div className="flex gap-2 mt-1">
@@ -121,7 +134,6 @@ export default function ExerciseBrowser({
                     )}
                   </div>
                 </div>
-                <TypeIcon size={16} className="text-neutral-600" />
               </button>
             ))}
 

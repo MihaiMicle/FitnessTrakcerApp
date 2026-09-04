@@ -41,6 +41,7 @@ class ExerciseBase(BaseModel):
     name: str
     type: str
     photo_url: Optional[str] = None
+    instructions: Optional[List[str]] = []
     equipment: Optional[str] = None
     primary_muscle: Optional[str] = None
     secondary_muscles: Optional[List[str]] = []

@@ -49,6 +49,7 @@ class Exercise(Base):
 
     # Detailed fields
     photo_url = Column(String, nullable=True)
+    instructions = Column(JSONB, default=list)  # Ordered how-to-perform steps
     equipment = Column(String, nullable=True)
     primary_muscle = Column(String, nullable=True)
     secondary_muscles = Column(JSONB, default=list)
