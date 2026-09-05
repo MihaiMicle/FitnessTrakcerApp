@@ -418,36 +418,6 @@ def delete_comment(
     return None
 
 
-@router.post("/feed/share", status_code=status.HTTP_201_CREATED)
-def share_to_feed_manually(
-    req: dict = Body(...),
-    current_user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Explicitly post an item (meal, diary, routine) to the activity feed"""
-    from core.feed_queries import _upsert_event
-    from core.feed import dedupe_key
-    from datetime import datetime, timezone
-
-    event_type = req.get("event_type", "workout")
-    subject_id = req.get("subject_id", "")
-
-    _upsert_event(
-        db,
-        user_id=current_user_id,
-        event_type=event_type,
-        key=dedupe_key(event_type, subject_id),
-        visibility=req.get("visibility", "followers"),
-        subject_type=event_type,
-        subject_id=subject_id,
-        title=req.get("title", "Shared Activity"),
-        payload=req.get("payload", {}),
-        occurred_at=datetime.now(timezone.utc),
-    )
-    db.commit()
-    return {"success": True}
-
-
 @router.delete("/feed/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_feed_post(
     event_id: UUID,

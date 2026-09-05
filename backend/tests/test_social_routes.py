@@ -30,6 +30,8 @@ EXPECTED_ROUTES = {
     ("DELETE", "/social/block/{user_id}"),
     ("GET", "/social/blocks"),
     ("GET", "/social/feed"),
+    ("POST", "/social/feed/share"),
+    ("DELETE", "/social/feed/{event_id}"),
     ("POST", "/social/feed/{event_id}/like"),
     ("DELETE", "/social/feed/{event_id}/like"),
     ("GET", "/social/feed/{event_id}/comments"),

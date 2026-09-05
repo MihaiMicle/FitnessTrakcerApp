@@ -32,8 +32,14 @@ describe('isAcceptedType', () => {
     expect(isAcceptedType(makeFile('IMG_0001.HEIC', ''))).toBe(true);
   });
 
-  it('rejects a pdf', () => {
-    expect(isAcceptedType(makeFile('plan.pdf', 'application/pdf'))).toBe(false);
+  it('accepts a pdf', () => {
+    /* the copilot extracts text from pdfs, docs and spreadsheets, so these
+       are accepted alongside images rather than rejected */
+    expect(isAcceptedType(makeFile('plan.pdf', 'application/pdf'))).toBe(true);
+  });
+
+  it('rejects an unsupported type', () => {
+    expect(isAcceptedType(makeFile('archive.zip', 'application/zip'))).toBe(false);
   });
 });
 
@@ -52,7 +58,7 @@ describe('validateFiles', () => {
   });
 
   it('rejects the wrong type with a type reason', () => {
-    const result = validateFiles([makeFile('a.pdf', 'application/pdf')]);
+    const result = validateFiles([makeFile('a.zip', 'application/zip')]);
     expect(result.rejected[0].reason).toBe('type');
   });
 
@@ -72,7 +78,7 @@ describe('validateFiles', () => {
   });
 
   it('checks type before the count, so the message names the real problem', () => {
-    const result = validateFiles([makeFile('a.pdf', 'application/pdf')], MAX_ATTACHMENTS);
+    const result = validateFiles([makeFile('a.zip', 'application/zip')], MAX_ATTACHMENTS);
     expect(result.rejected[0].reason).toBe('type');
   });
 });

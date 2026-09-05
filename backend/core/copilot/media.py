@@ -24,6 +24,16 @@ NATIVE_MULTIMODAL_MIMES = {
     "video/mpeg",
 }
 
+# decode_attachment and fetch_photo are the raw-bytes path used for direct
+# multimodal image input (progress photos, body fat estimates), not the
+# richer document set the chat attachment picker accepts on the frontend
+ACCEPTED_ATTACHMENT_MIMES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+}
+
 
 def extract_text_from_doc(
     file_bytes: bytes, mime_type: str, filename: str = "doc"
@@ -113,6 +123,8 @@ def decode_attachment(attachment: Dict[str, Any]) -> Optional[Tuple[bytes, str, 
         return None
     mime_type = str(attachment.get("mime_type") or "").lower()
     name = str(attachment.get("name") or "file")
+    if mime_type not in ACCEPTED_ATTACHMENT_MIMES:
+        return None
     data = attachment.get("data")
     if not isinstance(data, str) or not data:
         return None
@@ -158,6 +170,8 @@ async def fetch_photo(url: str) -> Optional[Tuple[bytes, str]]:
                 .strip()
                 .lower()
             )
+            if mime_type not in ACCEPTED_ATTACHMENT_MIMES:
+                mime_type = "image/jpeg"
             return response.content, mime_type
     except Exception:
         return None
