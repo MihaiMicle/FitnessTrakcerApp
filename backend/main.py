@@ -31,6 +31,8 @@ app.add_middleware(
         "capacitor://localhost",
         "ionic://localhost",
         "http://localhost",
+        "tauri://localhost",
+        "http://tauri.localhost",
     ],
     allow_origin_regex=r"https://fitness-trakcer.*\.vercel\.app",
     allow_credentials=True,
