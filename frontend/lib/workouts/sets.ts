@@ -189,3 +189,30 @@ export function updateExerciseNotesIn(
 ): WorkoutExercise[] {
   return exercises.map((ex) => (ex.id === exId ? { ...ex, notes } : ex));
 }
+
+/* Tracking fields a newly picked exercise gets when it declares none of its own */
+export const DEFAULT_STRENGTH_FIELDS = ['weight', 'reps', 'rir'];
+export const DEFAULT_CARDIO_FIELDS = ['time'];
+
+export interface PickedExercise {
+  name: string;
+  type?: string;
+  tracking_fields?: string[];
+  [key: string]: unknown;
+}
+
+/* A freshly picked exercise, seeded with one working set. Shared by the live
+   logger and the routine editor so a rename cannot drift between them */
+export function createExerciseEntry(selected: PickedExercise): WorkoutExercise {
+  const trackingFields =
+    selected.tracking_fields ||
+    (selected.type === 'strength' ? DEFAULT_STRENGTH_FIELDS : DEFAULT_CARDIO_FIELDS);
+
+  return {
+    id: 'ex-' + Date.now(),
+    name: selected.name,
+    type: selected.type,
+    tracking_fields: trackingFields,
+    sets: [{ set: 1, set_type: 'working', completed: false }],
+  };
+}

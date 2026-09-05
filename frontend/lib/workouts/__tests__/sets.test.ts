@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   addSetTo,
   asRoutineExercises,
+  createExerciseEntry,
+  DEFAULT_CARDIO_FIELDS,
+  DEFAULT_STRENGTH_FIELDS,
   findNextSet,
   isInSuperset,
   removeExerciseFrom,
@@ -271,5 +274,45 @@ describe('asRoutineExercises', () => {
     ];
     asRoutineExercises(list);
     expect(list[0].sets[0].completed).toBe(true);
+  });
+});
+
+describe('createExerciseEntry', () => {
+  it('seeds one working, incomplete set', () => {
+    const created = createExerciseEntry({ name: 'Squat', type: 'strength' });
+    expect(created.sets).toEqual([
+      { set: 1, set_type: 'working', completed: false },
+    ]);
+  });
+
+  it('carries the name and type over', () => {
+    const created = createExerciseEntry({ name: 'Squat', type: 'strength' });
+    expect(created.name).toBe('Squat');
+    expect(created.type).toBe('strength');
+  });
+
+  it('gives the entry a string id', () => {
+    const created = createExerciseEntry({ name: 'Squat' });
+    expect(typeof created.id).toBe('string');
+    expect(created.id.length).toBeGreaterThan(0);
+  });
+
+  it('uses the strength defaults for a strength exercise with no fields of its own', () => {
+    const created = createExerciseEntry({ name: 'Squat', type: 'strength' });
+    expect(created.tracking_fields).toEqual(DEFAULT_STRENGTH_FIELDS);
+  });
+
+  it('uses the cardio defaults for anything else with no fields of its own', () => {
+    const created = createExerciseEntry({ name: 'Row', type: 'cardio' });
+    expect(created.tracking_fields).toEqual(DEFAULT_CARDIO_FIELDS);
+  });
+
+  it('keeps the exercise library tracking fields when it has its own', () => {
+    const created = createExerciseEntry({
+      name: 'Squat',
+      type: 'strength',
+      tracking_fields: ['weight'],
+    });
+    expect(created.tracking_fields).toEqual(['weight']);
   });
 });

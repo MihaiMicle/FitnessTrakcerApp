@@ -7,10 +7,12 @@ import {
   appendPage,
   checkComment,
   commentLabel,
+  describeFeedSet,
   formatDuration,
   formatVolume,
   formatWeight,
   formatWhen,
+  groupMealsByType,
   isFeedEventType,
   likeLabel,
   normalizeEventType,
@@ -342,5 +344,70 @@ describe('removeComment', () => {
 
   it('leaves the list alone when nothing matches', () => {
     expect(removeComment([comment('a')], 'missing')).toHaveLength(1);
+  });
+});
+
+describe('groupMealsByType', () => {
+  it('buckets meals under their meal_type', () => {
+    const groups = groupMealsByType([
+      { name: 'Eggs', meal_type: 'Breakfast' },
+      { name: 'Toast', meal_type: 'Breakfast' },
+      { name: 'Salad', meal_type: 'Lunch' },
+    ]);
+    expect(Object.keys(groups)).toEqual(['Breakfast', 'Lunch']);
+    expect(groups.Breakfast).toHaveLength(2);
+    expect(groups.Lunch).toHaveLength(1);
+  });
+
+  it('falls a missing meal_type back to Other', () => {
+    const groups = groupMealsByType([{ name: 'Mystery Snack' }]);
+    expect(Object.keys(groups)).toEqual(['Other']);
+  });
+
+  it('handles an empty list', () => {
+    expect(groupMealsByType([])).toEqual({});
+  });
+});
+
+describe('describeFeedSet', () => {
+  it('reads distance and time for a cardio set', () => {
+    const display = describeFeedSet({ distance_km: 5, duration_minutes: 30 }, 'workout');
+    expect(display.isCardio).toBe(true);
+    expect(display.primary).toBe('5km');
+    expect(display.secondary).toBe('30m');
+  });
+
+  it('shows a dash for a cardio set missing one of the two fields', () => {
+    const display = describeFeedSet({ distance_km: 5 }, 'workout');
+    expect(display.secondary).toBe('-');
+  });
+
+  it('reads weight and reps for a strength set', () => {
+    const display = describeFeedSet({ weight_kg: 100, reps: 5 }, 'workout');
+    expect(display.isCardio).toBe(false);
+    expect(display.primary).toBe(100);
+    expect(display.secondary).toBe(5);
+  });
+
+  it('shows "target" instead of a dash for a shared routine with no weight yet', () => {
+    const display = describeFeedSet({ reps: 5 }, 'routine_shared');
+    expect(display.primary).toBe('target');
+  });
+
+  it('shows a dash for a non-routine strength set with no weight', () => {
+    const display = describeFeedSet({ reps: 5 }, 'workout');
+    expect(display.primary).toBe('-');
+  });
+
+  it('shows a dash for rir when it is not set, otherwise the value', () => {
+    expect(describeFeedSet({}, 'workout').rir).toBe('-');
+    expect(describeFeedSet({ rir: 2 }, 'workout').rir).toBe(2);
+  });
+
+  it('treats a zero distance as cardio, not a missing value', () => {
+    // != null so 0 still counts, unlike a falsy check would
+    const display = describeFeedSet({ distance_km: 0 }, 'workout');
+    expect(display.isCardio).toBe(true);
+    expect(display.primary).toBe('0km');
   });
 });

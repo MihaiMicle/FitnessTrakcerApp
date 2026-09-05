@@ -240,3 +240,52 @@ export function removeComment(
 ): FeedCommentItem[] {
   return comments.filter((comment) => comment.id !== commentId);
 }
+
+/* Buckets a diary's meals by meal_type, in first-seen order */
+export function groupMealsByType(meals: any[]): Record<string, any[]> {
+  return meals.reduce((groups: Record<string, any[]>, meal) => {
+    const type = meal.meal_type || 'Other';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(meal);
+    return groups;
+  }, {});
+}
+
+export interface FeedSetDisplay {
+  isCardio: boolean;
+  primary: string | number;
+  secondary: string | number;
+  rir: string | number;
+}
+
+/* What a logged set's three display cells should read: distance/time for
+   cardio, weight/reps otherwise. A routine's target sets have no weight yet,
+   so that column reads "target" instead of a blank dash */
+export function describeFeedSet(
+  set: Record<string, any>,
+  eventType: FeedEventType,
+): FeedSetDisplay {
+  const isCardio = set.distance_km != null || set.duration_minutes != null;
+  const rir = set.rir != null ? set.rir : '-';
+
+  if (isCardio) {
+    return {
+      isCardio,
+      primary: set.distance_km != null ? `${set.distance_km}km` : '-',
+      secondary: set.duration_minutes != null ? `${set.duration_minutes}m` : '-',
+      rir,
+    };
+  }
+
+  return {
+    isCardio,
+    primary:
+      set.weight_kg != null
+        ? set.weight_kg
+        : eventType === 'routine_shared'
+          ? 'target'
+          : '-',
+    secondary: set.reps != null ? set.reps : '-',
+    rir,
+  };
+}

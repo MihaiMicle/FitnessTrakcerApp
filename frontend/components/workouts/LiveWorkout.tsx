@@ -7,7 +7,7 @@ import RestTimerOverlay from './RestTimerOverlay';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import { useConfirm } from '@/components/shared/useConfirm';
 import { useWorkout } from '@/lib/context/WorkoutContext';
-import { isInSuperset } from '@/lib/workouts/sets';
+import { isInSuperset, createExerciseEntry } from '@/lib/workouts/sets';
 import { sessionTotals } from '@/lib/workouts/session';
 import AddExerciseBar from './live/AddExerciseBar';
 import FinishWorkoutModal, {
@@ -20,8 +20,6 @@ import { useExerciseReorder } from './live/useExerciseReorder';
 import { useRoutineTemplates } from './live/useRoutineTemplates';
 import { useRouter } from 'next/navigation';
 
-const DEFAULT_STRENGTH_FIELDS = ['weight', 'reps', 'rir'];
-const DEFAULT_CARDIO_FIELDS = ['time'];
 
 export default function LiveWorkout() {
   const {
@@ -142,22 +140,7 @@ export default function LiveWorkout() {
   };
 
   const handleExerciseSelected = (selected: any) => {
-    const trackingFields =
-      selected.tracking_fields ||
-      (selected.type === 'strength'
-        ? DEFAULT_STRENGTH_FIELDS
-        : DEFAULT_CARDIO_FIELDS);
-
-    setExercises([
-      ...exercises,
-      {
-        id: 'ex-' + Date.now(),
-        name: selected.name,
-        type: selected.type,
-        tracking_fields: trackingFields,
-        sets: [{ set: 1, set_type: 'working', completed: false }],
-      },
-    ]);
+    setExercises([...exercises, createExerciseEntry(selected)]);
     setSelectorType(null);
   };
 

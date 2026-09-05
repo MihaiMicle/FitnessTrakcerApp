@@ -31,6 +31,8 @@ export default defineConfig({
       // platform detection, and its decisions live in metrics, normalize and sync
       // lib/copilot/api.ts and types.ts are left out for the same reason as
       // lib/api.ts: one is network glue, the other is types with no behaviour
+      // lib/feed/saveToLibrary.ts is left out for the same reason: it is
+      // fetch/supabase glue, its branching lives in copyToLibrary.ts instead
       include: [
         'lib/apiError.ts',
         'lib/copilot/position.ts',
@@ -42,6 +44,7 @@ export default defineConfig({
         'lib/workouts/**/*.ts',
         'lib/social/visibility.ts',
         'lib/feed/events.ts',
+        'lib/feed/copyToLibrary.ts',
         'lib/offline/queue.ts',
         'lib/offline/sync.ts',
         'lib/offline/draft.ts',
