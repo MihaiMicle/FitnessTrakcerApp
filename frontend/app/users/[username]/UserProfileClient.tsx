@@ -9,10 +9,6 @@ import { useFeed } from '@/components/feed/useFeed';
 import { ChevronLeft, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export async function generateStaticParams() {
-  return [];
-}
-
 export default function UserProfileClient({
   params,
 }: {

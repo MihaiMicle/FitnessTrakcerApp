@@ -1,7 +1,7 @@
 import UserProfileClient from './UserProfileClient';
 
 export async function generateStaticParams() {
-  return [];
+  return [{ username: 'placeholder' }];
 }
 
 export default function UserProfilePage({
