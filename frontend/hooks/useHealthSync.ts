@@ -7,7 +7,7 @@ import {
   importAppleExport,
   saveConnection,
 } from '@/lib/health/api';
-import { getCapabilities, requestPermissions, runFullSync } from '@/lib/health/bridge';
+import { getCapabilities, getPlatform, requestPermissions, runFullSync } from '@/lib/health/bridge';
 import { METRIC_KEYS, WRITABLE_METRICS, type HealthMetric } from '@/lib/health/metrics';
 import type {
   HealthCapabilities,
@@ -65,8 +65,32 @@ export function useHealthSync() {
     }
   }, [patch]);
 
+  /*
+   * Register the Health Connect adapter before the first capabilities check
+   *
+   * The adapter is dynamic so a web build never bundles a Capacitor plugin
+   * it cannot run, and it stays optional so a build without the dependency
+   * installed just falls back to file import rather than failing to load
+   */
   useEffect(() => {
-    void refresh();
+    let cancelled = false;
+
+    async function bootstrap() {
+      if (getPlatform() === 'android' && !window.FitnessTrackerHealth) {
+        try {
+          const { capgoAdapter } = await import('@/lib/health/capgoAdapter');
+          if (!cancelled) window.FitnessTrackerHealth = capgoAdapter;
+        } catch {
+          /* Plugin not installed in this build, file import stays the fallback */
+        }
+      }
+      if (!cancelled) await refresh();
+    }
+
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   const connectionFor = useCallback(

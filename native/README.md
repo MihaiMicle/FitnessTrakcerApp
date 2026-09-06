@@ -59,10 +59,25 @@ npx cap add android
 
 ## 2. Build the health plugin
 
+**Android is done.** `frontend/lib/health/capgoAdapter.ts` wraps
+`@capgo/capacitor-health` and assigns itself to `window.FitnessTrackerHealth`
+on native Android, so nothing below needed compiling. It covers weight, body
+fat, height, steps, active and resting energy, heart rate, resting heart
+rate, distance, sleep, water and dietary energy, twelve of the sixteen
+metrics. `workout_minutes` reads through the package's `queryWorkouts()` but
+cannot be written back, and `protein_g`, `carbs_g`, `fat_g` have no Health
+Connect equivalent in that package at all. Those four stay on the file
+import path until something writes a full `NutritionRecord` directly, which
+is the "write it directly" route below. iOS has not been done the same way
+yet, `@capgo/capacitor-health` covers HealthKit too and is worth trying
+there before writing a plugin from scratch.
+
 The web app looks for a Capacitor plugin registered as
 **`FitnessTrackerHealth`**. Capacitor publishes a registered plugin at
 `window.Capacitor.Plugins.FitnessTrackerHealth` on its own, so there is no
-wiring to do on the web side once it exists.
+wiring to do on the web side once it exists. `window.FitnessTrackerHealth`
+is the fallback `bridge.ts` checks second, which is what lets a plain
+TypeScript object stand in without a compiled plugin at all
 
 `plugin-contract.ts` is the interface it has to satisfy — four methods, with
 the per-platform gotchas written into the comments. Copy it into the plugin

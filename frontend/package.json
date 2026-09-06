@@ -19,6 +19,7 @@
     "@capacitor/android": "^8.5.1",
     "@capacitor/cli": "^8.5.1",
     "@capacitor/core": "^8.5.1",
+    "@capgo/capacitor-health": "^8.10.5",
     "@supabase/supabase-js": "^2.110.8",
     "heic2any": "^0.0.4",
     "lucide-react": "^1.26.0",
