@@ -1,215 +1,181 @@
-# Fitness Tracker
+# Native shell
 
-A full-stack training and nutrition tracker I built because the apps I was using kept getting one half right and the other half wrong. The food loggers had no idea what a superset was. The workout loggers thought "protein" was one number. And every single one of them stopped working the moment my phone lost signal in the basement gym.
+Everything needed to turn the web app into an App Store and Play Store build,
+and to give it real Apple Health and Health Connect access.
 
-So this one does all three: precise nutrition down to the micronutrient, real workout logging with set types and rest timers, and a write queue that keeps working offline and syncs when you come back up.
+Nothing in this folder is part of the web build. It is copied into the
+frontend when you scaffold the native project.
 
-**Live:** [app](https://fitness-trakcer-app-tau.vercel.app) · [API docs](https://fitnesstrakcerapp.onrender.com/docs) · [Windows & Android builds](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)
+## Why the web app cannot do this on its own
 
-> Heads up: the API runs on Render's free tier, so the first request after a quiet period takes ~30s to wake the server.
+There is no browser API for either store, and there is no cloud API that
+substitutes for one:
 
----
+| Store | Reachable from | Notes |
+|---|---|---|
+| Apple HealthKit | iOS app only | No web API, no server API, at all |
+| Android Health Connect | Android app only | On-device. Only exposes the 30 days before permission was granted |
+| Google Fit REST API | — | Closed to new developers since 1 May 2024, retired end of 2026 |
+| Google Health API | Server to server | Fitbit and Google account data, separate onboarding, not the phone's store |
 
-## What it does
+So the browser gets the **file import** path, and the packaged app gets the
+**direct sync** path. Both write through the same `/health/sync` endpoint and
+produce identical rows, which is the whole point of the design: importing the
+export today and connecting the phone next month does not create two copies of
+anything.
 
-### Nutrition
-
-- **Macro targets that calculate themselves.** Mifflin-St Jeor for BMR, scaled by activity level and goal (cut, bulk, maintain). You can override any number afterwards.
-- **Sub-macros scale with your targets.** Sugar caps at 10% of carbs, saturated fat at 25% of fats, sodium and potassium track training intensity. No manually retyping fifteen fields every time your weight changes.
-- **15 tracked nutrients**, not four: protein, carbs, fats, saturated fat, fiber, sugar, potassium, sodium, iron, vitamin D, zinc, magnesium, calcium, cholesterol, water.
-- **Barcode scanning** for packaged food, a personal food library, saved meals and recipe bundles you can log in one tap.
-- **Date navigation** so you can backfill yesterday or pre-log meal prep for the week.
-
-### Workouts
-
-- **Routine editor** with an exercise library, custom exercises, muscle tagging and equipment.
-- **Live workout mode** — set-by-set logging, set types (warmup, working, drop, failure), supersets, and per-set weight/reps/RIR.
-- **Rest timers** configurable three levels deep: per exercise, per set type, per individual set. The most specific setting wins. Timers are deadline-based rather than counters, so backgrounding the tab doesn't drift them, and four separate notification channels make sure you actually hear it.
-- **Body map analytics** — muscle distribution and muscle group ranking rendered on an anatomical figure, front and back, male and female.
-- **Last performance** surfaced inline while you're logging, so you know what to beat.
-
-### Offline-first logging
-
-Gym wifi is bad and losing a set you just did is the worst possible failure in a fitness app. So writes never go straight to the network:
-
-- Every session gets a **client-generated UUID**, which turns saves into idempotent `PUT` upserts. A retry can't create a duplicate.
-- Writes land in a **persistent queue** in localStorage, get coalesced, and retry with exponential backoff.
-- Anything that fails permanently is **dead-lettered** rather than dropped silently.
-- In-progress workouts survive a tab eviction or a browser crash.
-- A `SyncStatusBadge` tells you honestly whether your data is saved or still pending.
-
-### Social
-
-Follow graph with public and private accounts, follow requests, blocking, user search, and per-item visibility on workouts, routines and weight logs. Routines can be published and copied by other users.
-
-### Other bits
-
-- **AI copilot** (Gemini) with context on your logged data.
-- **Progress gallery** — full-screen photo viewer with a compare mode, filmstrip, keyboard nav and canvas-rendered before/after export.
-- **Onboarding wizard**, metric/imperial toggle, drag-and-drop dashboard widgets, water tracker, weight charts.
-
----
-
-## Stack
-
-**Frontend** — Next.js 16 (App Router), React 19, TypeScript, Tailwind v4, Recharts, Vitest
-**Backend** — FastAPI, SQLAlchemy 2, Pydantic v2, pytest
-**Data** — Supabase (Postgres, Auth, Storage)
-**Deploy** — Vercel (frontend), Render (API)
-
-Auth is Supabase JWT. The frontend gets a session from Supabase and sends the access token as a bearer; the backend verifies it against `SUPABASE_JWT_SECRET` and never trusts a user id from the request body.
-
----
-
-## Desktop & Android
-
-The same Next.js build also ships as native installers, both pointed at the deployed API rather than localhost:
-
-- **Windows** — [Tauri](https://tauri.app) wraps the static export in a native shell (`frontend/src-tauri`). Produces an `.msi` installer and a portable `.exe`.
-- **Android** — [Capacitor](https://capacitorjs.com) wraps the same export (`frontend/android`). Produces an `.apk`.
-
-Grab the latest build from **[Releases](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)**.
-
-> Neither is code-signed yet, so Windows SmartScreen and Android will both warn on install. Expected for a personal project — "More info → Run anyway" on Windows, "Install anyway" on Android after allowing installs from unknown sources.
-
-See [`native/README.md`](native/README.md) for how the native shell is built, and for the separate App Store / Play Store path (HealthKit and Health Connect access).
-
----
-
-## Running it locally
-
-You'll need Node 22, Python 3.12 and a Supabase project.
-
-### Backend
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate          # Windows: .\venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-
-`backend/.env`:
-
-```env
-DATABASE_URL=postgresql://...     # Supabase connection string
-SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_KEY=...                  # anon key
-SUPABASE_SERVICE_ROLE_KEY=...     # server-side only, never ships to the client
-GEMINI_API_KEY=...                # optional, only needed for the copilot
-```
-
-API comes up on `http://127.0.0.1:8000`, interactive docs at `/docs`.
-
-### Frontend
+## 1. Add Capacitor
 
 ```bash
 cd frontend
-npm install
-npm run dev
+npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
+cp ../native/capacitor.config.ts ./capacitor.config.ts
 ```
 
-`frontend/.env.local`:
+Add the build scripts to `frontend/package.json`:
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```json
+"build:native": "BUILD_TARGET=native next build",
+"sync:native": "npm run build:native && npx cap sync",
+"open:ios": "npx cap open ios",
+"open:android": "npx cap open android"
 ```
 
-### Database
+`BUILD_TARGET=native` switches `next.config.ts` to `output: 'export'`. A
+packaged build has no Node server, so anything relying on server rendering,
+route handlers or image optimisation will not work there. The app is client
+rendered throughout today, so this is a config change rather than a rewrite,
+but keep it that way — a server component added later breaks only the store
+build, and only at `cap sync` time.
 
-`Base.metadata.create_all` runs on startup and will create any missing tables, so a fresh Supabase project bootstraps itself. It does **not** add columns to tables that already exist — schema changes to existing tables need SQL run by hand in the Supabase editor.
-
----
-
-## Tests
-
-466 tests, no database and no network, about two seconds end to end.
+Set `NEXT_PUBLIC_API_URL` to the deployed backend before building. A packaged
+app has no localhost to fall back to.
 
 ```bash
-# Backend — 93 tests over the calc engine, rest rules, sync and social permissions
-cd backend
-pip install -r requirements.txt -r requirements-dev.txt
-pytest
-
-# Frontend — 373 tests over lib/nutrition, lib/workouts, lib/offline, lib/social
-cd frontend
-npm test
-npm run test:coverage             # enforces the thresholds in vitest.config.ts
+npm run build:native
+npx cap add ios
+npx cap add android
 ```
 
-Both suites run on every push and PR via GitHub Actions.
+## 2. Build the health plugin
 
-The coverage gate only counts the pure logic in `lib/`. Components are deliberately excluded — including them would report a flattering-looking number that hides whether the arithmetic is actually covered, and the arithmetic is the part where a wrong answer looks like a plausible one. See [TESTING.md](TESTING.md).
+The web app looks for a Capacitor plugin registered as
+**`FitnessTrackerHealth`**. Capacitor publishes a registered plugin at
+`window.Capacitor.Plugins.FitnessTrackerHealth` on its own, so there is no
+wiring to do on the web side once it exists.
 
----
+`plugin-contract.ts` is the interface it has to satisfy — four methods, with
+the per-platform gotchas written into the comments. Copy it into the plugin
+package as its `definitions.ts`.
 
-## Layout
-
-```
-backend/
-  main.py               # app wiring and CORS
-  core/                 # pure logic, imports nothing heavy
-    calculations.py     #   BMR, TDEE, macro scaling
-    rest.py             #   rest-time resolution, mirrors the TS rules
-    sync.py             #   session upsert
-    social.py           #   visibility and permission rules
-    security.py         #   JWT verification
-  models/               # SQLAlchemy
-  schemas/              # Pydantic
-  routers/              # HTTP layer, thin on purpose
-  seeds/                # default exercises and ~19 food categories
-  tests/
-
-frontend/
-  app/                  # App Router pages
-  components/           # UI, grouped by feature
-  lib/
-    nutrition/          # macro math, serving conversion
-    workouts/           # sets, rest, records, body map, strength standards
-    offline/            # queue, sync, drafts, storage, id generation
-    social/             # visibility helpers
-    context/            # workout session state
-  types/
+```bash
+npm init @capacitor/plugin@latest
+# name: fitness-tracker-health, class: FitnessTrackerHealth
 ```
 
-The rule that keeps this maintainable: **anything worth testing lives in `lib/` or `core/` and imports nothing**. Routers and components are glue.
+You have two reasonable routes:
 
----
+- **Wrap an existing plugin.** A cross-platform health plugin covering both
+  stores through one typed API (around 20 data types, aggregation buckets and
+  workout reads) is much less work than writing HealthKit and Health Connect
+  bindings twice. Your plugin then becomes a thin mapping layer onto the
+  contract, which is where you want your own code anyway.
+- **Write it directly.** `HKHealthStore` + `HKSampleQuery` on iOS,
+  `HealthConnectClient.readRecords` on Android.
 
-## Roadmap
+Either way, three things are not optional:
 
-Tracked on a Notion board. Roughly in dependency order:
+1. **Send `external_id`.** `HKObject.uuid` on iOS, `record.metadata.id` on
+   Android. Without it the server hashes the sample's contents to get an id,
+   which works but treats a corrected record as a new one.
+2. **Send `source`** as the writing app's display name, and filter out records
+   whose source is this app before returning them. Otherwise a workout the app
+   pushed into Apple Health comes back on the next read and is counted twice.
+   The server drops them as a second line of defence, but doing it on the
+   device saves the round trip.
+3. **Write under the source name `FitnessTracker`.** That string is what both
+   filters key on. It is `SELF_SOURCE_NAME` in `lib/health/normalize.ts` and
+   `backend/core/health.py`, and changing it means changing all three.
 
-- [x] Test harness, seed data
-- [x] Routine CRUD
-- [x] Normalized `workout_sets` table
-- [x] Set types, supersets, rest timers
-- [x] Offline logging, calendar dashboard
-- [x] Muscle distribution and ranking
-- [x] Social data model, follow graph, visibility
-- [x] 1RM calculator and per-exercise statistics
-- [x] Worldwide strength classification
-- [x] Cardio logging and analysis
-- [x] Health App / Google Fit import
-- [x] GDPR export and hard delete
-- [x] Activity feed
+### iOS
 
----
+`ios/App/App/Info.plist`:
 
-## Known rough edges
+```xml
+<key>NSHealthShareUsageDescription</key>
+<string>Reads your weight, steps and sleep so your training and nutrition sit alongside the rest of your health data.</string>
+<key>NSHealthUpdateUsageDescription</key>
+<string>Writes the workouts and meals you log here into Apple Health.</string>
+```
 
-Being honest rather than pretending:
+Turn on the HealthKit capability in Xcode. App Review rejects builds that ask
+for HealthKit without both strings, and rejects vague ones — say what you read
+and why.
 
-- `WorkoutSession.exercises` is still a JSONB blob alongside the normalized `workout_sets` table. The blob is the write path, the table is the read path for analytics. They need to converge.
-- `ignoreBuildErrors` in `next.config.ts` should come out. It once hid a real breaking change in a dependency's API.
-- Cardio exercises can be created but not meaningfully logged or analyzed yet.
-- No service worker, so the offline queue survives a bad connection but not a full page load while offline.
+HealthKit never reports whether a read permission was denied. That is
+deliberate: the refusal would itself leak health information. So
+`requestPermissions` returns granted once the sheet has been shown, and a
+denied metric shows up as an empty read. The panel handles that by reporting
+what actually arrived rather than claiming success.
 
----
+### Android
 
-## License
+`android/app/src/main/AndroidManifest.xml`:
 
-Personal project, no license yet. Feel free to read it and steal ideas.
+```xml
+<uses-permission android:name="android.permission.health.READ_WEIGHT"/>
+<uses-permission android:name="android.permission.health.READ_BODY_FAT"/>
+<uses-permission android:name="android.permission.health.READ_STEPS"/>
+<uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+<uses-permission android:name="android.permission.health.READ_SLEEP"/>
+<uses-permission android:name="android.permission.health.READ_EXERCISE"/>
+<uses-permission android:name="android.permission.health.READ_DISTANCE"/>
+<uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
+<uses-permission android:name="android.permission.health.READ_HYDRATION"/>
+<uses-permission android:name="android.permission.health.READ_NUTRITION"/>
+
+<uses-permission android:name="android.permission.health.WRITE_WEIGHT"/>
+<uses-permission android:name="android.permission.health.WRITE_EXERCISE"/>
+<uses-permission android:name="android.permission.health.WRITE_HYDRATION"/>
+<uses-permission android:name="android.permission.health.WRITE_NUTRITION"/>
+```
+
+Plus the rationale activity, which Play Store review checks for:
+
+```xml
+<activity android:name=".PermissionsRationaleActivity" android:exported="true">
+  <intent-filter>
+    <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
+  </intent-filter>
+</activity>
+```
+
+`minSdkVersion 28`. Health Connect ships with the system on Android 14 and
+later; on 9 to 13 the user may have to install it first, which is what
+`isAvailable` should report.
+
+Only request the permissions you actually read. Play Store review rejects
+health permission requests that the app's described functionality does not
+justify, and every unused one is a question you will have to answer.
+
+## 3. What you get
+
+Once the plugin exists, nothing else changes. `lib/health/bridge.ts` finds it,
+`getCapabilities()` starts returning `canSync: true`, and the same
+`HealthSyncPanel` that shows the file upload in a browser shows a Connect
+button in the app.
+
+## Store review notes
+
+- **Apple**: HealthKit data cannot be used for advertising, and cannot be
+  shared with third parties without explicit consent. It also may not be
+  written to iCloud. None of that is a problem here — the data goes to your own
+  backend — but the privacy policy has to say so, and the App Privacy card has
+  to declare health data collection.
+- **Google Play**: Health Connect access needs the declaration form filled in,
+  and the permissions have to match what the app visibly does.
+- **Both**: disconnecting has to actually delete. It does —
+  `DELETE /health/connections/{provider}` purges every sample that provider
+  contributed and leaves the numbers the user typed alone. That separation is
+  why samples are stored raw per provider rather than folded straight into the
+  weight log.
