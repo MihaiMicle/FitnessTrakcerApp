@@ -1,0 +1,77 @@
+name: Android Release
+
+# Builds a signed release APK. Manual runs always attach it as a workflow
+# artifact; pushing a v* tag also creates a GitHub Release and attaches it
+# there
+#
+# Needs four repo secrets before this can run:
+#   ANDROID_KEYSTORE_BASE64   base64 of the .jks/.keystore file, `base64 -w0 your.jks`
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+# These are the same four values already in your local keystore.properties
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build signed APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build the native web export and sync Capacitor
+        working-directory: frontend
+        run: npm run sync:native
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Write the signing config from secrets
+        working-directory: frontend/android
+        run: |
+          KEYSTORE_PATH="$GITHUB_WORKSPACE/frontend/android/release.jks"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_PATH"
+          cat > keystore.properties <<EOF
+          storeFile=$KEYSTORE_PATH
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Build release APK
+        working-directory: frontend/android
+        run: ./gradlew assembleRelease
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitnesstracker-release-apk
+          path: frontend/android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: frontend/android/app/build/outputs/apk/release/app-release.apk
