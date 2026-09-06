@@ -4,12 +4,17 @@ name: Android Release
 # artifact; pushing a v* tag also creates a GitHub Release and attaches it
 # there
 #
-# Needs four repo secrets before this can run:
+# Needs seven repo secrets before this can run:
 #   ANDROID_KEYSTORE_BASE64   base64 of the .jks/.keystore file, `base64 -w0 your.jks`
 #   ANDROID_KEYSTORE_PASSWORD
 #   ANDROID_KEY_ALIAS
 #   ANDROID_KEY_PASSWORD
-# These are the same four values already in your local keystore.properties
+# These four are the same values already in your local keystore.properties.
+# The other three are whatever's in your local .env.local, needed because
+# NEXT_PUBLIC_* vars are baked in at build time and CI has no .env.local:
+#   NEXT_PUBLIC_API_URL
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 on:
   workflow_dispatch:
@@ -40,6 +45,10 @@ jobs:
 
       - name: Build the native web export and sync Capacitor
         working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run sync:native
 
       - uses: actions/setup-java@v4

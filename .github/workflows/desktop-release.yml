@@ -5,8 +5,14 @@ name: Desktop Release
 # draft, so nothing goes live until you publish it) and attaches the MSI
 # there
 #
-# No secrets needed unless you later add code signing or the Tauri updater,
-# neither of which tauri.conf.json has configured today
+# Needs the same three env-var secrets as android-release.yml, since
+# tauri.conf.json's beforeBuildCommand runs the identical `next build` and
+# NEXT_PUBLIC_* vars are baked in at build time:
+#   NEXT_PUBLIC_API_URL
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
+# No secrets needed for code signing or the Tauri updater, neither of which
+# tauri.conf.json has configured today
 
 on:
   workflow_dispatch:
@@ -40,6 +46,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         with:
           projectPath: frontend
           args: --bundles msi
