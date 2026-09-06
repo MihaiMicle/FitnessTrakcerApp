@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FitnessTracker</string>
+    <string name="title_activity_main">FitnessTracker</string>
+    <string name="package_name">com.mihaimicle.fitnesstracker</string>
+    <string name="custom_url_scheme">com.mihaimicle.fitnesstracker</string>
+</resources>
