@@ -68,6 +68,10 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
+      - name: Make gradlew executable
+        working-directory: frontend/android
+        run: chmod +x ./gradlew
+
       - name: Build release APK
         working-directory: frontend/android
         run: ./gradlew assembleRelease
