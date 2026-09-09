@@ -44,6 +44,7 @@ Follow graph with public and private accounts, follow requests, blocking, user s
 
 ### Other bits
 
+- **Health sync** — Apple Health export (XML) import works on any platform. Android also gets direct two-way sync through Health Connect, covering 12 of 16 tracked metrics; workout minutes and macros stay on the file-import path until the plugin can write those back.
 - **AI copilot** (Gemini) with context on your logged data.
 - **Progress gallery** — full-screen photo viewer with a compare mode, filmstrip, keyboard nav and canvas-rendered before/after export.
 - **Onboarding wizard**, metric/imperial toggle, drag-and-drop dashboard widgets, water tracker, weight charts.
@@ -66,11 +67,11 @@ Auth is Supabase JWT. The frontend gets a session from Supabase and sends the ac
 The same Next.js build also ships as native installers, both pointed at the deployed API rather than localhost:
 
 - **Windows** — [Tauri](https://tauri.app) wraps the static export in a native shell (`frontend/src-tauri`). Produces an `.msi` installer and a portable `.exe`.
-- **Android** — [Capacitor](https://capacitorjs.com) wraps the same export (`frontend/android`). Produces an `.apk`.
+- **Android** — [Capacitor](https://capacitorjs.com) wraps the same export (`frontend/android`). Produces a signed release `.apk`, with Health Connect wired up via `@capgo/capacitor-health` for on-device sync.
 
-Grab the latest build from **[Releases](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)**.
+Both are built automatically by GitHub Actions (`android-release.yml`, `desktop-release.yml`) on a `v*` tag or a manual run, and attached to a draft **[Release](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)**.
 
-> Neither is code-signed yet, so Windows SmartScreen and Android will both warn on install. Expected for a personal project — "More info → Run anyway" on Windows, "Install anyway" on Android after allowing installs from unknown sources.
+> The APK is signed with a real release keystore rather than the debug key, but it's still sideloaded instead of Play Store-distributed, so Android will warn on install until it comes through Play Protect. The MSI has no code-signing certificate yet, so Windows SmartScreen also warns. Expected for a personal project — "More info → Run anyway" on Windows, "Install anyway" on Android after allowing installs from unknown sources.
 
 See [`native/README.md`](native/README.md) for how the native shell is built, and for the separate App Store / Play Store path (HealthKit and Health Connect access).
 
@@ -207,6 +208,7 @@ Being honest rather than pretending:
 - `ignoreBuildErrors` in `next.config.ts` should come out. It once hid a real breaking change in a dependency's API.
 - Cardio exercises can be created but not meaningfully logged or analyzed yet.
 - No service worker, so the offline queue survives a bad connection but not a full page load while offline.
+- `frontend/public/privacypolicy.html` is still placeholder text, needs real copy before a Play Store submission.
 
 ---
 
