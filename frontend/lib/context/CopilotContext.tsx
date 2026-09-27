@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { useWorkout } from '@/lib/context/WorkoutContext';
 import {
   applyProfileAction,
+  createRecipe,
   createRoutine,
   fetchExerciseLibrary,
   logMealLine,
@@ -21,6 +22,7 @@ import {
 } from '@/lib/copilot/api';
 import { emitCopilotChange } from '@/lib/copilot/events';
 import { toLogMealLines } from '@/lib/copilot/meals';
+import { toRecipeRecord } from '@/lib/copilot/recipes';
 import {
   toTemplatePayload,
   toWorkoutExercises,
@@ -32,6 +34,7 @@ import type {
   CopilotExercise,
   CopilotMeal,
   CopilotMessage,
+  CopilotRecipe,
   CopilotRoutine,
   CopilotSurface,
 } from '@/lib/copilot/types';
@@ -59,6 +62,7 @@ interface CopilotContextProps {
 
   logMeal: (meal: CopilotMeal) => Promise<void>;
   saveRoutine: (routine: CopilotRoutine) => Promise<void>;
+  saveRecipe: (recipe: CopilotRecipe) => Promise<void>;
   addToLiveWorkout: (exercises: CopilotExercise[]) => void;
   applyAction: (action: CopilotAction) => Promise<void>;
   saveBodyFat: (percent: number) => Promise<void>;
@@ -219,6 +223,18 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
     [library],
   );
 
+  const saveRecipe = useCallback(async (recipe: CopilotRecipe) => {
+    toast.loading('Saving recipe...', { id: 'copilot-recipe' });
+    try {
+      await createRecipe(toRecipeRecord(recipe));
+      toast.success(`Recipe "${recipe.name}" saved`, { id: 'copilot-recipe' });
+    } catch {
+      toast.error('Could not save the recipe. Try again in a moment.', {
+        id: 'copilot-recipe',
+      });
+    }
+  }, []);
+
   const addToLiveWorkout = useCallback(
     (suggestions: CopilotExercise[]) => {
       if (!hasLiveWorkout) {
@@ -273,6 +289,7 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
       setLogDate,
       logMeal,
       saveRoutine,
+      saveRecipe,
       addToLiveWorkout,
       applyAction,
       saveBodyFat,
@@ -288,6 +305,7 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
       loading,
       messages,
       saveBodyFat,
+      saveRecipe,
       saveRoutine,
       send,
       surface,

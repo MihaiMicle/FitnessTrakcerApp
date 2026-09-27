@@ -37,5 +37,6 @@ class CopilotResponse(BaseModel):
     action: Optional[Dict[str, Any]] = None
     suggested_meals: Optional[List[Dict[str, Any]]] = None
     suggested_routine: Optional[Dict[str, Any]] = None
+    suggested_recipe: Optional[Dict[str, Any]] = None
     suggested_exercises: Optional[List[Dict[str, Any]]] = None
     body_fat: Optional[Dict[str, Any]] = None

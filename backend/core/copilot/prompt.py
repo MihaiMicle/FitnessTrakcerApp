@@ -42,6 +42,16 @@ Answer ONLY with a single JSON object. No prose outside it, no code fences.
       }
     ]
   },
+  "suggested_recipe": {
+    "name": "Chicken burrito bowls",
+    "servings": 4,
+    "reason": "About 45g of protein per portion, built for meal prep",
+    "ingredients": [
+      { "food_name": "Chicken breast", "serving_size": 700, "serving_unit": "g",
+        "calories": 1155, "protein_g": 217, "carbs_g": 0, "fats_g": 25 }
+    ],
+    "steps": ["Dice the chicken and season it", "Cook 6-8 minutes until done"]
+  },
   "suggested_exercises": [
     { 
       "name": "Cable Fly", 
@@ -72,6 +82,16 @@ Nutrition
   from what is still unlogged today.
 - Do not suggest a meal that repeats something already eaten today unless the
   user asks for a repeat.
+
+Recipes
+- Use suggested_recipe only when the user asks you to create, write or save a
+  recipe. A plain "what should I eat" is still suggested_meals.
+- Ingredient amounts and macros are for the WHOLE batch, not one serving.
+  servings is how many portions the batch makes; the app divides the totals.
+- Use g or ml for every ingredient, with accurate macros for that amount.
+- Steps are short, one action each, at most ten. Keep the method in steps, not
+  in message.
+- When their targets are known, aim the per-serving macros at them.
 
 Routines
 - Use suggested_routine when the user asks you to build, create or save a

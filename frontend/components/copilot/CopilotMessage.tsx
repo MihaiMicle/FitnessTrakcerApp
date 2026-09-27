@@ -2,18 +2,21 @@
 
 import ReactMarkdown from 'react-markdown';
 import type { MealTotals } from '@/lib/copilot/meals';
+import { isUsableRecipe } from '@/lib/copilot/recipes';
 import { isUsableRoutine } from '@/lib/copilot/routine';
 import type {
   CopilotAction,
   CopilotExercise,
   CopilotMeal,
   CopilotMessage,
+  CopilotRecipe,
   CopilotRoutine,
 } from '@/lib/copilot/types';
 import ActionCard from './cards/ActionCard';
 import BodyFatCard from './cards/BodyFatCard';
 import ExerciseSuggestion from './cards/ExerciseSuggestion';
 import MealSuggestion from './cards/MealSuggestion';
+import RecipeSuggestion from './cards/RecipeSuggestion';
 import RoutineSuggestion from './cards/RoutineSuggestion';
 
 const MARKDOWN_COMPONENTS = {
@@ -36,6 +39,7 @@ interface MessageProps {
   canAddToWorkout: boolean;
   onLogMeal: (meal: CopilotMeal) => Promise<void>;
   onSaveRoutine: (routine: CopilotRoutine) => Promise<void>;
+  onSaveRecipe: (recipe: CopilotRecipe) => Promise<void>;
   onAddExercises: (exercises: CopilotExercise[]) => void;
   onApplyAction: (action: CopilotAction) => Promise<void>;
   onSaveBodyFat: (percent: number) => Promise<void>;
@@ -47,6 +51,7 @@ export default function CopilotMessage({
   canAddToWorkout,
   onLogMeal,
   onSaveRoutine,
+  onSaveRecipe,
   onAddExercises,
   onApplyAction,
   onSaveBodyFat,
@@ -95,6 +100,13 @@ export default function CopilotMessage({
             onLog={onLogMeal}
           />
         ))}
+
+        {isUsableRecipe(message.suggested_recipe) && (
+          <RecipeSuggestion
+            recipe={message.suggested_recipe}
+            onSave={onSaveRecipe}
+          />
+        )}
 
         {isUsableRoutine(message.suggested_routine) && (
           <RoutineSuggestion

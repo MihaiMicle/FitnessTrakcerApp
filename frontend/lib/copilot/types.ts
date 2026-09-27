@@ -25,6 +25,15 @@ export interface CopilotMeal {
   foods: CopilotFood[];
 }
 
+export interface CopilotRecipe {
+  name: string;
+  servings: number;
+  reason?: string | null;
+  steps?: string[];
+  /* Amounts for the whole batch, not one serving */
+  ingredients: CopilotFood[];
+}
+
 export interface CopilotSet {
   weight_kg?: number | null;
   reps?: number | null;
@@ -68,6 +77,7 @@ export interface CopilotReply {
   action?: CopilotAction | null;
   suggested_meals?: CopilotMeal[] | null;
   suggested_routine?: CopilotRoutine | null;
+  suggested_recipe?: CopilotRecipe | null;
   suggested_exercises?: CopilotExercise[] | null;
   body_fat?: CopilotBodyFat | null;
 }

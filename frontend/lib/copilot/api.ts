@@ -8,6 +8,7 @@ import type {
   CopilotSurface,
 } from './types';
 import { DailySummary } from '@/types/nutrition';
+import type { RecipeRecord } from './recipes';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -105,6 +106,19 @@ export async function createRoutine(payload: {
   });
   if (!res.ok) throw new Error('Failed to save routine');
   return res.json();
+}
+
+/* Written straight to Supabase, the same way the recipe builder saves */
+export async function createRecipe(record: RecipeRecord): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+
+  const { error } = await supabase
+    .from('recipes')
+    .insert({ user_id: session.user.id, ...record });
+  if (error) throw error;
 }
 
 export async function logMealLine(

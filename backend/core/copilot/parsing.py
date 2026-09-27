@@ -19,6 +19,10 @@ MEAL_TYPES = {"breakfast", "lunch", "dinner", "snack"}
 MIN_BODY_FAT = 3.0
 MAX_BODY_FAT = 70.0
 
+# Caps so a model that miscounts cannot flood the recipe card
+MAX_RECIPE_SERVINGS = 24
+MAX_RECIPE_STEPS = 15
+
 _FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE)
 
 
@@ -88,20 +92,56 @@ def normalize_meal(meal: Any) -> Optional[Dict[str, Any]]:
         "title": str(meal.get("title") or "Suggested meal"),
         "meal_type": meal_type if meal_type in MEAL_TYPES else "lunch",
         "reason": meal.get("reason"),
-        "foods": [
-            {
-                "food_name": str(f.get("food_name") or f.get("name") or "Food"),
-                "serving_size": _clean_number(f.get("serving_size")) or 100.0,
-                "serving_unit": str(f.get("serving_unit") or "g"),
-                "calories": round(_clean_number(f.get("calories")) or 0),
-                "protein_g": _clean_number(f.get("protein_g")) or 0.0,
-                "carbs_g": _clean_number(f.get("carbs_g")) or 0.0,
-                "fats_g": _clean_number(f.get("fats_g")) or 0.0,
-                "fiber_g": _clean_number(f.get("fiber_g")) or 0.0,
-                "sugar_g": _clean_number(f.get("sugar_g")) or 0.0,
-            }
-            for f in foods
-        ],
+        "foods": [_normalize_food(f) for f in foods],
+    }
+
+
+def _normalize_food(food: Dict[str, Any]) -> Dict[str, Any]:
+    """One food line, shared by suggested meals and recipe ingredients"""
+    return {
+        "food_name": str(food.get("food_name") or food.get("name") or "Food"),
+        "serving_size": _clean_number(food.get("serving_size")) or 100.0,
+        "serving_unit": str(food.get("serving_unit") or "g"),
+        "calories": round(_clean_number(food.get("calories")) or 0),
+        "protein_g": _clean_number(food.get("protein_g")) or 0.0,
+        "carbs_g": _clean_number(food.get("carbs_g")) or 0.0,
+        "fats_g": _clean_number(food.get("fats_g")) or 0.0,
+        "fiber_g": _clean_number(food.get("fiber_g")) or 0.0,
+        "sugar_g": _clean_number(food.get("sugar_g")) or 0.0,
+    }
+
+
+def normalize_recipe(recipe: Any) -> Optional[Dict[str, Any]]:
+    """
+    Keep a suggested recipe only if it has at least one ingredient.
+
+    Ingredient amounts are for the whole batch. Servings is clamped to a whole
+    number of at least one, because the client divides the totals by it
+    """
+    if not isinstance(recipe, dict):
+        return None
+    ingredients = [i for i in (recipe.get("ingredients") or []) if isinstance(i, dict)]
+    if not ingredients:
+        return None
+
+    servings = _clean_number(recipe.get("servings")) or 1
+    servings = min(max(int(round(servings)), 1), MAX_RECIPE_SERVINGS)
+
+    raw_steps = recipe.get("steps")
+    if not isinstance(raw_steps, list):
+        raw_steps = []
+    steps = [
+        str(step).strip()
+        for step in raw_steps
+        if isinstance(step, (str, int, float)) and str(step).strip()
+    ][:MAX_RECIPE_STEPS]
+
+    return {
+        "name": str(recipe.get("name") or "New recipe"),
+        "servings": servings,
+        "reason": recipe.get("reason"),
+        "steps": steps,
+        "ingredients": [_normalize_food(i) for i in ingredients],
     }
 
 
@@ -221,6 +261,7 @@ def normalize_reply(raw: str) -> Dict[str, Any]:
         "action": normalize_action(parsed.get("action")),
         "suggested_meals": meals or None,
         "suggested_routine": normalize_routine(parsed.get("suggested_routine")),
+        "suggested_recipe": normalize_recipe(parsed.get("suggested_recipe")),
         "suggested_exercises": exercises or None,
         "body_fat": normalize_body_fat(parsed.get("body_fat")),
     }
@@ -233,6 +274,7 @@ def empty_reply(message: str) -> Dict[str, Any]:
         "action": None,
         "suggested_meals": None,
         "suggested_routine": None,
+        "suggested_recipe": None,
         "suggested_exercises": None,
         "body_fat": None,
     }

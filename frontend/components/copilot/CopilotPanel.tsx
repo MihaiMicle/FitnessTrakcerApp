@@ -13,6 +13,7 @@ import CopilotMessage from './CopilotMessage';
 const PROMPTS: Record<string, string[]> = {
   dashboard: [
     'What can I eat with what I have left today?',
+    'Create a high-protein recipe I can meal prep',
     'Estimate my body fat from my photos',
   ],
   workouts: [
@@ -150,6 +151,7 @@ export default function CopilotPanel({ bubble }: { bubble: Point }) {
             canAddToWorkout={copilot.hasLiveWorkout}
             onLogMeal={copilot.logMeal}
             onSaveRoutine={copilot.saveRoutine}
+            onSaveRecipe={copilot.saveRecipe}
             onAddExercises={copilot.addToLiveWorkout}
             onApplyAction={copilot.applyAction}
             onSaveBodyFat={copilot.saveBodyFat}

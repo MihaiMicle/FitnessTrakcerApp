@@ -116,6 +116,64 @@ class TestNormalizeRoutine:
         assert parsing.normalize_routine(None) is None
 
 
+class TestNormalizeRecipe:
+    def _recipe(self, **overrides):
+        recipe = {
+            "name": "Burrito bowls",
+            "servings": 4,
+            "ingredients": [
+                {"food_name": "Chicken breast", "serving_size": 700, "calories": 1155}
+            ],
+            "steps": ["Dice the chicken", "Cook it"],
+        }
+        recipe.update(overrides)
+        return recipe
+
+    def test_keeps_a_well_formed_recipe(self):
+        recipe = parsing.normalize_recipe(self._recipe())
+        assert recipe["servings"] == 4
+        assert recipe["ingredients"][0]["calories"] == 1155
+        assert recipe["steps"] == ["Dice the chicken", "Cook it"]
+
+    def test_drops_a_recipe_with_no_ingredients(self):
+        # The save button would write an empty recipe
+        assert parsing.normalize_recipe(self._recipe(ingredients=[])) is None
+
+    def test_drops_a_non_dict(self):
+        assert parsing.normalize_recipe("a recipe") is None
+
+    def test_missing_servings_defaults_to_one(self):
+        recipe = self._recipe()
+        del recipe["servings"]
+        assert parsing.normalize_recipe(recipe)["servings"] == 1
+
+    def test_zero_or_negative_servings_become_one(self):
+        # The client divides by servings
+        assert parsing.normalize_recipe(self._recipe(servings=0))["servings"] == 1
+        assert parsing.normalize_recipe(self._recipe(servings=-3))["servings"] == 1
+
+    def test_servings_are_rounded_and_capped(self):
+        assert parsing.normalize_recipe(self._recipe(servings="2.6"))["servings"] == 3
+        assert (
+            parsing.normalize_recipe(self._recipe(servings=500))["servings"]
+            == parsing.MAX_RECIPE_SERVINGS
+        )
+
+    def test_steps_given_as_a_string_are_dropped(self):
+        # Iterating a string would turn it into one step per character
+        recipe = parsing.normalize_recipe(self._recipe(steps="Cook everything"))
+        assert recipe["steps"] == []
+
+    def test_blank_steps_are_removed_and_the_list_is_capped(self):
+        steps = ["", "  ", *[f"Step {n}" for n in range(30)]]
+        recipe = parsing.normalize_recipe(self._recipe(steps=steps))
+        assert recipe["steps"][0] == "Step 0"
+        assert len(recipe["steps"]) == parsing.MAX_RECIPE_STEPS
+
+    def test_a_missing_name_gets_a_placeholder(self):
+        assert parsing.normalize_recipe(self._recipe(name=None))["name"] == "New recipe"
+
+
 class TestNormalizeBodyFat:
     def test_keeps_a_plausible_estimate(self):
         result = parsing.normalize_body_fat(
@@ -190,6 +248,19 @@ class TestNormalizeReply:
         raw = json.dumps({"message": "ok", "suggested_meals": []})
         assert parsing.normalize_reply(raw)["suggested_meals"] is None
 
+    def test_carries_a_recipe_through(self):
+        raw = json.dumps(
+            {
+                "message": "Here you go",
+                "suggested_recipe": {
+                    "name": "Oats",
+                    "servings": 2,
+                    "ingredients": [{"food_name": "Oats", "calories": 380}],
+                },
+            }
+        )
+        assert parsing.normalize_reply(raw)["suggested_recipe"]["name"] == "Oats"
+
     def test_a_missing_message_gets_a_placeholder(self):
         assert parsing.normalize_reply('{"action": null}')["message"] == "No response."
 
@@ -200,6 +271,7 @@ class TestNormalizeReply:
             "action",
             "suggested_meals",
             "suggested_routine",
+            "suggested_recipe",
             "suggested_exercises",
             "body_fat",
         }
