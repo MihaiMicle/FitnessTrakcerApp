@@ -44,8 +44,8 @@ Follow graph with public and private accounts, follow requests, blocking, user s
 
 ### Other bits
 
-- **Health sync** — Apple Health export (XML) import works on any platform. Android also gets direct two-way sync through Health Connect, covering 12 of 16 tracked metrics; workout minutes and macros stay on the file-import path until the plugin can write those back.
-- **AI copilot** (Gemini) with context on your logged data.
+- **Health sync** — Apple Health export (XML) import works on any platform. Android also gets direct two-way sync through Health Connect, covering 12 of 16 tracked metrics; workout minutes and macros stay on the file-import path until the plugin can write those back. Direct HealthKit sync on iPhone is next.
+- **AI copilot** (Gemini) with context on your logged data and progress photos. It suggests meals, full recipes with per-serving macros, routines and exercises, each saveable in one tap. Busy or failing requests retry and fall back to a second model instead of erroring out.
 - **Progress gallery** — full-screen photo viewer with a compare mode, filmstrip, keyboard nav and canvas-rendered before/after export.
 - **Onboarding wizard**, metric/imperial toggle, drag-and-drop dashboard widgets, water tracker, weight charts.
 
@@ -57,8 +57,9 @@ Follow graph with public and private accounts, follow requests, blocking, user s
 **Backend** — FastAPI, SQLAlchemy 2, Pydantic v2, pytest
 **Data** — Supabase (Postgres, Auth, Storage)
 **Deploy** — Vercel (frontend), Render (API)
+**Native** — Tauri 2 (Windows, macOS, Linux), Capacitor 8 (Android, iOS, iPadOS)
 
-Auth is Supabase JWT. The frontend gets a session from Supabase and sends the access token as a bearer; the backend verifies it against `SUPABASE_JWT_SECRET` and never trusts a user id from the request body.
+Auth is Supabase JWT. The frontend gets a session from Supabase and sends the access token as a bearer; the backend verifies its signature against Supabase's published signing keys (JWKS) and never trusts a user id from the request body.
 
 ---
 
@@ -84,13 +85,25 @@ git tag v1.1.0 && git push origin v1.1.0
 
 > Nothing is code-signed by a paid certificate yet, so every platform warns on first launch. Windows: "More info → Run anyway". Android: "Install anyway" after allowing unknown sources. macOS: open once, then System Settings → Privacy & Security → "Open Anyway". Linux AppImage: `chmod +x` first. iOS cannot install an unsigned `.ipa` directly — run it from Xcode on your own device, or re-sign it with Sideloadly/AltStore. TestFlight and the App Store need an Apple Developer account.
 
+### Building locally
+
+All of these run from `frontend` and bake in whatever is in `.env.local`, so point `NEXT_PUBLIC_API_URL` at the deployed API first.
+
+```bash
+npm run sync:android && npx cap open android     # Android Studio, needs JDK 21 as the Gradle JDK
+npm run sync:ios && npx cap open ios             # Xcode, macOS only
+npm run tauri -- build                           # desktop installer for the current OS, needs Rust
+```
+
+A free Apple ID is enough to run the iOS app on your own iPhone or iPad from Xcode. The build expires after 7 days and runs again from Xcode.
+
 See [`native/README.md`](native/README.md) for how the native shell is built, and for the separate App Store / Play Store path (HealthKit and Health Connect access).
 
 ---
 
 ## Running it locally
 
-You'll need Node 22, Python 3.12 and a Supabase project.
+You'll need Node 22, Python 3.12 and a Supabase project. Works the same on macOS, Linux and Windows.
 
 ### Backend
 
@@ -107,9 +120,10 @@ uvicorn main:app --reload
 ```env
 DATABASE_URL=postgresql://...     # Supabase connection string
 SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_KEY=...                  # anon key
-SUPABASE_SERVICE_ROLE_KEY=...     # server-side only, never ships to the client
+SUPABASE_KEY=sb_publishable_...   # publishable (anon) key, also used to fetch the JWKS
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...  # server-side only, never ships to the client
 GEMINI_API_KEY=...                # optional, only needed for the copilot
+GEMINI_FALLBACK_MODEL=...         # optional, tried when the main model is busy
 ```
 
 API comes up on `http://127.0.0.1:8000`, interactive docs at `/docs`.
@@ -138,21 +152,23 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 
 ## Tests
 
-466 tests, no database and no network, about two seconds end to end.
+1,215 tests, no database and no network, a few seconds per suite.
 
 ```bash
-# Backend — 93 tests over the calc engine, rest rules, sync and social permissions
+# Backend — 476 tests over the calc engine, rest rules, sync, social permissions,
+# feed, health import and copilot parsing
 cd backend
 pip install -r requirements.txt -r requirements-dev.txt
 pytest
 
-# Frontend — 373 tests over lib/nutrition, lib/workouts, lib/offline, lib/social
+# Frontend — 739 tests over lib/nutrition, lib/workouts, lib/offline, lib/social,
+# lib/health, lib/feed, lib/copilot and the release version script
 cd frontend
 npm test
 npm run test:coverage             # enforces the thresholds in vitest.config.ts
 ```
 
-Both suites run on every push and PR via GitHub Actions.
+Both suites run on every push and PR via GitHub Actions, and again before any release build.
 
 The coverage gate only counts the pure logic in `lib/`. Components are deliberately excluded — including them would report a flattering-looking number that hides whether the arithmetic is actually covered, and the arithmetic is the part where a wrong answer looks like a plausible one. See [TESTING.md](TESTING.md).
 
@@ -168,6 +184,9 @@ backend/
     rest.py             #   rest-time resolution, mirrors the TS rules
     sync.py             #   session upsert
     social.py           #   visibility and permission rules
+    feed.py             #   activity feed events
+    health.py           #   health sample normalization and import
+    copilot/            #   prompt, response parsing, retry and model fallback
     security.py         #   JWT verification
   models/               # SQLAlchemy
   schemas/              # Pydantic
@@ -183,8 +202,18 @@ frontend/
     workouts/           # sets, rest, records, body map, strength standards
     offline/            # queue, sync, drafts, storage, id generation
     social/             # visibility helpers
+    feed/               # feed events, copy-to-library
+    health/             # health metrics, normalization, native bridge
+    copilot/            # suggestion cards, meals, recipes, routines
     context/            # workout session state
   types/
+  scripts/              # release version sync
+  src-tauri/            # desktop shell (Windows, macOS, Linux)
+  android/              # Capacitor Android project
+  ios/                  # Capacitor iOS / iPadOS project
+
+native/                 # native shell docs and the health plugin contract
+.github/workflows/      # tests, per-platform builds, release.yml
 ```
 
 The rule that keeps this maintainable: **anything worth testing lives in `lib/` or `core/` and imports nothing**. Routers and components are glue.
@@ -208,6 +237,10 @@ Tracked on a Notion board. Roughly in dependency order:
 - [x] Health App / Google Fit import
 - [x] GDPR export and hard delete
 - [x] Activity feed
+- [x] Native apps for Windows, macOS, Linux, Android, iOS and iPadOS
+- [ ] Direct HealthKit sync on iOS
+- [ ] Google Play and App Store releases
+- [ ] Code signing for the desktop installers
 
 ---
 
@@ -217,9 +250,10 @@ Being honest rather than pretending:
 
 - `WorkoutSession.exercises` is still a JSONB blob alongside the normalized `workout_sets` table. The blob is the write path, the table is the read path for analytics. They need to converge.
 - `ignoreBuildErrors` in `next.config.ts` should come out. It once hid a real breaking change in a dependency's API.
-- Cardio exercises can be created but not meaningfully logged or analyzed yet.
 - No service worker, so the offline queue survives a bad connection but not a full page load while offline.
-- `frontend/public/privacypolicy.html` is still placeholder text, needs real copy before a Play Store submission.
+- `frontend/public/privacypolicy.html` is still placeholder text, needs real copy before a Play Store or App Store submission.
+- Password reset emails link back to `window.location.origin`, which in the native apps is `tauri://` or `capacitor://`. Resetting a password works from the web app only for now.
+- If the profile request fails for any reason, the dashboard treats it as a brand-new account and opens the onboarding wizard. It should show a retry instead.
 
 ---
 
