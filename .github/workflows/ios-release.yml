@@ -1,0 +1,84 @@
+name: iOS Build
+
+# Unsigned iPhone and iPad build, proves it compiles and gives an .ipa
+# that Sideloadly or AltStore can re-sign with your Apple ID
+# Needs the three NEXT_PUBLIC_* secrets, same as android-release.yml
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: Existing release tag to attach to, empty for artifacts only
+        type: string
+        default: ""
+  workflow_call:
+    inputs:
+      release-tag:
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build unsigned iOS app
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build the native web export and sync Capacitor
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run sync:ios
+
+      - name: Build without signing
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild build \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package the unsigned .ipa
+        run: |
+          VERSION=$(node -p "require('./frontend/package.json').version")
+          mkdir -p dist ipa/Payload
+          cp -R frontend/ios/App/build/Build/Products/Release-iphoneos/App.app ipa/Payload/
+          (cd ipa && zip -qry "../dist/FitnessTracker_${VERSION}_ios_unsigned.ipa" Payload)
+          ls -la dist
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitnesstracker-ios
+          path: dist/*
+
+      - name: Attach to the draft release
+        if: inputs.release-tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.release-tag }}" dist/* --clobber

@@ -4,7 +4,7 @@ A full-stack training and nutrition tracker I built because the apps I was using
 
 So this one does all three: precise nutrition down to the micronutrient, real workout logging with set types and rest timers, and a write queue that keeps working offline and syncs when you come back up.
 
-**Live:** [app](https://fitness-trakcer-app-tau.vercel.app) · [API docs](https://fitnesstrakcerapp.onrender.com/docs) · [Windows & Android builds](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)
+**Live:** [app](https://fitness-trakcer-app-tau.vercel.app) · [API docs](https://fitnesstrakcerapp.onrender.com/docs) · [Windows, macOS, Linux, Android & iOS builds](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)
 
 > Heads up: the API runs on Render's free tier, so the first request after a quiet period takes ~30s to wake the server.
 
@@ -62,16 +62,27 @@ Auth is Supabase JWT. The frontend gets a session from Supabase and sends the ac
 
 ---
 
-## Desktop & Android
+## Native apps
 
-The same Next.js build also ships as native installers, both pointed at the deployed API rather than localhost:
+The same Next.js build also ships as native apps, all pointed at the deployed API rather than localhost:
 
-- **Windows** — [Tauri](https://tauri.app) wraps the static export in a native shell (`frontend/src-tauri`). Produces an `.msi` installer and a portable `.exe`.
-- **Android** — [Capacitor](https://capacitorjs.com) wraps the same export (`frontend/android`). Produces a signed release `.apk`, with Health Connect wired up via `@capgo/capacitor-health` for on-device sync.
+| Platform | Shell | Output |
+|---|---|---|
+| Windows | [Tauri](https://tauri.app) (`frontend/src-tauri`) | `.msi` |
+| macOS | Tauri | universal `.dmg` (Apple Silicon and Intel) |
+| Linux | Tauri | `.AppImage`, `.deb`, `.rpm` |
+| Android | [Capacitor](https://capacitorjs.com) (`frontend/android`) | signed `.apk` and `.aab`, Health Connect sync via `@capgo/capacitor-health` |
+| iOS / iPadOS | Capacitor (`frontend/ios`) | unsigned `.ipa`, one universal app for iPhone and iPad |
 
-Both are built automatically by GitHub Actions (`android-release.yml`, `desktop-release.yml`) on a `v*` tag or a manual run, and attached to a draft **[Release](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)**.
+The version lives only in `frontend/package.json`. Tauri and Gradle read it directly and `npm run version:sync` copies it into the Xcode project. To release, bump it, run `npm run version:sync`, commit, then push a matching tag:
 
-> The APK is signed with a real release keystore rather than the debug key, but it's still sideloaded instead of Play Store-distributed, so Android will warn on install until it comes through Play Protect. The MSI has no code-signing certificate yet, so Windows SmartScreen also warns. Expected for a personal project — "More info → Run anyway" on Windows, "Install anyway" on Android after allowing installs from unknown sources.
+```bash
+git tag v1.1.0 && git push origin v1.1.0
+```
+
+`release.yml` checks the tag against `package.json`, runs the tests, then builds every platform in parallel and attaches everything to one draft **[Release](https://github.com/MihaiMicle/FitnessTrakcerApp/releases/latest)**. Each platform workflow can also be run on its own from the Actions tab.
+
+> Nothing is code-signed by a paid certificate yet, so every platform warns on first launch. Windows: "More info → Run anyway". Android: "Install anyway" after allowing unknown sources. macOS: open once, then System Settings → Privacy & Security → "Open Anyway". Linux AppImage: `chmod +x` first. iOS cannot install an unsigned `.ipa` directly — run it from Xcode on your own device, or re-sign it with Sideloadly/AltStore. TestFlight and the App Store need an Apple Developer account.
 
 See [`native/README.md`](native/README.md) for how the native shell is built, and for the separate App Store / Play Store path (HealthKit and Health Connect access).
 

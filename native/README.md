@@ -26,6 +26,8 @@ anything.
 
 ## 1. Add Capacitor
 
+> Done for both platforms. `frontend/android` and `frontend/ios` are committed, the steps below are kept for reference
+
 ```bash
 cd frontend
 npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
@@ -113,6 +115,8 @@ Either way, three things are not optional:
    `backend/core/health.py`, and changing it means changing all three.
 
 ### iOS
+
+> The two usage strings below are already in `frontend/ios/App/App/Info.plist`. What is left is the HealthKit capability, which needs a paid Apple Developer account, and switching `useHealthSync.ts` to load `capgoAdapter` on iOS too
 
 `ios/App/App/Info.plist`:
 

@@ -1,0 +1,64 @@
+name: Release
+
+# One tag builds every platform into one draft release
+#   1. Set "version" in frontend/package.json, run `npm run version:sync`, commit
+#   2. git tag v<version> && git push origin v<version>
+# The tag has to match package.json or nothing is built
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Check version and create draft release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag matches package.json
+        run: |
+          VERSION=$(node -p "require('./frontend/package.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match frontend/package.json version $VERSION"
+            exit 1
+          fi
+
+      - name: Create the draft release once, before the builds upload to it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --draft --generate-notes \
+                 --title "FitnessTracker $GITHUB_REF_NAME"
+
+  tests:
+    needs: prepare
+    uses: ./.github/workflows/tests.yml
+
+  android:
+    needs: [prepare, tests]
+    uses: ./.github/workflows/android-release.yml
+    with:
+      release-tag: ${{ needs.prepare.outputs.tag }}
+    secrets: inherit
+
+  desktop:
+    needs: [prepare, tests]
+    uses: ./.github/workflows/desktop-release.yml
+    with:
+      release-tag: ${{ needs.prepare.outputs.tag }}
+    secrets: inherit
+
+  ios:
+    needs: [prepare, tests]
+    uses: ./.github/workflows/ios-release.yml
+    with:
+      release-tag: ${{ needs.prepare.outputs.tag }}
+    secrets: inherit

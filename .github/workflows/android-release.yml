@@ -1,10 +1,10 @@
 name: Android Release
 
-# Builds a signed release APK. Manual runs always attach it as a workflow
-# artifact; pushing a v* tag also creates a GitHub Release and attaches it
-# there
+# Signed release APK (sideload) and AAB (Play Store)
+# Manual runs upload them as workflow artifacts, release.yml also attaches
+# them to the draft release
 #
-# Needs seven repo secrets before this can run:
+# Needs seven repo secrets:
 #   ANDROID_KEYSTORE_BASE64   base64 of the .jks/.keystore file, `base64 -w0 your.jks`
 #   ANDROID_KEYSTORE_PASSWORD
 #   ANDROID_KEY_ALIAS
@@ -18,16 +18,23 @@ name: Android Release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
+    inputs:
+      release-tag:
+        description: Existing release tag to attach to, empty for artifacts only
+        type: string
+        default: ""
+  workflow_call:
+    inputs:
+      release-tag:
+        type: string
+        default: ""
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build signed APK
+    name: Build signed APK and AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -49,7 +56,7 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: npm run sync:native
+        run: npm run sync:android
 
       - uses: actions/setup-java@v4
         with:
@@ -72,19 +79,25 @@ jobs:
         working-directory: frontend/android
         run: chmod +x ./gradlew
 
-      - name: Build release APK
+      - name: Build release APK and AAB
         working-directory: frontend/android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease bundleRelease
+
+      - name: Name the outputs after the version
+        run: |
+          VERSION=$(node -p "require('./frontend/package.json').version")
+          mkdir -p dist
+          cp frontend/android/app/build/outputs/apk/release/app-release.apk "dist/FitnessTracker_${VERSION}_android.apk"
+          cp frontend/android/app/build/outputs/bundle/release/app-release.aab "dist/FitnessTracker_${VERSION}_android.aab"
 
       - name: Upload as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fitnesstracker-release-apk
-          path: frontend/android/app/build/outputs/apk/release/app-release.apk
+          name: fitnesstracker-android
+          path: dist/*
 
-      - name: Attach to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: frontend/android/app/build/outputs/apk/release/app-release.apk
+      - name: Attach to the draft release
+        if: inputs.release-tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.release-tag }}" dist/* --clobber
