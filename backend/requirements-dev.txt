@@ -3,7 +3,7 @@
 #
 # Kept separate so the production image doesn't ship a test runner.
 
-pytest==8.4.2
+pytest==9.0.3
 pytest-cov==7.0.0
 
 # Undefined-name checking. A router that references a name it never imported
