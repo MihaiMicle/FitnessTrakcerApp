@@ -12,7 +12,7 @@ from google.genai import types
 from core.database import get_db
 from core.security import get_current_user
 from core.copilot import context as copilot_context
-from core.copilot import media, parsing, prompt
+from core.copilot import media, parsing, prompt, resilience
 from schemas.copilot import CopilotRequest, CopilotResponse
 
 load_dotenv()
@@ -24,6 +24,10 @@ MAX_HISTORY_TURNS = 12
 
 def _model_name() -> str:
     return os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
+
+
+def _models() -> List[str]:
+    return resilience.model_chain(_model_name(), os.getenv("GEMINI_FALLBACK_MODEL"))
 
 
 def _history_lines(history: List[Any]) -> List[str]:
@@ -100,10 +104,10 @@ async def _process_attachments(
     return native_parts, extracted_docs
 
 
-def _generate(api_key: str, contents: List[Any]) -> str:
+def _generate(api_key: str, contents: List[Any], model: str) -> str:
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model=_model_name(),
+        model=model,
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=prompt.SYSTEM_INSTRUCTION,
@@ -139,8 +143,12 @@ async def chat_with_copilot(
     contents = _build_contents(ctx, req, native_parts, extracted_docs)
 
     try:
-        raw = await asyncio.to_thread(_generate, api_key, contents)
+        raw = await resilience.generate_with_fallback(
+            lambda model: asyncio.to_thread(_generate, api_key, contents, model),
+            _models(),
+        )
     except Exception as exc:
-        return parsing.empty_reply(f"Copilot connection error: {exc}")
+        print(f"Copilot generation failed: {exc}")
+        return parsing.empty_reply(resilience.friendly_error(exc))
 
     return parsing.normalize_reply(raw)
